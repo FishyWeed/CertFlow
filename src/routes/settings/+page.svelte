@@ -139,13 +139,17 @@
 	}
 
 	const projectPercent = $derived(
-		Math.min(100, Math.round((data.usage.projectCount / Math.max(1, data.usage.maxProjects)) * 100))
+		data.usage.maxProjects === null
+			? 0
+			: Math.min(100, Math.round((data.usage.projectCount / Math.max(1, data.usage.maxProjects)) * 100))
 	);
 	const storagePercent = $derived(
-		Math.min(
-			100,
-			Math.round((data.usage.storageUsedBytes / Math.max(1, data.usage.maxStorageBytes)) * 100)
-		)
+		data.usage.maxStorageBytes === null
+			? 0
+			: Math.min(
+					100,
+					Math.round((data.usage.storageUsedBytes / Math.max(1, data.usage.maxStorageBytes)) * 100)
+				)
 	);
 
 	async function handleCleanUpStorage() {
@@ -640,22 +644,32 @@
 						<div class="flex items-center justify-between text-xs">
 							<span class="font-medium text-ink-secondary">Projects</span>
 							<span class="font-semibold text-ink-primary">
-								{data.usage.projectCount} / {data.usage.maxProjects}
+								{#if data.usage.maxProjects !== null}
+									{data.usage.projectCount} / {data.usage.maxProjects}
+								{:else}
+									{data.usage.projectCount} · Unlimited
+								{/if}
 							</span>
 						</div>
-						<div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-surface-subtle">
-							<div
-								class="h-full rounded-full transition-all {projectPercent >= 100
-									? 'bg-red-500'
-									: projectPercent >= 80
-										? 'bg-amber-500'
-										: 'bg-accent'}"
-								style="width: {projectPercent}%;"
-							></div>
-						</div>
-						<p class="mt-1.5 text-[11px] text-ink-muted">
-							Each account can keep up to {data.usage.maxProjects} active projects.
-						</p>
+						{#if data.usage.maxProjects !== null}
+							<div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-surface-subtle">
+								<div
+									class="h-full rounded-full transition-all {projectPercent >= 100
+										? 'bg-red-500'
+										: projectPercent >= 80
+											? 'bg-amber-500'
+											: 'bg-accent'}"
+									style="width: {projectPercent}%;"
+								></div>
+							</div>
+							<p class="mt-1.5 text-[11px] text-ink-muted">
+								Each account can keep up to {data.usage.maxProjects} active projects.
+							</p>
+						{:else}
+							<p class="mt-2 text-[11px] text-ink-muted">
+								No project limit applies on local installations.
+							</p>
+						{/if}
 					</div>
 
 					<div class="rounded-lg border border-border-default bg-surface-page p-3.5">
@@ -665,22 +679,33 @@
 								{data.usage.assetCount === 1 ? 'file' : 'files'})
 							</span>
 							<span class="font-semibold text-ink-primary">
-								{formatBytes(data.usage.storageUsedBytes)} / {formatBytes(data.usage.maxStorageBytes)}
+								{#if data.usage.maxStorageBytes !== null}
+									{formatBytes(data.usage.storageUsedBytes)} / {formatBytes(data.usage.maxStorageBytes)}
+								{:else}
+									{formatBytes(data.usage.storageUsedBytes)} · Unlimited
+								{/if}
 							</span>
 						</div>
-						<div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-surface-subtle">
-							<div
-								class="h-full rounded-full transition-all {storagePercent >= 95
-									? 'bg-red-500'
-									: storagePercent >= 80
-										? 'bg-amber-500'
-										: 'bg-emerald-500'}"
-								style="width: {storagePercent}%;"
-							></div>
-						</div>
-						<p class="mt-1.5 text-[11px] text-ink-muted">
-							Generated certificates render in your browser and do not count towards storage.
-						</p>
+						{#if data.usage.maxStorageBytes !== null}
+							<div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-surface-subtle">
+								<div
+									class="h-full rounded-full transition-all {storagePercent >= 95
+										? 'bg-red-500'
+										: storagePercent >= 80
+											? 'bg-amber-500'
+											: 'bg-emerald-500'}"
+									style="width: {storagePercent}%;"
+								></div>
+							</div>
+							<p class="mt-1.5 text-[11px] text-ink-muted">
+								Generated certificates render in your browser and do not count towards storage.
+							</p>
+						{:else}
+							<p class="mt-2 text-[11px] text-ink-muted">
+								No storage limit applies on local installations. Generated certificates render in
+								your browser.
+							</p>
+						{/if}
 					</div>
 				</div>
 			</section>

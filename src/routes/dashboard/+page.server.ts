@@ -8,6 +8,7 @@ import { createDefaultEmailSettings } from '#lib/config/email.ts';
 import { MAX_PROJECTS_PER_USER } from '#lib/config/limits.ts';
 import { db } from '#lib/server/db/index.ts';
 import { certificates, projects, recipients, templates } from '#lib/server/db/schema.ts';
+import { isLocalAppRuntime } from '#lib/server/runtime-config.ts';
 import { createStarterTemplateState } from '#lib/templates/starter.ts';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -74,7 +75,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		user: locals.user,
 		projects: userProjects,
 		limits: {
-			maxProjects: MAX_PROJECTS_PER_USER
+			maxProjects: isLocalAppRuntime() ? null : MAX_PROJECTS_PER_USER
 		}
 	};
 };
@@ -85,15 +86,18 @@ export const actions: Actions = {
 			throw redirect(302, '/login');
 		}
 
-		const [existingCountRow] = await db
-			.select({ total: count() })
-			.from(projects)
-			.where(eq(projects.userId, locals.user.id));
+		const maxProjects = isLocalAppRuntime() ? null : MAX_PROJECTS_PER_USER;
+		if (maxProjects !== null) {
+			const [existingCountRow] = await db
+				.select({ total: count() })
+				.from(projects)
+				.where(eq(projects.userId, locals.user.id));
 
-		if (Number(existingCountRow?.total ?? 0) >= MAX_PROJECTS_PER_USER) {
-			return fail(400, {
-				error: `You have reached the limit of ${MAX_PROJECTS_PER_USER} projects per account. Delete an older project to create a new one.`
-			});
+			if (Number(existingCountRow?.total ?? 0) >= maxProjects) {
+				return fail(400, {
+					error: `You have reached the limit of ${maxProjects} projects per account. Delete an older project to create a new one.`
+				});
+			}
 		}
 
 		const formData = await request.formData();

@@ -1,14 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { error, json } from '@sveltejs/kit';
-import {
-	formatBytes,
-	MAX_STORAGE_BYTES_PER_USER,
-	MAX_UPLOAD_BYTES
-} from '#lib/config/limits.ts';
+import { formatBytes, MAX_UPLOAD_BYTES } from '#lib/config/limits.ts';
 import { getUserAccountUsage } from '#lib/server/asset-cleanup.ts';
 import { db } from '#lib/server/db/index.ts';
 import { assets } from '#lib/server/db/schema.ts';
 import { requireOwnedProject } from '#lib/server/projects.ts';
+import { isLocalAppRuntime } from '#lib/server/runtime-config.ts';
 import { getStorage } from '#lib/server/storage.ts';
 import type { RequestHandler } from './$types';
 
@@ -34,8 +31,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	if (!['background', 'image', 'font'].includes(kindRaw)) {
 		throw error(400, 'Invalid asset kind');
 	}
-	if (file.size === 0 || file.size > MAX_UPLOAD_BYTES) {
-		throw error(400, 'File must be between 1 byte and 10 MB');
+	const isLocal = isLocalAppRuntime();
+	if (file.size === 0 || (!isLocal && file.size > MAX_UPLOAD_BYTES)) {
+		throw error(400, isLocal ? 'File cannot be empty' : 'File must be between 1 byte and 10 MB');
 	}
 	if (kindRaw !== 'font' && !ALLOWED_IMAGE_TYPES.has(file.type)) {
 		throw error(400, 'Only PNG, JPG, WebP or SVG images are allowed');
@@ -46,10 +44,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	}
 
 	const usage = await getUserAccountUsage(locals.user.id);
-	if (usage.storageUsedBytes + file.size > MAX_STORAGE_BYTES_PER_USER) {
+	if (
+		usage.maxStorageBytes !== null &&
+		usage.storageUsedBytes + file.size > usage.maxStorageBytes
+	) {
 		throw error(
 			413,
-			`Storage limit reached (${formatBytes(usage.storageUsedBytes)} of ${formatBytes(MAX_STORAGE_BYTES_PER_USER)} used). Clean up unused files in Account Settings or delete an older project.`
+			`Storage limit reached (${formatBytes(usage.storageUsedBytes)} of ${formatBytes(usage.maxStorageBytes)} used). Clean up unused files in Account Settings or delete an older project.`
 		);
 	}
 

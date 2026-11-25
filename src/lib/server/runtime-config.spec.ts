@@ -7,6 +7,7 @@ import {
 	generateAuthSecret,
 	generateEncryptionKey,
 	getRuntimeConfig,
+	isLocalAppRuntime,
 	needsInitialSetup,
 	saveRuntimeConfig
 } from './runtime-config.ts';
@@ -15,9 +16,15 @@ describe('runtime configuration and self-hosted setup detection', () => {
 	let tempDir: string;
 	const savedEnv: Record<string, string | undefined> = {};
 	const envKeys = [
+		'NODE_ENV',
 		'CERTFLOW_SELF_HOSTED',
+		'CERTFLOW_PORTABLE',
 		'CERTFLOW_DATA_DIR',
 		'CERTFLOW_CONFIG_PATH',
+		'RAILWAY_ENVIRONMENT',
+		'RAILWAY_PROJECT_ID',
+		'RENDER',
+		'RENDER_EXTERNAL_URL',
 		'BETTER_AUTH_SECRET',
 		'BETTER_AUTH_URL',
 		'ENCRYPTION_KEY',
@@ -87,5 +94,39 @@ describe('runtime configuration and self-hosted setup detection', () => {
 		process.env.BETTER_AUTH_SECRET = generateAuthSecret();
 		process.env.ENCRYPTION_KEY = generateEncryptionKey();
 		expect(needsInitialSetup()).toBe(false);
+	});
+
+	it('treats portable, local dev, local Docker and localhost builds as local apps, but enforces limits on Railway and Render', () => {
+		// Local dev (NODE_ENV !== production)
+		process.env.NODE_ENV = 'development';
+		expect(isLocalAppRuntime()).toBe(true);
+
+		// Portable Edition in production mode
+		process.env.NODE_ENV = 'production';
+		process.env.CERTFLOW_PORTABLE = 'true';
+		expect(isLocalAppRuntime()).toBe(true);
+		delete process.env.CERTFLOW_PORTABLE;
+
+		// Local Docker self-hosted
+		process.env.CERTFLOW_SELF_HOSTED = 'true';
+		expect(isLocalAppRuntime()).toBe(true);
+		delete process.env.CERTFLOW_SELF_HOSTED;
+
+		// Localhost production run
+		process.env.BETTER_AUTH_URL = 'http://localhost:3000';
+		expect(isLocalAppRuntime()).toBe(true);
+
+		// Public production domain without self-hosted flag
+		process.env.BETTER_AUTH_URL = 'https://certs.example.org';
+		expect(isLocalAppRuntime()).toBe(false);
+
+		// Managed cloud hosts always enforce cloud limits even if self-hosted or portable flags exist
+		process.env.CERTFLOW_SELF_HOSTED = 'true';
+		process.env.RAILWAY_ENVIRONMENT = 'production';
+		expect(isLocalAppRuntime()).toBe(false);
+		delete process.env.RAILWAY_ENVIRONMENT;
+
+		process.env.RENDER = 'true';
+		expect(isLocalAppRuntime()).toBe(false);
 	});
 });

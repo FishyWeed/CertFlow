@@ -11,7 +11,9 @@
 	let showCreateModal = $state(false);
 	let signingOut = $state(false);
 
-	const atProjectLimit = $derived(data.projects.length >= data.limits.maxProjects);
+	const atProjectLimit = $derived(
+		data.limits.maxProjects !== null && data.projects.length >= data.limits.maxProjects
+	);
 
 	async function handleSignOut() {
 		signingOut = true;
@@ -60,7 +62,11 @@
 							? 'border-amber-300 bg-amber-50 text-amber-800'
 							: 'border-border-default bg-surface-card text-ink-secondary'}"
 					>
-						{data.projects.length} / {data.limits.maxProjects}
+						{#if data.limits.maxProjects !== null}
+							{data.projects.length} / {data.limits.maxProjects}
+						{:else}
+							{data.projects.length} {data.projects.length === 1 ? 'project' : 'projects'}
+						{/if}
 					</span>
 				</div>
 				<p class="mt-1 text-sm text-ink-secondary">

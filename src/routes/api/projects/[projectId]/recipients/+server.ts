@@ -2,9 +2,11 @@ import { randomUUID } from 'node:crypto';
 import { error, json } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
+import { MAX_RECIPIENTS_PER_PROJECT } from '#lib/config/limits.ts';
 import { db } from '#lib/server/db/index.ts';
 import { projects, recipients } from '#lib/server/db/schema.ts';
 import { requireOwnedProject } from '#lib/server/projects.ts';
+import { isLocalAppRuntime } from '#lib/server/runtime-config.ts';
 import { applyColumnMapping, derivePropertiesFromHeaders } from '#lib/features/import/parser.ts';
 import type { RequestHandler } from './$types';
 
@@ -12,7 +14,7 @@ const importRecipientsSchema = z.object({
 	fileName: z.string().trim().min(1).max(255).optional(),
 	headers: z.array(z.string()),
 	columnMapping: z.record(z.string(), z.string()),
-	rows: z.array(z.record(z.string(), z.string())).max(5000)
+	rows: z.array(z.record(z.string(), z.string()))
 });
 
 export const POST: RequestHandler = async ({ params, request, locals }) => {
@@ -26,6 +28,12 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	}
 
 	const { fileName, headers, rows } = parsed.data;
+	if (!isLocalAppRuntime() && rows.length > MAX_RECIPIENTS_PER_PROJECT) {
+		throw error(
+			400,
+			`A project can hold up to ${MAX_RECIPIENTS_PER_PROJECT.toLocaleString()} recipients on hosted deployments.`
+		);
+	}
 	const { properties: derivedProperties, mapping: derivedMapping } =
 		derivePropertiesFromHeaders(headers);
 	const nextCriteriaConfig =

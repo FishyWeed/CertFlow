@@ -104,6 +104,47 @@ function isManagedCloudHosted(): boolean {
 	);
 }
 
+function isLoopbackHostname(hostname: string): boolean {
+	const host = hostname.trim().toLowerCase().replace(/^\[|\]$/g, '');
+	return (
+		host === 'localhost' ||
+		host === '127.0.0.1' ||
+		host === '::1' ||
+		host === '0.0.0.0' ||
+		host.endsWith('.local') ||
+		host.endsWith('.localhost')
+	);
+}
+
+/**
+ * Returns true when CertFlow runs as a local app (Portable Edition, local dev,
+ * local Docker or a localhost server). Managed cloud deployments (Railway, Render)
+ * always return false so hosted quotas remain enforced.
+ */
+export function isLocalAppRuntime(): boolean {
+	if (isManagedCloudHosted()) {
+		return false;
+	}
+	if (process.env.CERTFLOW_PORTABLE === 'true') {
+		return true;
+	}
+	if (process.env.NODE_ENV !== 'production') {
+		return true;
+	}
+	if (process.env.CERTFLOW_SELF_HOSTED === 'true') {
+		return true;
+	}
+	try {
+		const url = new URL(getRuntimeConfig().betterAuthUrl);
+		if (isLoopbackHostname(url.hostname)) {
+			return true;
+		}
+	} catch {
+		// Fall through when betterAuthUrl is not a valid URL
+	}
+	return false;
+}
+
 /**
  * Returns true only for fresh self-hosted Docker launches that have neither completed `/setup`
  * nor supplied production secrets via environment variables.

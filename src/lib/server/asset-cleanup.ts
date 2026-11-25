@@ -3,6 +3,7 @@ import { MAX_PROJECTS_PER_USER, MAX_STORAGE_BYTES_PER_USER } from '#lib/config/l
 import type { TemplateCanvasState } from '#lib/types/certflow.ts';
 import { db } from './db/index.ts';
 import { assets, projects, templates } from './db/schema.ts';
+import { isLocalAppRuntime } from './runtime-config.ts';
 import { getStorage } from './storage.ts';
 
 const ASSET_FILE_PREFIX = '/api/assets/file/';
@@ -10,10 +11,11 @@ const DEFAULT_PRUNE_GRACE_MS = 15 * 60 * 1000; // 15 minutes
 
 export interface AccountUsageSummary {
 	projectCount: number;
-	maxProjects: number;
+	maxProjects: number | null;
 	storageUsedBytes: number;
-	maxStorageBytes: number;
+	maxStorageBytes: number | null;
 	assetCount: number;
+	isUnlimited: boolean;
 }
 
 function extractStorageKeyFromUrl(url: string | undefined): string | null {
@@ -76,12 +78,15 @@ export async function getUserAccountUsage(userId: string): Promise<AccountUsageS
 			.where(eq(assets.userId, userId))
 	]);
 
+	const unlimited = isLocalAppRuntime();
+
 	return {
 		projectCount: Number(projectRow?.total ?? 0),
-		maxProjects: MAX_PROJECTS_PER_USER,
+		maxProjects: unlimited ? null : MAX_PROJECTS_PER_USER,
 		storageUsedBytes: Number(assetRow?.totalBytes ?? 0),
-		maxStorageBytes: MAX_STORAGE_BYTES_PER_USER,
-		assetCount: Number(assetRow?.assetCount ?? 0)
+		maxStorageBytes: unlimited ? null : MAX_STORAGE_BYTES_PER_USER,
+		assetCount: Number(assetRow?.assetCount ?? 0),
+		isUnlimited: unlimited
 	};
 }
 
