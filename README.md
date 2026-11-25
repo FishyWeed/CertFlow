@@ -119,7 +119,9 @@ CertFlow includes `@sveltejs/adapter-node`, a `/api/health` endpoint and automat
    - `ENCRYPTION_KEY`: a fresh random 64-character hex secret (keep this fixed after saving SMTP profiles)
    - `STORAGE_DRIVER`: `local`
    - `LOCAL_UPLOAD_DIR`: `/data/uploads`
-   - `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `DEFAULT_FROM_NAME`, `DEFAULT_FROM_EMAIL`: optional server-wide SMTP credentials (or leave unset and use per-account SMTP profiles in **Account Settings**)
+   - **Free email delivery on Railway** (Railway Free/Hobby plans block outbound SMTP ports `465`/`587`, so use an HTTPS API over port `443`):
+     - **Brevo** (free 300 emails/day, works with a verified Gmail address and no custom domain): set `BREVO_API_KEY` and `DEFAULT_FROM_EMAIL` (your verified Brevo sender email).
+     - **Resend** (free 100 emails/day with a custom domain): set `RESEND_API_KEY` and `DEFAULT_FROM_EMAIL`.
 6. Optionally set **Healthcheck Path** to `/api/health` in Railway service **Settings** -> **Deploy**.
 7. Deploy — Railway runs `pnpm build` and `pnpm start`, which applies `drizzle/` migrations automatically before starting the Node server.
 

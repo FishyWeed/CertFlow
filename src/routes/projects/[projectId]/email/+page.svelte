@@ -389,12 +389,11 @@
 					<div class="rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-xs text-amber-900">
 						<p class="font-semibold">Local test mode active — emails will not reach real inboxes</p>
 						<p class="mt-1">
-							The server currently uses <code>SMTP_HOST="local-outbox"</code>, which writes previews
-							to <code>.local/outbox/</code>. To send real emails, add a
-							<strong>Custom SMTP Server</strong> in
-							<a href="/settings" class="font-semibold underline">Account Settings</a> and select
-							<strong>Saved SMTP Profile</strong>, or configure real SMTP credentials in
-							<code>.env</code>.
+							The server currently writes previews to <code>.local/outbox/</code>. To send real
+							emails on Railway Free or Hobby plans, set <code>BREVO_API_KEY</code> (or
+							<code>RESEND_API_KEY</code>) and <code>DEFAULT_FROM_EMAIL</code> in your environment
+							variables, or add a <strong>Custom SMTP Server</strong> in
+							<a href="/settings" class="font-semibold underline">Account Settings</a>.
 						</p>
 					</div>
 				{/if}

@@ -2,8 +2,10 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import nodemailer from 'nodemailer';
 import {
+	BREVO_API_KEY,
 	DEFAULT_FROM_EMAIL,
 	DEFAULT_FROM_NAME,
+	RESEND_API_KEY,
 	SMTP_HOST,
 	SMTP_PASS,
 	SMTP_PORT,
@@ -33,6 +35,15 @@ export interface SendCertificateEmailInput {
 	attachmentMimeType: string;
 }
 
+export type MailDeliveryMode = 'local_outbox' | 'smtp' | 'api';
+
+/**
+ * Returns true only when no HTTPS API provider (Brevo/Resend) and no real SMTP host are configured.
+ */
+export function isLocalOutboxMode(): boolean {
+	return !BREVO_API_KEY.trim() && !RESEND_API_KEY.trim() && SMTP_HOST === 'local-outbox';
+}
+
 /**
  * Replaces `{{key}}` tokens in an email subject or body using certificate properties.
  */
@@ -43,15 +54,100 @@ export function interpolateEmailTemplate(
 	return template.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, key: string) => values[key] ?? '');
 }
 
+async function sendViaBrevoApi(input: SendCertificateEmailInput): Promise<{ messageId: string }> {
+	const fromEmail =
+		DEFAULT_FROM_EMAIL && DEFAULT_FROM_EMAIL !== 'certificates@certflow.local'
+			? DEFAULT_FROM_EMAIL
+			: input.sender.senderEmail;
+	const fromName = input.sender.senderName || DEFAULT_FROM_NAME || 'CertFlow';
+
+	const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+		method: 'POST',
+		headers: {
+			'api-key': BREVO_API_KEY.trim(),
+			'content-type': 'application/json',
+			accept: 'application/json'
+		},
+		body: JSON.stringify({
+			sender: { name: fromName, email: fromEmail },
+			replyTo: { name: fromName, email: input.sender.senderEmail || fromEmail },
+			to: [{ email: input.to }],
+			subject: input.subject,
+			textContent: input.textBody,
+			attachment: [
+				{
+					name: input.attachmentFileName,
+					content: Buffer.from(input.attachmentBytes).toString('base64')
+				}
+			]
+		})
+	});
+
+	const data = (await res.json().catch(() => ({}))) as { messageId?: string; message?: string };
+	if (!res.ok) {
+		throw new Error(data.message || `Brevo API error (${res.status})`);
+	}
+	return { messageId: data.messageId ?? `brevo-${Date.now()}` };
+}
+
+async function sendViaResendApi(input: SendCertificateEmailInput): Promise<{ messageId: string }> {
+	const fromEmail =
+		DEFAULT_FROM_EMAIL && DEFAULT_FROM_EMAIL !== 'certificates@certflow.local'
+			? DEFAULT_FROM_EMAIL
+			: input.sender.senderEmail;
+	const fromName = input.sender.senderName || DEFAULT_FROM_NAME || 'CertFlow';
+
+	const res = await fetch('https://api.resend.com/emails', {
+		method: 'POST',
+		headers: {
+			authorization: `Bearer ${RESEND_API_KEY.trim()}`,
+			'content-type': 'application/json'
+		},
+		body: JSON.stringify({
+			from: `${fromName} <${fromEmail}>`,
+			reply_to: input.sender.senderEmail || fromEmail,
+			to: [input.to],
+			subject: input.subject,
+			text: input.textBody,
+			attachments: [
+				{
+					filename: input.attachmentFileName,
+					content: Buffer.from(input.attachmentBytes).toString('base64')
+				}
+			]
+		})
+	});
+
+	const data = (await res.json().catch(() => ({}))) as { id?: string; message?: string };
+	if (!res.ok) {
+		throw new Error(data.message || `Resend API error (${res.status})`);
+	}
+	return { messageId: data.id ?? `resend-${Date.now()}` };
+}
+
 /**
  * Sends a single certificate email using:
  * - the user's encrypted custom SMTP server (mode === 'smtp'), OR
+ * - Brevo HTTPS API (when BREVO_API_KEY is set — port 443, works on Railway Free/Hobby), OR
+ * - Resend HTTPS API (when RESEND_API_KEY is set — port 443, works on Railway Free/Hobby), OR
  * - local file outbox (when SMTP_HOST === 'local-outbox', zero external services needed in dev), OR
- * - platform default SMTP relay (Mailpit, Brevo, Resend, etc.) with Reply-To set to the chosen sender.
+ * - platform default SMTP relay with Reply-To set to the chosen sender.
  */
-export async function sendCertificateEmail(input: SendCertificateEmailInput) {
+export async function sendCertificateEmail(
+	input: SendCertificateEmailInput
+): Promise<{ messageId: string; deliveryMode: MailDeliveryMode }> {
 	const useCustomSmtp =
 		input.sender.mode === 'smtp' && input.sender.smtpHost && input.sender.smtpPort;
+
+	if (!useCustomSmtp && BREVO_API_KEY.trim()) {
+		const res = await sendViaBrevoApi(input);
+		return { messageId: res.messageId, deliveryMode: 'api' };
+	}
+
+	if (!useCustomSmtp && RESEND_API_KEY.trim()) {
+		const res = await sendViaResendApi(input);
+		return { messageId: res.messageId, deliveryMode: 'api' };
+	}
 
 	const fromHeader = useCustomSmtp
 		? `"${input.sender.senderName}" <${input.sender.senderEmail}>`
@@ -85,7 +181,7 @@ export async function sendCertificateEmail(input: SendCertificateEmailInput) {
 			),
 			'utf8'
 		);
-		return { messageId, deliveryMode: 'local_outbox' as const };
+		return { messageId, deliveryMode: 'local_outbox' };
 	}
 
 	const transporter = useCustomSmtp
@@ -93,11 +189,14 @@ export async function sendCertificateEmail(input: SendCertificateEmailInput) {
 				host: input.sender.smtpHost!,
 				port: input.sender.smtpPort!,
 				secure: Boolean(input.sender.smtpSecure),
+				connectionTimeout: 15_000,
+				greetingTimeout: 15_000,
+				socketTimeout: 30_000,
 				auth:
 					input.sender.smtpUser && input.sender.smtpPassEncrypted
 						? {
 								user: input.sender.smtpUser,
-								pass: decryptSecret(input.sender.smtpPassEncrypted)
+								pass: decryptSecret(input.sender.smtpPassEncrypted).trim()
 							}
 						: undefined
 			})
@@ -105,23 +204,35 @@ export async function sendCertificateEmail(input: SendCertificateEmailInput) {
 				host: SMTP_HOST,
 				port: SMTP_PORT,
 				secure: SMTP_SECURE,
+				connectionTimeout: 15_000,
+				greetingTimeout: 15_000,
+				socketTimeout: 30_000,
 				auth: SMTP_USER && SMTP_PASS ? { user: SMTP_USER, pass: SMTP_PASS } : undefined
 			});
 
-	const info = await transporter.sendMail({
-		from: fromHeader,
-		replyTo: input.sender.senderEmail,
-		to: input.to,
-		subject: input.subject,
-		text: input.textBody,
-		attachments: [
-			{
-				filename: input.attachmentFileName,
-				content: Buffer.from(input.attachmentBytes),
-				contentType: input.attachmentMimeType
-			}
-		]
-	});
-
-	return { messageId: info.messageId, deliveryMode: 'smtp' as const };
+	try {
+		const info = await transporter.sendMail({
+			from: fromHeader,
+			replyTo: input.sender.senderEmail,
+			to: input.to,
+			subject: input.subject,
+			text: input.textBody,
+			attachments: [
+				{
+					filename: input.attachmentFileName,
+					content: Buffer.from(input.attachmentBytes),
+					contentType: input.attachmentMimeType
+				}
+			]
+		});
+		return { messageId: info.messageId, deliveryMode: 'smtp' };
+	} catch (err) {
+		const rawMessage = err instanceof Error ? err.message : 'SMTP delivery failed';
+		if (/timeout|ETIMEDOUT|ENETUNREACH/i.test(rawMessage) && process.env.RAILWAY_ENVIRONMENT) {
+			throw new Error(
+				`${rawMessage} (Railway Free/Hobby plans block outbound SMTP ports 465/587. Set BREVO_API_KEY or RESEND_API_KEY in Railway Variables and use My Account Email or Separate Sender Email.)`
+			);
+		}
+		throw err;
+	}
 }

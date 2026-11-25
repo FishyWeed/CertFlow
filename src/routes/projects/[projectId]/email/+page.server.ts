@@ -1,7 +1,7 @@
 import { and, desc, eq, inArray } from 'drizzle-orm';
-import { SMTP_HOST } from '$app/env/private';
 import { db } from '#lib/server/db/index.ts';
 import { emailJobs, emailLogs, senderProfiles } from '#lib/server/db/schema.ts';
+import { isLocalOutboxMode } from '#lib/server/mail.ts';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ parent }) => {
@@ -56,6 +56,6 @@ export const load: PageServerLoad = async ({ parent }) => {
 			...job,
 			failedErrors: errorsByJobId.get(job.id) ?? []
 		})),
-		isLocalOutbox: SMTP_HOST === 'local-outbox'
+		isLocalOutbox: isLocalOutboxMode()
 	};
 };

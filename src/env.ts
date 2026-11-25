@@ -54,5 +54,13 @@ export const variables = defineEnvVars({
 	DEFAULT_FROM_EMAIL: {
 		description: 'Default verified From address on outbound emails',
 		schema: optionalString('certificates@certflow.local')
+	},
+	BREVO_API_KEY: {
+		description: 'Optional Brevo HTTPS API key (free 300 emails/day over port 443, works on Railway Free/Hobby)',
+		schema: optionalString('')
+	},
+	RESEND_API_KEY: {
+		description: 'Optional Resend HTTPS API key (free 100 emails/day over port 443, works on Railway Free/Hobby)',
+		schema: optionalString('')
 	}
 });

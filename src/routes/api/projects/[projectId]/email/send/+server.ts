@@ -10,7 +10,12 @@ import {
 	projects,
 	senderProfiles
 } from '#lib/server/db/schema.ts';
-import { interpolateEmailTemplate, sendCertificateEmail, type SenderConfig } from '#lib/server/mail.ts';
+import {
+	interpolateEmailTemplate,
+	sendCertificateEmail,
+	type MailDeliveryMode,
+	type SenderConfig
+} from '#lib/server/mail.ts';
 import { requireOwnedProject } from '#lib/server/projects.ts';
 import type { RequestHandler } from './$types';
 
@@ -123,7 +128,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	let sentCount = 0;
 	let failedCount = 0;
 	let skippedNoEmailCount = 0;
-	let deliveryMode: 'local_outbox' | 'smtp' = 'smtp';
+	let deliveryMode: MailDeliveryMode = 'smtp';
 	let firstError: string | null = null;
 
 	for (const item of data.items) {
@@ -163,36 +168,44 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 			deliveryMode = result.deliveryMode;
 			sentCount += 1;
-			await db
-				.update(certificates)
-				.set({ emailStatus: 'sent', lastSentAt: new Date(), updatedAt: new Date() })
-				.where(eq(certificates.id, cert.id));
+			try {
+				await db
+					.update(certificates)
+					.set({ emailStatus: 'sent', lastSentAt: new Date(), updatedAt: new Date() })
+					.where(eq(certificates.id, cert.id));
 
-			await db.insert(emailLogs).values({
-				id: randomUUID(),
-				jobId,
-				certificateId: cert.id,
-				toEmail: cert.email,
-				status: 'sent',
-				providerMessageId: result.messageId
-			});
+				await db.insert(emailLogs).values({
+					id: randomUUID(),
+					jobId,
+					certificateId: cert.id,
+					toEmail: cert.email,
+					status: 'sent',
+					providerMessageId: result.messageId
+				});
+			} catch {
+				// Ignore stale certificate foreign-key errors if certificates were regenerated mid-send.
+			}
 		} catch (err) {
 			failedCount += 1;
 			const message = err instanceof Error ? err.message : 'SMTP delivery failed';
 			if (!firstError) firstError = message;
-			await db
-				.update(certificates)
-				.set({ emailStatus: 'failed', updatedAt: new Date() })
-				.where(eq(certificates.id, cert.id));
+			try {
+				await db
+					.update(certificates)
+					.set({ emailStatus: 'failed', updatedAt: new Date() })
+					.where(eq(certificates.id, cert.id));
 
-			await db.insert(emailLogs).values({
-				id: randomUUID(),
-				jobId,
-				certificateId: cert.id,
-				toEmail: cert.email,
-				status: 'failed',
-				errorMessage: message
-			});
+				await db.insert(emailLogs).values({
+					id: randomUUID(),
+					jobId,
+					certificateId: cert.id,
+					toEmail: cert.email,
+					status: 'failed',
+					errorMessage: message
+				});
+			} catch {
+				// Ignore stale certificate foreign-key errors if certificates were regenerated mid-send.
+			}
 		}
 	}
 
