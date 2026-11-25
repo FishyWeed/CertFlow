@@ -37,20 +37,28 @@
 
 	<!-- Project Sub-Header & Colour-Coded Stage Tabs (Mobile, Tablet & Desktop) -->
 	<div class="w-full border-b border-border-default bg-surface-card">
-		<div class="mx-auto flex max-w-[1600px] flex-col gap-2 px-3 pt-3 sm:px-6 lg:flex-row lg:items-end lg:justify-between">
-			<div class="flex min-w-0 flex-wrap items-center gap-2 pb-1 lg:pb-2.5">
+		<div
+			class="mx-auto flex max-w-[1600px] flex-col gap-2 px-3 pt-2.5 sm:px-6 lg:min-h-12 lg:flex-row lg:items-center lg:justify-between lg:gap-4 lg:py-0"
+		>
+			<div class="flex min-w-0 flex-wrap items-center gap-2 lg:py-2">
 				<h1 class="min-w-0 truncate text-sm font-bold text-ink-primary sm:text-base">
 					{data.project.name}
 				</h1>
 				<div class="flex flex-wrap items-center gap-1.5">
-					<Badge tone="indigo">{data.templates.length} templates</Badge>
-					<Badge tone="emerald">{data.recipients.length} rows</Badge>
-					<Badge tone="amber">{data.certificates.length} certs</Badge>
+					<Badge tone="indigo">
+						{data.templates.length} {data.templates.length === 1 ? 'template' : 'templates'}
+					</Badge>
+					<Badge tone="emerald">
+						{data.recipients.length} {data.recipients.length === 1 ? 'row' : 'rows'}
+					</Badge>
+					<Badge tone="amber">
+						{data.certificates.length} {data.certificates.length === 1 ? 'cert' : 'certs'}
+					</Badge>
 				</div>
 			</div>
 
 			<nav
-				class="-mx-3 flex items-center gap-1 overflow-x-auto px-3 sm:mx-0 sm:px-0"
+				class="-mx-3 flex items-stretch gap-1 overflow-x-auto px-3 sm:mx-0 sm:px-0 lg:self-stretch"
 				aria-label="Project sections"
 			>
 				{#each PROJECT_WORKSPACE_TABS as tab (tab.id)}
@@ -58,7 +66,7 @@
 					{@const active = page.url.pathname.startsWith(href)}
 					<a
 						{href}
-						class="inline-flex min-h-10 shrink-0 items-center whitespace-nowrap rounded-t-lg border-b-2 px-3 py-2 text-xs font-semibold transition sm:px-3.5 {active
+						class="inline-flex min-h-10 shrink-0 items-center whitespace-nowrap border-b-2 px-3 py-2 text-xs font-semibold transition sm:px-3.5 lg:min-h-12 {active
 							? tab.accentClass
 							: 'border-transparent text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary'}"
 					>
