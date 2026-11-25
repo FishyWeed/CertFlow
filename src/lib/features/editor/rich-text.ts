@@ -191,6 +191,7 @@ export type InlineFormatAction =
 	| { kind: 'underline' }
 	| { kind: 'color'; value: string }
 	| { kind: 'font'; value: string }
+	| { kind: 'size'; value: number }
 	| { kind: 'clear' };
 
 /**
@@ -241,6 +242,41 @@ export function applyInlineFormatToSelection(
 	} else if (action.kind === 'font') {
 		open = `<font=${action.value}>`;
 		close = '</font>';
+	} else if (action.kind === 'size') {
+		const px = Math.max(8, Math.min(240, Math.round(action.value)));
+		open = `<size=${px}>`;
+		close = '</size>';
+	}
+
+	// Replace existing surrounding or enclosing parameterized tag cleanly instead of nesting duplicates.
+	if (
+		selected &&
+		(action.kind === 'font' || action.kind === 'color' || action.kind === 'size')
+	) {
+		const tagName = action.kind;
+		const beforeMatch = before.match(new RegExp(`<${tagName}=[^>]+>$`, 'i'));
+		const afterMatch = after.match(new RegExp(`^</${tagName}>`, 'i'));
+		if (beforeMatch && afterMatch) {
+			const nextBefore = before.slice(0, -beforeMatch[0].length) + open;
+			const nextAfter = close + after.slice(afterMatch[0].length);
+			return {
+				text: nextBefore + selected + nextAfter,
+				selectionStart: nextBefore.length,
+				selectionEnd: nextBefore.length + selected.length
+			};
+		}
+
+		const innerMatch = selected.match(
+			new RegExp(`^<${tagName}=[^>]+>([\\s\\S]*?)</${tagName}>$`, 'i')
+		);
+		if (innerMatch) {
+			const inner = innerMatch[1];
+			return {
+				text: before + open + inner + close + after,
+				selectionStart: from + open.length,
+				selectionEnd: from + open.length + inner.length
+			};
+		}
 	}
 
 	// Toggle off when the exact surrounding delimiters already wrap the selection.

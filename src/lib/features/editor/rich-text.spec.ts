@@ -61,4 +61,40 @@ describe('inline rich text formatting', () => {
 		expect(coloured.text).toBe('Awarded to <color=#1e3a8a>{{name}}</color> for excellence');
 		expect(stripRichTextMarkup(coloured.text)).toBe(text);
 	});
+
+	it('applies and cleanly replaces inline font and size tags on highlighted multiline text', () => {
+		const text = 'as a\nParticipant\nduring';
+		const start = text.indexOf('Participant');
+		const end = start + 'Participant'.length;
+
+		const fonted = applyInlineFormatToSelection(text, start, end, {
+			kind: 'font',
+			value: 'Great Vibes'
+		});
+		expect(fonted.text).toBe('as a\n<font=Great Vibes>Participant</font>\nduring');
+
+		// Picking a second font replaces the existing <font=...> cleanly without nesting.
+		const refonted = applyInlineFormatToSelection(
+			fonted.text,
+			fonted.selectionStart,
+			fonted.selectionEnd,
+			{ kind: 'font', value: 'Cinzel' }
+		);
+		expect(refonted.text).toBe('as a\n<font=Cinzel>Participant</font>\nduring');
+
+		const sized = applyInlineFormatToSelection(
+			refonted.text,
+			refonted.selectionStart,
+			refonted.selectionEnd,
+			{ kind: 'size', value: 36 }
+		);
+		expect(sized.text).toBe('as a\n<font=Cinzel><size=36>Participant</size></font>\nduring');
+
+		const runs = parseRichTextRuns(sized.text, baseStyle);
+		expect(runs).toEqual([
+			{ ...baseStyle, text: 'as a\n' },
+			{ ...baseStyle, text: 'Participant', fontFamily: 'Cinzel', fontSize: 36 },
+			{ ...baseStyle, text: '\nduring' }
+		]);
+	});
 });

@@ -13,7 +13,6 @@
 		Italic,
 		PenTool,
 		Plus,
-		RemoveFormatting,
 		Trash2,
 		Underline,
 		Ungroup,
@@ -24,13 +23,12 @@
 	import { optimiseOriginalImageFile } from '#lib/components/ui/image-crop.ts';
 	import ScrubNumberInput from '#lib/components/ui/ScrubNumberInput.svelte';
 	import SignaturePad from '#lib/components/ui/SignaturePad.svelte';
-	import { CANVAS_PRESETS, FONT_CATALOG, FONT_CATEGORIES } from '#lib/config/canvas.ts';
+	import { CANVAS_PRESETS } from '#lib/config/canvas.ts';
 	import {
 		STARTER_TEMPLATE_PRESETS,
 		type StarterTemplatePreset
 	} from '#lib/templates/starter.ts';
 	import type {
-		CanvasElement,
 		CriterionDefinition,
 		ImageEditState,
 		StaticTextCanvasElement,
@@ -44,12 +42,9 @@
 	} from '#lib/types/certflow.ts';
 	import type { EditorState } from './editor-state.svelte.ts';
 	import FontPicker from './FontPicker.svelte';
-	import { ensureFontLoaded, ensureTemplateFontsLoaded } from './fonts.ts';
-	import {
-		applyInlineFormatToSelection,
-		stripRichTextMarkup,
-		type InlineFormatAction
-	} from './rich-text.ts';
+	import { ensureTemplateFontsLoaded } from './fonts.ts';
+	import RichTextEditor from './RichTextEditor.svelte';
+	import { stripRichTextMarkup } from './rich-text.ts';
 	import {
 		resolveElementText,
 		scaleBoxForFontFamilyChange,
@@ -74,23 +69,8 @@
 	}: Props = $props();
 
 	let fontSizeScrubStart = $state<(TextBoxGeometry & { fontSize: number }) | null>(null);
-	let textAreaEl = $state<HTMLTextAreaElement | null>(null);
-	let inlineWordColor = $state('#000000');
 	let customConditionMode = $state<Record<string, boolean>>({});
 	const CUSTOM_VALUE_SENTINEL = '__custom_value__';
-
-	function applyWordFormat(action: InlineFormatAction) {
-		if (!selected || selected.type !== 'text') return;
-		const start = textAreaEl?.selectionStart ?? selected.text.length;
-		const end = textAreaEl?.selectionEnd ?? selected.text.length;
-		const next = applyInlineFormatToSelection(selected.text, start, end, action);
-		editor.updateElement(selected.id, { text: next.text });
-		requestAnimationFrame(() => {
-			if (!textAreaEl) return;
-			textAreaEl.focus();
-			textAreaEl.setSelectionRange(next.selectionStart, next.selectionEnd);
-		});
-	}
 
 	function updateTextRules(nextRules: TitleBindingRule[]) {
 		if (!selected || selected.type !== 'text') return;
@@ -1027,145 +1007,16 @@
 			<section class="space-y-3">
 				<div class="space-y-2">
 					<label for="el-text-content" class="block text-xs font-medium text-ink-secondary">
-						Text Content (highlight words to format or insert {`{{property}}`})
+						Text Content (highlight words to format, change font or insert {`{{property}}`})
 					</label>
 
-					<!-- Per-Word Inline Formatting Toolbar -->
-					<div class="flex flex-wrap items-center gap-1 rounded-lg border border-border-default bg-surface-page p-1">
-						<button
-							type="button"
-							title="Bold selected words (Ctrl+B)"
-							aria-label="Bold selected words"
-							onmousedown={(e) => e.preventDefault()}
-							onclick={() => applyWordFormat({ kind: 'bold' })}
-							class="flex h-7 w-7 items-center justify-center rounded border border-transparent text-ink-secondary hover:border-border-default hover:bg-white hover:text-ink-primary"
-						>
-							<Bold class="h-3.5 w-3.5" />
-						</button>
-						<button
-							type="button"
-							title="Italic selected words (Ctrl+I)"
-							aria-label="Italic selected words"
-							onmousedown={(e) => e.preventDefault()}
-							onclick={() => applyWordFormat({ kind: 'italic' })}
-							class="flex h-7 w-7 items-center justify-center rounded border border-transparent text-ink-secondary hover:border-border-default hover:bg-white hover:text-ink-primary"
-						>
-							<Italic class="h-3.5 w-3.5" />
-						</button>
-						<button
-							type="button"
-							title="Underline selected words"
-							aria-label="Underline selected words"
-							onmousedown={(e) => e.preventDefault()}
-							onclick={() => applyWordFormat({ kind: 'underline' })}
-							class="flex h-7 w-7 items-center justify-center rounded border border-transparent text-ink-secondary hover:border-border-default hover:bg-white hover:text-ink-primary"
-						>
-							<Underline class="h-3.5 w-3.5" />
-						</button>
-
-						<div class="mx-0.5 h-4 w-px bg-border-default"></div>
-
-						<div class="flex items-center gap-0.5">
-							<input
-								type="color"
-								aria-label="Selected word colour"
-								bind:value={inlineWordColor}
-								class="h-6 w-6 cursor-pointer rounded border border-border-strong bg-white"
-							/>
-							<button
-								type="button"
-								title="Apply colour to selected words"
-								aria-label="Apply colour to selected words"
-								onmousedown={(e) => e.preventDefault()}
-								onclick={() => applyWordFormat({ kind: 'color', value: inlineWordColor })}
-								class="h-7 rounded border border-border-default bg-white px-1.5 text-[11px] font-medium text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary"
-							>
-								Colour
-							</button>
-						</div>
-
-						<select
-							aria-label="Apply font to selected words"
-							value=""
-							onchange={(e) => {
-								const chosenFont = e.currentTarget.value;
-								if (chosenFont) {
-									ensureFontLoaded(chosenFont);
-									applyWordFormat({ kind: 'font', value: chosenFont });
-								}
-								e.currentTarget.value = '';
-							}}
-							class="h-7 max-w-28 rounded border border-border-default bg-white px-1 text-[11px] text-ink-secondary"
-						>
-							<option value="">Font...</option>
-							{#each FONT_CATEGORIES as category (category.id)}
-								<optgroup label={category.label}>
-									{#each FONT_CATALOG.filter((f) => f.category === category.id) as font (font.family)}
-										<option value={font.family}>{font.family}</option>
-									{/each}
-								</optgroup>
-							{/each}
-						</select>
-
-						<button
-							type="button"
-							title="Clear inline word formatting"
-							aria-label="Clear inline word formatting"
-							onmousedown={(e) => e.preventDefault()}
-							onclick={() => applyWordFormat({ kind: 'clear' })}
-							class="ml-auto flex h-7 w-7 items-center justify-center rounded border border-transparent text-ink-muted hover:border-border-default hover:bg-white hover:text-ink-primary"
-						>
-							<RemoveFormatting class="h-3.5 w-3.5" />
-						</button>
-					</div>
-
-					<textarea
-						bind:this={textAreaEl}
+					<RichTextEditor
 						id="el-text-content"
-						rows={3}
 						value={selected.text}
-						oninput={(e) => editor.updateElement(selected.id, { text: e.currentTarget.value })}
-						onkeydown={(e) => {
-							if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
-								e.preventDefault();
-								applyWordFormat({ kind: 'bold' });
-							} else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'i') {
-								e.preventDefault();
-								applyWordFormat({ kind: 'italic' });
-							}
-						}}
-						ondragover={(e) => {
-							if (e.dataTransfer?.types.includes('text/plain')) {
-								e.preventDefault();
-								e.dataTransfer.dropEffect = 'copy';
-							}
-						}}
-						ondrop={(e) => {
-							const token = e.dataTransfer?.getData('text/plain');
-							if (!token) return;
-							e.preventDefault();
-							const ta = e.currentTarget;
-							const start = ta.selectionStart ?? selected.text.length;
-							const end = ta.selectionEnd ?? selected.text.length;
-							const nextText = selected.text.slice(0, start) + token + selected.text.slice(end);
-							editor.updateElement(selected.id, { text: nextText });
-						}}
-						class="block w-full rounded-lg border border-border-strong bg-white px-2.5 py-1.5 text-xs outline-none focus:border-accent"
-					></textarea>
-					<div class="flex flex-wrap gap-1">
-						{#each criteria as prop (prop.key)}
-							<button
-								type="button"
-								onclick={() =>
-									editor.updateElement(selected.id, {
-										text: `${selected.text}${selected.text && !selected.text.endsWith(' ') ? ' ' : ''}{{${prop.key}}}`
-									})}
-								class="rounded border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 font-mono text-[11px] text-indigo-700 hover:bg-indigo-100"
-							>
-								{`{{${prop.key}}}`}
-							</button>
-						{/each}
-					</div>
+						rows={3}
+						{criteria}
+						onChange={(nextText) => editor.updateElement(selected.id, { text: nextText })}
+					/>
 				</div>
 
 				{#if /\{\{\s*[a-zA-Z0-9_]+\s*\}\}/.test(selected.text)}
@@ -1342,53 +1193,22 @@
 										+ And Condition
 									</button>
 
-									<div class="border-t border-border-default pt-2">
+									<div class="space-y-1.5 border-t border-border-default pt-2">
 										<label
 											for="rule-out-{rule.id}"
 											class="block text-[10px] font-semibold tracking-wide text-ink-secondary uppercase"
 										>
 											Show Text
 										</label>
-										<textarea
+										<RichTextEditor
 											id="rule-out-{rule.id}"
-											rows={3}
 											value={rule.output}
-											oninput={(e) => updateRuleOutput(rule.id, e.currentTarget.value)}
-											ondragover={(e) => {
-												if (e.dataTransfer?.types.includes('text/plain')) {
-													e.preventDefault();
-													e.dataTransfer.dropEffect = 'copy';
-												}
-											}}
-											ondrop={(e) => {
-												const token = e.dataTransfer?.getData('text/plain');
-												if (!token) return;
-												e.preventDefault();
-												const ta = e.currentTarget;
-												const start = ta.selectionStart ?? rule.output.length;
-												const end = ta.selectionEnd ?? rule.output.length;
-												const nextOutput =
-													rule.output.slice(0, start) + token + rule.output.slice(end);
-												updateRuleOutput(rule.id, nextOutput);
-											}}
+											rows={3}
+											compact
+											{criteria}
 											placeholder={'e.g. for winning {{rank}}\nat {{title}}'}
-											class="mt-1 block w-full resize-y rounded-md border border-border-strong bg-white px-2 py-1.5 text-xs font-medium outline-none focus:border-accent"
-										></textarea>
-										<div class="mt-1.5 flex flex-wrap gap-1">
-											{#each criteria as prop (prop.key)}
-												<button
-													type="button"
-													onclick={() =>
-														updateRuleOutput(
-															rule.id,
-															`${rule.output}${rule.output && !rule.output.endsWith(' ') && !rule.output.endsWith('\n') ? ' ' : ''}{{${prop.key}}}`
-														)}
-													class="rounded border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 font-mono text-[10px] text-indigo-700 hover:bg-indigo-100"
-												>
-													{`{{${prop.key}}}`}
-												</button>
-											{/each}
-										</div>
+											onChange={(nextOutput) => updateRuleOutput(rule.id, nextOutput)}
+										/>
 									</div>
 								</div>
 							{/each}

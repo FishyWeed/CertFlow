@@ -338,44 +338,54 @@
 		</div>
 
 		<!-- Numbered List + Live Preview Pane + Selected Properties Inspector -->
-		<div class="grid items-start gap-4 lg:grid-cols-12">
+		<div class="grid items-start gap-4 lg:grid-cols-12 {showPreview ? 'xl:items-stretch' : 'lg:items-stretch'}">
 			<div
-				class="overflow-hidden rounded-xl border border-border-default bg-surface-card {showPreview
-					? 'lg:col-span-4 xl:col-span-3'
-					: 'lg:col-span-5'}"
+				class="relative {showPreview
+					? 'lg:col-span-4 xl:col-span-3 xl:min-h-[360px]'
+					: 'lg:col-span-5 lg:min-h-[360px]'}"
 			>
-				<div class="border-b border-border-default px-4 py-3">
-					<h3 class="text-xs font-semibold tracking-wide text-ink-secondary uppercase">
-						Certificates ({filteredCertificates.length})
-					</h3>
+				<div
+					class="flex flex-col overflow-hidden rounded-xl border border-border-default bg-surface-card {showPreview
+						? 'xl:absolute xl:inset-0'
+						: 'lg:absolute lg:inset-0'}"
+				>
+					<div class="shrink-0 border-b border-border-default px-4 py-3">
+						<h3 class="text-xs font-semibold tracking-wide text-ink-secondary uppercase">
+							Certificates ({filteredCertificates.length})
+						</h3>
+					</div>
+					<ul
+						class="min-h-0 flex-1 divide-y divide-border-default overflow-y-auto {showPreview
+							? 'max-h-[420px] xl:max-h-none'
+							: 'max-h-[420px] lg:max-h-none'}"
+					>
+						{#each filteredCertificates as cert, idx (cert.id)}
+							<li>
+								<button
+									type="button"
+									onclick={() => {
+										selectedCertId = cert.id;
+										liveDraft = null;
+									}}
+									class="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm transition {selectedCertId ===
+									cert.id
+										? 'bg-amber-50 font-semibold text-amber-950'
+										: 'hover:bg-surface-subtle'}"
+								>
+									<span class="min-w-0 truncate">
+										<span class="mr-2 font-mono text-xs text-ink-muted">{idx + 1}.</span>
+										{cert.recipientName}
+									</span>
+									<Badge tone={cert.email ? 'emerald' : 'neutral'}>{cert.role}</Badge>
+								</button>
+							</li>
+						{/each}
+					</ul>
 				</div>
-				<ul class="max-h-[640px] divide-y divide-border-default overflow-y-auto">
-					{#each filteredCertificates as cert, idx (cert.id)}
-						<li>
-							<button
-								type="button"
-								onclick={() => {
-									selectedCertId = cert.id;
-									liveDraft = null;
-								}}
-								class="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm transition {selectedCertId ===
-								cert.id
-									? 'bg-amber-50 font-semibold text-amber-950'
-									: 'hover:bg-surface-subtle'}"
-							>
-								<span class="min-w-0 truncate">
-									<span class="mr-2 font-mono text-xs text-ink-muted">{idx + 1}.</span>
-									{cert.recipientName}
-								</span>
-								<Badge tone={cert.email ? 'emerald' : 'neutral'}>{cert.role}</Badge>
-							</button>
-						</li>
-					{/each}
-				</ul>
 			</div>
 
 			{#if showPreview}
-				<div class="lg:col-span-8 xl:sticky xl:top-4 xl:col-span-5">
+				<div class="self-start lg:col-span-8 xl:sticky xl:top-4 xl:col-span-5">
 					{#if selectedCertificate && previewTemplate}
 						<CertificatePreviewPane
 							templateName={previewTemplate.name}
@@ -395,7 +405,7 @@
 				</div>
 			{/if}
 
-			<div class={showPreview ? 'lg:col-span-12 xl:col-span-4' : 'lg:col-span-7'}>
+			<div class="self-start {showPreview ? 'lg:col-span-12 xl:col-span-4' : 'lg:col-span-7'}">
 				{#if selectedCertificate}
 					<CertificatePropertiesPanel
 						certificate={selectedCertificate}
