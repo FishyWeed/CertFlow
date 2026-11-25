@@ -1,0 +1,23 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: certflow-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: certflow
+      POSTGRES_PASSWORD: certflow_dev_password
+      POSTGRES_DB: certflow
+    ports:
+      - '5432:5432'
+    volumes:
+      - certflow_pgdata:/var/lib/postgresql/data
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: certflow-mailpit
+    restart: unless-stopped
+    ports:
+      - '1025:1025' # SMTP server
+      - '8025:8025' # Web inbox UI at http://localhost:8025
+volumes:
+  certflow_pgdata:
