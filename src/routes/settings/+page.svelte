@@ -181,7 +181,7 @@
 							type="text"
 							required
 							bind:value={label}
-							placeholder="e.g. APU Chess Club Gmail"
+							placeholder="e.g. Event Team Gmail"
 							class="mt-1 block w-full rounded-lg border border-border-strong px-3 py-2 text-sm"
 						/>
 					</div>
@@ -208,7 +208,7 @@
 							type="text"
 							required
 							bind:value={senderName}
-							placeholder="e.g. Malaysian Chess Festival"
+							placeholder="e.g. Event Organising Committee"
 							class="mt-1 block w-full rounded-lg border border-border-strong px-3 py-2 text-sm"
 						/>
 					</div>

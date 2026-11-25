@@ -1,6 +1,60 @@
 # CertFlow
 
-CertFlow is an interactive certificate designer, bulk generator and email distributor. It runs on SvelteKit 3, Svelte 5, PostgreSQL (Drizzle ORM), Better Auth, Konva and Vercel UI SDK.
+Design certificate templates, import recipient spreadsheets, generate personalised certificates in bulk and email them from one workspace.
+
+CertFlow is built for event organisers, clubs, schools and competitions that issue certificates to participants, speakers, committees and prize winners.
+
+## What You Can Do
+
+### Visual Certificate Editor
+- **114 built-in fonts**: Browse and search serif, calligraphy, sans-serif, ceremonial display, slab serif and monospace fonts with live typeface previews.
+- **Dynamic Properties and rules**: Insert `{{name}}`, `{{role}}`, `{{rank}}` or any spreadsheet column into text boxes. Add conditional rules to change wording automatically (for example, `Certificate of Participation` for participants and `Certificate of Award` for winners).
+- **Per-word inline formatting**: Style individual words inside the same text box with bold, italic, underline, colour or a different font.
+- **Precise layout tools**: Use smart alignment and equal-spacing snap guides, marquee multi-selection with live border feedback, element grouping, draggable line endpoints, image cropping and freehand or uploaded signatures.
+- **Flexible canvas sizes**: Choose from 13 print and digital presets (A4, A5, A3, US Letter, 16:9, 1:1) or enter custom dimensions.
+
+### Spreadsheet Data and Automatic Routing
+- **Import and export spreadsheets**: Upload `.csv`, `.xlsx` or `.xls` files, edit rows in the built-in table and export the table back to `.csv` at any time.
+- **Edit and organise data**: Search rows, drag to rearrange rows or columns, add custom columns and sort or filter any column from its header.
+- **Automatic template matching**: Create multiple templates in one project (such as Participant, Organiser and Champion) and route recipients automatically by Role, Rank or any Property.
+
+### Bulk Certificate Generation and Export
+- **Live certificate preview**: Inspect every recipient's rendered certificate side by side with an expandable full-size view.
+- **Per-recipient edits**: Override a recipient's name, role, rank, email or assigned template without editing the original spreadsheet.
+- **Unified Export menu**: Download the selected certificate as **PNG**, **JPG** or **PDF**, or export all filtered certificates together in a **ZIP** archive organised by role.
+
+### Bulk Email Delivery
+- **Saved drafts and sender settings**: Write personalised subjects and messages with `{{property}}` placeholders and save drafts per project.
+- **Flexible sender options**: Send with your account email, a custom display name and Reply-To address or your own encrypted SMTP server (such as a Gmail account with an App Password) saved in **Account Settings**.
+- **Safe delivery tracking**: Recipients without an email address are skipped automatically. Delivery counts and any SMTP errors appear in **Recent Send Runs**.
+
+## Quick Walkthrough
+
+1. **Create a project**: Sign in, open the dashboard and create a project for your event.
+2. **1. Design Editor**: Upload a background, arrange text, logos, shapes and signatures, then save your templates.
+3. **2. Data & Mapping**: Import your CSV or Excel file (or add rows manually) and check the **Matched Template** column.
+4. **3. Generate Certificates**: Click **Generate from Dataset**, review live previews and use **Export** to download single files or a ZIP archive.
+5. **4. Email**: Choose a sender profile, write and save your draft, then send certificates to every recipient with an email address.
+
+## Editor Keyboard Shortcuts
+
+| Shortcut | Action |
+| :--- | :--- |
+| `Ctrl+Z` / `Ctrl+Shift+Z` (`Ctrl+Y`) | Undo or redo the last change |
+| `Ctrl+S` | Save the active template, data table or email draft |
+| `Ctrl+C` / `Ctrl+X` / `Ctrl+V` | Copy, cut or paste selected elements |
+| `Ctrl+D` | Duplicate selected elements |
+| `Ctrl+G` / `Ctrl+Shift+G` | Group or ungroup selected elements |
+| `Ctrl+A` | Select all unlocked elements on the canvas |
+| `Arrow keys` (`Shift+Arrow`) | Move selected elements by 1 px (or 10 px) |
+| `Delete` / `Backspace` | Delete selected elements |
+| `Shift` while dragging a line endpoint | Snap the line angle to 15-degree steps |
+
+---
+
+## Technical Overview
+
+CertFlow runs on SvelteKit 3, Svelte 5, PostgreSQL (Drizzle ORM), Better Auth, Konva, `pdf-lib`, `jszip` and Nodemailer.
 
 ## Local Setup (No Docker Required)
 

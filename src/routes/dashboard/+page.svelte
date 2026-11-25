@@ -83,8 +83,8 @@
 				</div>
 				<h2 class="mt-4 text-lg font-semibold text-ink-primary">No projects yet</h2>
 				<p class="mt-1 max-w-md text-sm text-ink-secondary">
-					Create your first event project (for example, "21st Malaysian Chess Festival 2026") to
-					design templates and import your CSV or Excel sheet.
+					Create your first project to design certificate templates, import your CSV or Excel sheet
+					and generate certificates.
 				</p>
 				<button
 					type="button"

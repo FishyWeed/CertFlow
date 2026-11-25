@@ -1,12 +1,14 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { invalidateAll } from '$app/navigation';
-	import { Redo2, Save, Undo2, Upload } from '@lucide/svelte';
+	import { Download, Redo2, Save, Undo2, Upload } from '@lucide/svelte';
 	import Button from '#lib/components/ui/Button.svelte';
 	import Modal from '#lib/components/ui/Modal.svelte';
+	import { triggerFileDownload } from '#lib/features/certificates/renderer.ts';
 	import EditableDataTable from '#lib/features/import/EditableDataTable.svelte';
 	import {
 		applyColumnMapping,
+		buildCsvExport,
 		derivePropertiesFromHeaders,
 		parseSpreadsheetFile,
 		type ParsedSpreadsheet
@@ -262,6 +264,19 @@
 		});
 	}
 
+	function handleExportCsv() {
+		const csvBody = buildCsvExport(headers, nonEmptyRows);
+		const bytes = new TextEncoder().encode(`\uFEFF${csvBody}`);
+		const slug =
+			data.project.name
+				.toLowerCase()
+				.replace(/[^a-z0-9]+/g, '-')
+				.replace(/^-+|-+$/g, '') || 'certflow';
+		const downloadName = `${slug}-data.csv`;
+		triggerFileDownload(bytes, downloadName, 'text/csv;charset=utf-8');
+		feedback = `Exported ${nonEmptyRows.length} rows to ${downloadName}.`;
+	}
+
 	async function handleSaveDataset() {
 		saving = true;
 		feedback = '';
@@ -329,6 +344,10 @@
 			<Button size="sm" onclick={() => fileInputEl?.click()}>
 				<Upload class="h-4 w-4" />
 				Import CSV / Excel
+			</Button>
+			<Button size="sm" disabled={headers.length === 0} onclick={handleExportCsv}>
+				<Download class="h-4 w-4" />
+				Export CSV
 			</Button>
 			<Button size="sm" variant="primary" disabled={saving} onclick={handleSaveDataset}>
 				<Save class="h-4 w-4" />

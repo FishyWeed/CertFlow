@@ -181,5 +181,18 @@ export function applyColumnMapping(
 			mapped[criterion.key] = '';
 		}
 	}
+	if (!mapped.title && defaultCertTitle) {
+		mapped.title = defaultCertTitle;
+	}
 	return mapped;
+}
+
+/**
+ * Serialises table headers and rows into an RFC-4180 CSV string with proper quoting.
+ */
+export function buildCsvExport(headers: string[], rows: Record<string, string>[]): string {
+	return Papa.unparse({
+		fields: headers,
+		data: rows.map((row) => headers.map((header) => row[header] ?? ''))
+	});
 }

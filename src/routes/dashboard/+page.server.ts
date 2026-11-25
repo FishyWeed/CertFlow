@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { fail, redirect } from '@sveltejs/kit';
-import { desc, eq, sql } from 'drizzle-orm';
+import { count, desc, eq, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 import { DEFAULT_CANVAS_PRESET } from '#lib/config/canvas.ts';
 import { DEFAULT_CRITERIA } from '#lib/config/criteria.ts';
@@ -21,20 +21,53 @@ export const load: PageServerLoad = async ({ locals }) => {
 		throw redirect(302, '/login');
 	}
 
-	const userProjects = await db
+	const baseProjects = await db
 		.select({
 			id: projects.id,
 			name: projects.name,
 			defaultCertTitle: projects.defaultCertTitle,
 			description: projects.description,
-			updatedAt: projects.updatedAt,
-			templateCount: sql<number>`(select count(*)::int from ${templates} where ${templates.projectId} = ${projects.id})`,
-			recipientCount: sql<number>`(select count(*)::int from ${recipients} where ${recipients.projectId} = ${projects.id})`,
-			certificateCount: sql<number>`(select count(*)::int from ${certificates} where ${certificates.projectId} = ${projects.id})`
+			updatedAt: projects.updatedAt
 		})
 		.from(projects)
 		.where(eq(projects.userId, locals.user.id))
 		.orderBy(desc(projects.updatedAt));
+
+	const projectIds = baseProjects.map((p) => p.id);
+	const templateCounts = new Map<string, number>();
+	const recipientCounts = new Map<string, number>();
+	const certificateCounts = new Map<string, number>();
+
+	if (projectIds.length > 0) {
+		const [tplRows, recRows, certRows] = await Promise.all([
+			db
+				.select({ projectId: templates.projectId, total: count() })
+				.from(templates)
+				.where(inArray(templates.projectId, projectIds))
+				.groupBy(templates.projectId),
+			db
+				.select({ projectId: recipients.projectId, total: count() })
+				.from(recipients)
+				.where(inArray(recipients.projectId, projectIds))
+				.groupBy(recipients.projectId),
+			db
+				.select({ projectId: certificates.projectId, total: count() })
+				.from(certificates)
+				.where(inArray(certificates.projectId, projectIds))
+				.groupBy(certificates.projectId)
+		]);
+
+		for (const row of tplRows) templateCounts.set(row.projectId, Number(row.total));
+		for (const row of recRows) recipientCounts.set(row.projectId, Number(row.total));
+		for (const row of certRows) certificateCounts.set(row.projectId, Number(row.total));
+	}
+
+	const userProjects = baseProjects.map((p) => ({
+		...p,
+		templateCount: templateCounts.get(p.id) ?? 0,
+		recipientCount: recipientCounts.get(p.id) ?? 0,
+		certificateCount: certificateCounts.get(p.id) ?? 0
+	}));
 
 	return {
 		user: locals.user,
@@ -80,8 +113,8 @@ export const actions: Actions = {
 			await tx.insert(templates).values({
 				id: randomUUID(),
 				projectId,
-				name: 'Participant Certificate',
-				assignedRoles: ['Participant'],
+				name: 'Certificate Template',
+				assignedRoles: [],
 				rankingRule: { mode: 'any' },
 				isDefault: true,
 				width: DEFAULT_CANVAS_PRESET.width,

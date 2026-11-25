@@ -37,7 +37,7 @@
 				name="name"
 				type="text"
 				required
-				placeholder="e.g. 21st Malaysian Chess Festival 2026"
+				placeholder="e.g. Annual Conference 2026"
 				class="mt-1 block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
 			/>
 		</div>

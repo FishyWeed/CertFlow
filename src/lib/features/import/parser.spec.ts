@@ -1,18 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_CRITERIA } from '#lib/config/criteria.ts';
-import { applyColumnMapping, autoMapHeaders, derivePropertiesFromHeaders } from './parser.ts';
+import {
+	applyColumnMapping,
+	autoMapHeaders,
+	buildCsvExport,
+	derivePropertiesFromHeaders
+} from './parser.ts';
 
 describe('spreadsheet header mapping', () => {
 	it('auto-maps common spreadsheet column headers to built-in criteria', () => {
-		const headers = ['Full Name', 'Category', 'Award', 'Contact Email', 'Tournament'];
+		const headers = ['Full Name', 'Category', 'Award', 'Contact Email'];
 		const mapping = autoMapHeaders(headers, DEFAULT_CRITERIA);
 
 		expect(mapping).toEqual({
 			name: 'Full Name',
 			role: 'Category',
 			rank: 'Award',
-			email: 'Contact Email',
-			title: 'Tournament'
+			email: 'Contact Email'
 		});
 	});
 
@@ -62,5 +66,29 @@ describe('spreadsheet header mapping', () => {
 			role: 'Role',
 			email: 'Email'
 		});
+	});
+
+	it('exports headers and rows into properly escaped CSV text', () => {
+		const csv = buildCsvExport(
+			['Name', 'Role', 'Ranking / Award', 'Email Address'],
+			[
+				{
+					Name: 'Tan, Wei Ming',
+					Role: 'Participant',
+					'Ranking / Award': 'Champion "Open"',
+					'Email Address': 'wei@example.com'
+				},
+				{
+					Name: 'Aiman Hakim',
+					Role: 'Organiser',
+					'Ranking / Award': '',
+					'Email Address': ''
+				}
+			]
+		);
+
+		expect(csv).toContain('Name,Role,Ranking / Award,Email Address');
+		expect(csv).toContain('"Tan, Wei Ming",Participant,"Champion ""Open""",wei@example.com');
+		expect(csv).toContain('Aiman Hakim,Organiser,,');
 	});
 });

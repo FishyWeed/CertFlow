@@ -162,7 +162,7 @@
 				id="prop-title"
 				type="text"
 				bind:value={certTitle}
-				placeholder="e.g. 21st Malaysian Chess Festival 2026"
+				placeholder="e.g. Annual Conference 2026"
 				class="mt-1 block w-full rounded-lg border border-border-strong px-3 py-2 text-sm"
 			/>
 		</div>

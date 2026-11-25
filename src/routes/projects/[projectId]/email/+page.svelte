@@ -346,7 +346,7 @@
 								id="custom-name"
 								type="text"
 								bind:value={customSenderName}
-								placeholder="e.g. APU Chess Club"
+								placeholder="e.g. Event Organising Committee"
 								class="mt-1 block w-full rounded-lg border border-border-strong px-3 py-2 text-sm"
 							/>
 						</div>
