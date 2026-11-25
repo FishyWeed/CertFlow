@@ -21,6 +21,16 @@
 	let expanded = $state(false);
 	let requestCounter = 0;
 
+	// Portal the lightbox to document.body so parent `position: sticky` columns never trap its stacking context.
+	function portalToBody(node: HTMLElement) {
+		document.body.appendChild(node);
+		return {
+			destroy() {
+				node.remove();
+			}
+		};
+	}
+
 	const renderSignature = $derived(
 		JSON.stringify({ width, height, templateName, data, canvasState })
 	);
@@ -134,10 +144,11 @@
 
 {#if expanded && previewDataUrl}
 	<div
+		use:portalToBody
 		role="dialog"
 		aria-modal="true"
 		aria-label="Expanded certificate preview for {recipientName}"
-		class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/75 p-4 backdrop-blur-xs sm:p-8"
+		class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/75 p-4 backdrop-blur-xs sm:p-8"
 	>
 		<div
 			role="presentation"
