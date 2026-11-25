@@ -1,9 +1,11 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import JSZip from 'jszip';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
 	compareSemver,
+	extractZipArchive,
 	findMatchingReleaseAsset,
 	getPortableRuntimeInfo
 } from './portable-updater.ts';
@@ -88,5 +90,27 @@ describe('portable updater helpers', () => {
 		// Managed cloud hosts always disable portable updater even if env vars are present.
 		process.env.RAILWAY_ENVIRONMENT = 'production';
 		expect(getPortableRuntimeInfo().isPortable).toBe(false);
+	});
+
+	it('extracts a ZIP archive cleanly using fast native extraction', async () => {
+		const root = mkdtempSync(join(tmpdir(), 'certflow-zip-test-'));
+		tempDirs.push(root);
+		const zipPath = join(root, 'sample.zip');
+		const extractDir = join(root, 'extracted');
+
+		const zip = new JSZip();
+		zip.file('CertFlow/app/scripts/start.mjs', 'console.log("ok");');
+		zip.file('CertFlow/app/portable-meta.json', '{"version":"v1.0.8"}');
+		const zipBuf = await zip.generateAsync({ type: 'nodebuffer' });
+		writeFileSync(zipPath, zipBuf);
+
+		await extractZipArchive(zipPath, extractDir);
+
+		expect(readFileSync(join(extractDir, 'CertFlow', 'app', 'scripts', 'start.mjs'), 'utf8')).toBe(
+			'console.log("ok");'
+		);
+		expect(
+			readFileSync(join(extractDir, 'CertFlow', 'app', 'portable-meta.json'), 'utf8')
+		).toBe('{"version":"v1.0.8"}');
 	});
 });

@@ -64,9 +64,19 @@
 		assetUrl: string | null;
 		assetSizeBytes: number;
 	}
+	interface PortableUpdateProgress {
+		stage: 'idle' | 'checking' | 'downloading' | 'extracting' | 'applying' | 'restarting' | 'error';
+		version: string;
+		downloadedBytes: number;
+		totalBytes: number;
+		percent: number | null;
+		message: string;
+		error: string | null;
+	}
 	let checkingUpdates = $state(false);
 	let installingUpdate = $state(false);
 	let updateCheckResult = $state<PortableUpdateCheck | null>(null);
+	let updateProgress = $state<PortableUpdateProgress | null>(null);
 	let updateMessage = $state('');
 	let updateMessageTone = $state<'info' | 'success' | 'error'>('info');
 
@@ -121,18 +131,76 @@
 	async function handleInstallPortableUpdate() {
 		installingUpdate = true;
 		updateMessageTone = 'info';
-		updateMessage = 'Downloading update archive from GitHub... Please keep this window open.';
+		updateMessage = 'Starting update download from GitHub...';
+		updateProgress = null;
 		try {
 			const res = await fetch('/api/portable/update', { method: 'POST' });
 			if (!res.ok) {
 				const err = await res.json().catch(() => ({}));
 				throw new Error(err.message ?? 'Could not install the update.');
 			}
-			const body = (await res.json()) as { version: string };
-			updateMessage = `Installing ${body.version} and restarting CertFlow... This page will reload automatically.`;
-			await waitForServerRestartAndReload();
+			const started = (await res.json()) as { progress?: PortableUpdateProgress };
+			if (started.progress) {
+				updateProgress = started.progress;
+				updateMessage = started.progress.message || updateMessage;
+			}
+
+			// Poll live download, extraction and handoff status until the server restarts.
+			let lastStage: PortableUpdateProgress['stage'] = started.progress?.stage ?? 'checking';
+			while (true) {
+				await new Promise((r) => setTimeout(r, 400));
+				let statusRes: Response;
+				try {
+					statusRes = await fetch('/api/portable/update?status=1', { cache: 'no-store' });
+				} catch {
+					// Connection dropped after handoff/extraction started -> server exited to swap files.
+					if (
+						lastStage === 'extracting' ||
+						lastStage === 'applying' ||
+						lastStage === 'restarting'
+					) {
+						updateMessage = 'Restarting CertFlow... This page will reload automatically.';
+						await waitForServerRestartAndReload();
+						return;
+					}
+					throw new Error('Lost connection to CertFlow while downloading the update.');
+				}
+
+				if (!statusRes.ok) {
+					if (lastStage === 'applying' || lastStage === 'restarting') {
+						await waitForServerRestartAndReload();
+						return;
+					}
+					throw new Error('Could not read update progress.');
+				}
+
+				const progress = (await statusRes.json()) as PortableUpdateProgress;
+				updateProgress = progress;
+				lastStage = progress.stage;
+
+				if (progress.stage === 'downloading') {
+					const downloadedLabel = formatBytes(progress.downloadedBytes);
+					const totalLabel = progress.totalBytes > 0 ? formatBytes(progress.totalBytes) : '';
+					updateMessage = totalLabel
+						? `Downloading ${progress.version || 'update'}: ${downloadedLabel} / ${totalLabel} (${progress.percent ?? 0}%)`
+						: `Downloading ${progress.version || 'update'}: ${downloadedLabel}...`;
+				} else if (progress.stage === 'extracting') {
+					updateMessage = `Extracting ${progress.version || 'update'} files...`;
+				} else if (progress.stage === 'applying') {
+					updateMessage = `Applying ${progress.version || 'update'} files...`;
+				} else if (progress.stage === 'restarting') {
+					updateMessage =
+						progress.message ||
+						`Installing ${progress.version} and restarting CertFlow... This page will reload automatically.`;
+					await waitForServerRestartAndReload();
+					return;
+				} else if (progress.stage === 'error') {
+					throw new Error(progress.error || progress.message || 'Could not install the update.');
+				}
+			}
 		} catch (err) {
 			installingUpdate = false;
+			updateProgress = null;
 			updateMessageTone = 'error';
 			updateMessage = err instanceof Error ? err.message : 'Could not install the update.';
 		}
@@ -745,13 +813,25 @@
 
 					{#if updateMessage}
 						<div
-							class="mt-3 rounded-lg border px-3.5 py-2.5 text-xs {updateMessageTone === 'error'
+							class="mt-3 space-y-2 rounded-lg border px-3.5 py-2.5 text-xs {updateMessageTone === 'error'
 								? 'border-red-200 bg-red-50 text-red-900'
 								: updateMessageTone === 'success'
 									? 'border-emerald-200 bg-emerald-50 text-emerald-800'
 									: 'border-indigo-200 bg-indigo-50 text-indigo-900'}"
 						>
-							{updateMessage}
+							<p>{updateMessage}</p>
+							{#if installingUpdate && updateProgress}
+								<div class="h-1.5 w-full overflow-hidden rounded-full bg-indigo-200/70">
+									{#if updateProgress.percent !== null}
+										<div
+											class="h-full rounded-full bg-accent transition-all duration-200"
+											style="width: {updateProgress.percent}%;"
+										></div>
+									{:else}
+										<div class="h-full w-2/5 animate-pulse rounded-full bg-accent"></div>
+									{/if}
+								</div>
+							{/if}
 						</div>
 					{/if}
 

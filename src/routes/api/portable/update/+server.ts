@@ -1,15 +1,20 @@
 import { error, json } from '@sveltejs/kit';
 import {
 	checkForPortableUpdate,
-	downloadAndInstallPortableUpdate,
-	getPortableRuntimeInfo
+	getPortableRuntimeInfo,
+	getPortableUpdateProgress,
+	startPortableUpdate
 } from '#lib/server/portable-updater.ts';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({ locals }) => {
+export const GET: RequestHandler = async ({ locals, url }) => {
 	if (!locals.user) throw error(401, 'Sign in required.');
 	if (!getPortableRuntimeInfo().isPortable) {
 		throw error(404, 'Portable updates are only available in CertFlow Portable Edition.');
+	}
+
+	if (url.searchParams.get('status') === '1') {
+		return json(getPortableUpdateProgress());
 	}
 
 	try {
@@ -27,9 +32,9 @@ export const POST: RequestHandler = async ({ locals }) => {
 	}
 
 	try {
-		const result = await downloadAndInstallPortableUpdate();
-		return json(result);
+		const progress = startPortableUpdate();
+		return json({ status: 'started', progress }, { status: 202 });
 	} catch (err) {
-		throw error(500, err instanceof Error ? err.message : 'Could not install update.');
+		throw error(500, err instanceof Error ? err.message : 'Could not start update.');
 	}
 };

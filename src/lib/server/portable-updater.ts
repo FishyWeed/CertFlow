@@ -1,11 +1,13 @@
-import { execFileSync, spawn } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import {
 	chmodSync,
+	createWriteStream,
 	existsSync,
 	mkdirSync,
 	readdirSync,
 	readFileSync,
 	rmSync,
+	statSync,
 	writeFileSync
 } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -48,9 +50,45 @@ export interface PortableUpdateCheckResult {
 	assetSizeBytes: number;
 }
 
+export type PortableUpdateStage =
+	| 'idle'
+	| 'checking'
+	| 'downloading'
+	| 'extracting'
+	| 'applying'
+	| 'restarting'
+	| 'error';
+
+export interface PortableUpdateProgress {
+	stage: PortableUpdateStage;
+	version: string;
+	downloadedBytes: number;
+	totalBytes: number;
+	percent: number | null;
+	message: string;
+	error: string | null;
+}
+
 const DEFAULT_REPO = 'FishyWeed/CertFlow';
 const VALID_TARGETS = new Set<PortableTarget>(['win-x64', 'darwin-arm64', 'darwin-x64', 'linux-x64']);
 let updateInProgress = false;
+let updateProgress: PortableUpdateProgress = {
+	stage: 'idle',
+	version: '',
+	downloadedBytes: 0,
+	totalBytes: 0,
+	percent: null,
+	message: '',
+	error: null
+};
+
+export function getPortableUpdateProgress(): PortableUpdateProgress {
+	return { ...updateProgress };
+}
+
+function setProgress(patch: Partial<PortableUpdateProgress>) {
+	updateProgress = { ...updateProgress, ...patch };
+}
 
 function isManagedCloud(): boolean {
 	return Boolean(
@@ -370,30 +408,125 @@ function writeUnixUpdateScript(params: {
 	chmodSync(scriptPath, 0o755);
 }
 
+function spawnAsync(command: string, args: string[]): Promise<void> {
+	return new Promise((resolvePromise, rejectPromise) => {
+		const child = spawn(command, args, {
+			stdio: ['ignore', 'ignore', 'pipe'],
+			windowsHide: true
+		});
+		let stderr = '';
+		child.stderr?.on('data', (chunk: Buffer | string) => {
+			if (stderr.length < 2000) stderr += chunk.toString();
+		});
+		child.on('error', (err) => rejectPromise(err));
+		child.on('close', (code) => {
+			if (code === 0) {
+				resolvePromise();
+			} else {
+				rejectPromise(new Error(stderr.trim() || `${command} exited with code ${code}`));
+			}
+		});
+	});
+}
+
 /**
- * Downloads the latest verified GitHub Release ZIP for this portable platform, extracts it into
- * a staging folder, spawns a detached OS handoff script that replaces `app/`, `runtime/` and the
- * launcher (never touching `data/`), then gracefully shuts down so the updated version restarts.
+ * Extracts a ZIP archive asynchronously without blocking the Node event loop.
+ * On Windows, prefers native `tar.exe` (bsdtar, ~10-30x faster than PowerShell Expand-Archive)
+ * and falls back to .NET `System.IO.Compression.ZipFile`.
  */
-export async function downloadAndInstallPortableUpdate(): Promise<{
-	status: 'restarting';
-	version: string;
-}> {
-	if (updateInProgress) {
-		throw new Error('An update is already being downloaded and installed.');
+export async function extractZipArchive(zipPath: string, extractDir: string): Promise<void> {
+	rmSync(extractDir, { recursive: true, force: true });
+	mkdirSync(extractDir, { recursive: true });
+
+	if (process.platform === 'win32') {
+		try {
+			await spawnAsync('tar.exe', ['-xf', zipPath, '-C', extractDir]);
+			return;
+		} catch {
+			// Fall back to .NET ZipFile (much faster than Expand-Archive, works on all Windows builds).
+			rmSync(extractDir, { recursive: true, force: true });
+			const safeZip = zipPath.replace(/'/g, "''");
+			const safeDest = extractDir.replace(/'/g, "''");
+			await spawnAsync('powershell', [
+				'-NoProfile',
+				'-Command',
+				`$ProgressPreference = 'SilentlyContinue'; Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::ExtractToDirectory('${safeZip}', '${safeDest}')`
+			]);
+			return;
+		}
 	}
 
-	const info = getPortableRuntimeInfo();
-	if (!info.isPortable || !info.target) {
-		throw new Error('Portable updates are only available in CertFlow Portable Edition.');
+	await spawnAsync('unzip', ['-q', '-o', zipPath, '-d', extractDir]);
+}
+
+async function streamDownloadToFile(
+	url: string,
+	destPath: string,
+	userAgent: string,
+	fallbackTotalBytes: number,
+	onProgress: (downloadedBytes: number, totalBytes: number) => void
+): Promise<number> {
+	const res = await fetch(url, {
+		headers: { 'User-Agent': userAgent }
+	});
+	if (!res.ok) {
+		throw new Error(`Could not download update archive (HTTP ${res.status}).`);
 	}
 
-	updateInProgress = true;
+	const contentLengthHeader = Number(res.headers.get('content-length') || 0);
+	const totalBytes =
+		Number.isFinite(contentLengthHeader) && contentLengthHeader > 0
+			? contentLengthHeader
+			: fallbackTotalBytes;
+
+	if (!res.body) {
+		const bytes = new Uint8Array(await res.arrayBuffer());
+		writeFileSync(destPath, bytes);
+		onProgress(bytes.byteLength, Math.max(totalBytes, bytes.byteLength));
+		return bytes.byteLength;
+	}
+
+	const writer = createWriteStream(destPath);
+	const reader = res.body.getReader();
+	let downloaded = 0;
+
+	try {
+		while (true) {
+			const { done, value } = await reader.read();
+			if (done) break;
+			if (!value || value.byteLength === 0) continue;
+			downloaded += value.byteLength;
+			if (!writer.write(value)) {
+				await new Promise<void>((resDrain) => writer.once('drain', resDrain));
+			}
+			onProgress(downloaded, totalBytes);
+		}
+	} finally {
+		await new Promise<void>((resEnd, rejEnd) => {
+			writer.on('error', rejEnd);
+			writer.end(() => resEnd());
+		});
+	}
+
+	return statSync(destPath).size;
+}
+
+async function runPortableUpdatePipeline(info: PortableRuntimeInfo): Promise<void> {
 	const stagingDir = join(info.rootDir, '.update-staging');
 	const zipPath = join(stagingDir, 'update.zip');
 	const extractDir = join(stagingDir, 'extracted');
 
 	try {
+		setProgress({
+			stage: 'checking',
+			version: '',
+			downloadedBytes: 0,
+			totalBytes: 0,
+			percent: null,
+			message: 'Checking latest release on GitHub...',
+			error: null
+		});
+
 		const check = await checkForPortableUpdate();
 		if (!check.updateAvailable) {
 			throw new Error(`CertFlow is already up to date (${check.currentVersion}).`);
@@ -410,39 +543,58 @@ export async function downloadAndInstallPortableUpdate(): Promise<{
 		}
 
 		rmSync(stagingDir, { recursive: true, force: true });
-		mkdirSync(extractDir, { recursive: true });
+		mkdirSync(stagingDir, { recursive: true });
 
-		const res = await fetch(check.assetUrl, {
-			headers: { 'User-Agent': `CertFlow-Portable/${info.currentVersion}` }
+		setProgress({
+			stage: 'downloading',
+			version: check.latestVersion,
+			downloadedBytes: 0,
+			totalBytes: check.assetSizeBytes,
+			percent: 0,
+			message: `Downloading ${check.latestVersion} from GitHub...`
 		});
-		if (!res.ok) {
-			throw new Error(`Could not download update archive (HTTP ${res.status}).`);
-		}
 
-		const zipBytes = new Uint8Array(await res.arrayBuffer());
-		if (zipBytes.byteLength < 1024 * 1024) {
+		const writtenBytes = await streamDownloadToFile(
+			check.assetUrl,
+			zipPath,
+			`CertFlow-Portable/${info.currentVersion}`,
+			check.assetSizeBytes,
+			(downloaded, total) => {
+				const percent = total > 0 ? Math.min(100, Math.round((downloaded / total) * 100)) : null;
+				setProgress({
+					stage: 'downloading',
+					downloadedBytes: downloaded,
+					totalBytes: total,
+					percent,
+					message:
+						percent !== null
+							? `Downloading ${check.latestVersion} (${percent}%)...`
+							: `Downloading ${check.latestVersion}...`
+				});
+			}
+		);
+
+		if (writtenBytes < 1024 * 1024) {
 			throw new Error('Downloaded update archive looks incomplete.');
 		}
-		writeFileSync(zipPath, zipBytes);
 
-		if (process.platform === 'win32') {
-			execFileSync(
-				'powershell',
-				[
-					'-NoProfile',
-					'-Command',
-					`Expand-Archive -LiteralPath '${zipPath.replace(/'/g, "''")}' -DestinationPath '${extractDir.replace(/'/g, "''")}' -Force`
-				],
-				{ stdio: 'pipe' }
-			);
-		} else {
-			execFileSync('unzip', ['-q', '-o', zipPath, '-d', extractDir], { stdio: 'pipe' });
-		}
+		setProgress({
+			stage: 'extracting',
+			percent: null,
+			message: `Extracting ${check.latestVersion} files...`
+		});
+
+		await extractZipArchive(zipPath, extractDir);
 
 		const bundleDir = locateExtractedBundleDir(extractDir);
 		if (!bundleDir || !existsSync(join(bundleDir, 'app', 'scripts', 'start.mjs'))) {
 			throw new Error('Extracted archive is missing expected CertFlow application files.');
 		}
+
+		setProgress({
+			stage: 'applying',
+			message: `Preparing ${check.latestVersion} handoff...`
+		});
 
 		const port = process.env.PORT || '3000';
 
@@ -471,7 +623,7 @@ export async function downloadAndInstallPortableUpdate(): Promise<{
 				stagingDir,
 				pid: process.pid,
 				port,
-				target: info.target
+				target: info.target as PortableTarget
 			});
 			const child = spawn('bash', [scriptPath], {
 				detached: true,
@@ -480,17 +632,56 @@ export async function downloadAndInstallPortableUpdate(): Promise<{
 			child.unref();
 		}
 
-		// Close PGlite cleanly after the HTTP response flushes, then exit so the updater script swaps files.
+		setProgress({
+			stage: 'restarting',
+			percent: 100,
+			message: `Installing ${check.latestVersion} and restarting CertFlow... This page will reload automatically.`
+		});
+
+		// Give the browser poll a moment to receive `restarting`, then close PGlite and exit cleanly.
 		setTimeout(() => {
 			void resetDatabaseConnection().finally(() => {
 				process.exit(0);
 			});
-		}, 600).unref();
-
-		return { status: 'restarting', version: check.latestVersion };
+		}, 900).unref();
 	} catch (err) {
+		const message = err instanceof Error ? err.message : 'Could not install update.';
 		updateInProgress = false;
 		rmSync(stagingDir, { recursive: true, force: true });
-		throw err;
+		setProgress({
+			stage: 'error',
+			percent: null,
+			message,
+			error: message
+		});
 	}
+}
+
+/**
+ * Starts the non-blocking portable update job in the background and returns immediately so
+ * the UI can poll live download, extraction and restart progress.
+ */
+export function startPortableUpdate(): PortableUpdateProgress {
+	const info = getPortableRuntimeInfo();
+	if (!info.isPortable || !info.target) {
+		throw new Error('Portable updates are only available in CertFlow Portable Edition.');
+	}
+
+	if (updateInProgress) {
+		return getPortableUpdateProgress();
+	}
+
+	updateInProgress = true;
+	setProgress({
+		stage: 'checking',
+		version: '',
+		downloadedBytes: 0,
+		totalBytes: 0,
+		percent: null,
+		message: 'Checking latest release on GitHub...',
+		error: null
+	});
+
+	void runPortableUpdatePipeline(info);
+	return getPortableUpdateProgress();
 }
