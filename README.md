@@ -6,9 +6,9 @@ CertFlow is built for event organisers, clubs, schools and competitions that iss
 
 ## One-Click Launch (No Coding Required)
 
-### Option 1: Launch in the Cloud (Zero Installation)
+### Option 1: Deploy on Render
 
-Deploy your own private copy of CertFlow with a PostgreSQL database and auto-generated security keys in one click:
+Deploy a private copy of CertFlow with a PostgreSQL database and auto-generated security keys in one click:
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/FishyWeed/CertFlow)
 
@@ -16,11 +16,16 @@ Deploy your own private copy of CertFlow with a PostgreSQL database and auto-gen
 2. Click **Apply** and wait about 2 minutes for the build to finish.
 3. Open your new CertFlow link and create your account.
 
-> **Note on Render Free Tier**: Free Render web services reset local uploaded files when redeployed. For permanent uploaded backgrounds and logos, upgrade to a persistent disk or deploy on Railway with a Volume mounted at `/data/uploads`.
+> **Note on Render Free Tier**: Free Render web services reset local uploaded files when redeployed. For permanent uploaded backgrounds and logos, upgrade to a persistent disk on Render or deploy on Railway below.
 
-*(Maintainer note for **Deploy on Railway** button: open your CertFlow Railway project -> **Project Settings -> General -> Create Template**, replace secret values with `${{secret(64)}}`, publish the template and place its `https://railway.com/deploy/<code-here>` button next to Render above.)*
+### Option 2: Deploy on Railway
 
-### Option 2: Portable Desktop ZIP (No Docker, No Node.js Required)
+Deploy CertFlow on Railway with PostgreSQL and a persistent Volume mounted at `/data/uploads`.
+
+- **One-click Railway Template (for maintainers)**: Open your CertFlow project in Railway, go to **Project Settings -> General -> Create Template**, replace your personal values for `BETTER_AUTH_SECRET` and `ENCRYPTION_KEY` with `${{secret(64)}}`, publish the template and place its `https://railway.com/deploy/<code>` button here.
+- **Manual Railway setup**: Follow the step-by-step instructions in [Deployment (Railway)](#deployment-railway).
+
+### Option 3: Portable Desktop ZIP (No Docker, No Node.js Required)
 
 Run CertFlow offline on Windows, macOS or Linux with zero dependencies installed:
 
@@ -35,7 +40,7 @@ Run CertFlow offline on Windows, macOS or Linux with zero dependencies installed
 
 All settings, projects, database files and uploaded images stay inside the `data/` folder next to the launcher.
 
-### Option 3: Docker on Desktop or Server
+### Option 4: Docker on Desktop or Server
 
 If you already use Docker Desktop or host on a VPS/NAS:
 
