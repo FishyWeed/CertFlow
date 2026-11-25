@@ -1,0 +1,4 @@
+{
+  "name": "certflow-playwright",
+  "description": "Playwright MCP server and screenshot skill for CertFlow visual verification, product demos and slide assets."
+}

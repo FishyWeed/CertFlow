@@ -51,7 +51,8 @@ GitHub Actions (`.github/workflows/ci.yml`) runs this exact gate on every push a
 3. Apply schema changes to local PGlite: `pnpm run db:push`
 4. Start the dev server: `pnpm dev`
 5. Generate SQL migrations after schema edits: `pnpm run db:generate`
-6. Verify everything before pushing: `pnpm run verify`
+6. Verify visual UI changes and capture product demo images or slides locally via the workspace Playwright MCP plugin (`.agents/plugins/certflow-playwright/`).
+7. Verify everything before pushing: `pnpm run verify`
 
 ---
 

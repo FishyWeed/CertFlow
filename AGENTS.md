@@ -33,3 +33,9 @@ Apply these rules to all text you write in this project: UI copy, documentation,
   - Technical docs, code comments, commit messages and app UI: neutral, medium formality, low energy. Write plain, exact English with no emoji.
   - Public landing page (`/`): clear, confident and short text with no emoji.
 - Do not rename code identifiers, CSS properties (`color`, `text-center`), Konva enum values (`'center'`, `'capitalize'`), commands, file paths, quotes or protocol tokens.
+
+## Visual QA and Demo Screenshots (Playwright MCP)
+
+- This workspace includes the `certflow-playwright` plugin (`.agents/plugins/certflow-playwright/mcp_config.json`) exposing the Playwright MCP server (`@playwright/mcp@latest`).
+- Use Playwright MCP during local development to visually verify UI and design-system changes in both light mode and dark mode before pushing to GitHub.
+- Follow `.agents/plugins/certflow-playwright/skills/capture-demo-screenshots/SKILL.md` when generating product screenshots, landing-page media (`static/demo/`) or slide assets (`docs/media/`).
