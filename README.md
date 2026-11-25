@@ -4,11 +4,51 @@ Design certificate templates, import recipient spreadsheets, generate personalis
 
 CertFlow is built for event organisers, clubs, schools and competitions that issue certificates to participants, speakers, committees and prize winners.
 
+[![Latest Release](https://img.shields.io/github/v/release/FishyWeed/CertFlow?style=for-the-badge&color=4f46e5&label=Latest%20Release)](https://github.com/FishyWeed/CertFlow/releases/latest)
+[![Download Windows Installer](https://img.shields.io/badge/Windows%20Installer-Download%20.EXE-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/FishyWeed/CertFlow/releases/latest)
+[![Portable ZIPs](https://img.shields.io/badge/Portable%20ZIP-Win%20%7C%20Mac%20%7C%20Linux-059669?style=for-the-badge&logo=files&logoColor=white)](https://github.com/FishyWeed/CertFlow/releases/latest)
+[![Open Live App](https://img.shields.io/badge/Live%20App-Railway-0B0D0E?style=for-the-badge&logo=railway&logoColor=white)](https://cert-flow.up.railway.app)
+[![CI Quality Gate](https://img.shields.io/github/actions/workflow/status/FishyWeed/CertFlow/ci.yml?branch=main&style=for-the-badge&label=CI)](https://github.com/FishyWeed/CertFlow/actions/workflows/ci.yml)
+
+---
+
 ## One-Click Launch (No Coding Required)
 
-### Option 1: Deploy on Render
+### Option 1: Windows Desktop Installer (Recommended on Windows)
 
-Deploy a private copy of CertFlow with a PostgreSQL database and auto-generated security keys in one click:
+Install CertFlow to any folder with a Desktop shortcut, Start Menu entry and silent system tray launcher (no terminal window, no Node.js or Docker required and no local project or storage limits):
+
+[![Download Windows Installer](https://img.shields.io/badge/Download%20for%20Windows-CertFlow%20Setup.exe-4f46e5?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/FishyWeed/CertFlow/releases/latest)
+
+1. Open the [latest GitHub Release](https://github.com/FishyWeed/CertFlow/releases/latest) and download `CertFlow-vX.Y.Z-win-x64-Setup.exe`.
+2. Run the installer, choose any destination folder (CertFlow installs inside a `CertFlow` folder) and leave **Create a Desktop shortcut** ticked.
+3. Launch **CertFlow** from your Desktop shortcut or Start Menu. Your browser opens `http://localhost:3000` automatically while `CertFlow.exe` runs quietly in your Windows system tray.
+4. Right-click the tray icon at any time to **Open CertFlow**, **Open in App Window**, **Open Data Folder**, **View Server Log** or **Quit CertFlow**.
+5. Check for and install future releases directly from **Account Settings -> Portable App Updates** without touching your `data/` folder.
+
+### Option 2: Portable Desktop ZIP (Windows, macOS, Linux)
+
+Run CertFlow offline from any folder or USB drive with zero dependencies installed:
+
+[![Download Portable ZIPs](https://img.shields.io/badge/Download%20Portable%20ZIPs-GitHub%20Releases-059669?style=for-the-badge&logo=github&logoColor=white)](https://github.com/FishyWeed/CertFlow/releases/latest)
+
+1. Open [GitHub Releases](https://github.com/FishyWeed/CertFlow/releases/latest) and download the ZIP for your computer:
+   - Windows: `CertFlow-vX.Y.Z-win-x64.zip`
+   - macOS (Apple Silicon): `CertFlow-vX.Y.Z-darwin-arm64.zip`
+   - macOS (Intel): `CertFlow-vX.Y.Z-darwin-x64.zip`
+   - Linux: `CertFlow-vX.Y.Z-linux-x64.zip`
+2. Unzip the folder anywhere (Desktop, Documents or a USB drive).
+3. Launch CertFlow:
+   - **Windows**: Double-click **`CertFlow.exe`** (silent tray launcher) or **`Start-CertFlow.bat`** (console view). Double-click **`Create-Desktop-Shortcut.bat`** to add a Desktop shortcut.
+   - **macOS**: Double-click **`Start-CertFlow.command`**.
+   - **Linux**: Run **`./start-certflow.sh`**.
+4. Your browser opens `http://localhost:3000` automatically. Enter your name, email and password, then click **Start CertFlow**.
+
+All settings, projects, embedded database files and uploaded images stay inside the `data/` folder next to the launcher and relocate automatically if you move the folder.
+
+### Option 3: Deploy on Render
+
+Deploy a private cloud copy of CertFlow with a PostgreSQL database and auto-generated security keys in one click:
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/FishyWeed/CertFlow)
 
@@ -18,7 +58,7 @@ Deploy a private copy of CertFlow with a PostgreSQL database and auto-generated 
 
 > **Note on Render Free Tier**: Free Render web services reset local uploaded files when redeployed. For permanent uploaded backgrounds and logos, upgrade to a persistent disk on Render or deploy on Railway below.
 
-### Option 2: Deploy on Railway
+### Option 4: Deploy on Railway
 
 Deploy CertFlow on Railway with PostgreSQL and a persistent Volume mounted at `/data/uploads`:
 
@@ -30,41 +70,27 @@ Deploy CertFlow on Railway with PostgreSQL and a persistent Volume mounted at `/
 
 > **Maintainer note for 1-click stack provisioning**: Open the CertFlow project in Railway, go to **Project Settings -> General -> Create Template**, replace personal values for `BETTER_AUTH_SECRET` and `ENCRYPTION_KEY` with `${{secret(64)}}` and publish the template. Then replace `https://railway.com/new` in the button above with `https://railway.com/new/template/<TEMPLATE_CODE>` so Railway provisions CertFlow, PostgreSQL, the Volume and secrets in one click.
 
-### Option 3: Windows Installer or Portable Desktop ZIP (No Docker, No Node.js Required)
-
-Run CertFlow offline on Windows, macOS or Linux with zero dependencies installed:
-
-- **Windows Installer (recommended on Windows)**:
-  1. Open [GitHub Releases](https://github.com/FishyWeed/CertFlow/releases) and download `CertFlow-vX.Y.Z-win-x64-Setup.exe`.
-  2. Run the installer, choose any destination folder (CertFlow installs inside a `CertFlow` folder) and leave **Create a Desktop shortcut** ticked.
-  3. Launch CertFlow from the Desktop shortcut or Start Menu. Your browser opens `http://localhost:3000` automatically.
-- **Portable Desktop ZIP (Windows, macOS, Linux)**:
-  1. Open [GitHub Releases](https://github.com/FishyWeed/CertFlow/releases) and download the ZIP for your computer:
-     - Windows: `CertFlow-vX.Y.Z-win-x64.zip`
-     - macOS (Apple Silicon): `CertFlow-vX.Y.Z-darwin-arm64.zip`
-     - macOS (Intel): `CertFlow-vX.Y.Z-darwin-x64.zip`
-     - Linux: `CertFlow-vX.Y.Z-linux-x64.zip`
-  2. Unzip the folder anywhere (Desktop, Documents or a USB drive).
-  3. Double-click **`Start-CertFlow.bat`** (Windows) or **`Start-CertFlow.command`** (macOS). On Windows, you can also double-click **`Create-Desktop-Shortcut.bat`** to add a Desktop shortcut.
-  4. Your browser opens `http://localhost:3000` automatically. Enter your name, email and password, then click **Start CertFlow**.
-
-All settings, projects, database files and uploaded images stay inside the `data/` folder next to the launcher, and you can check for and install newer releases directly from **Account Settings -> Portable App Updates**.
-
-### Option 4: Docker on Desktop or Server
+### Option 5: Docker on Desktop or Server
 
 If you already use Docker Desktop or host on a VPS or NAS:
 
-- **Instant prebuilt image (fastest):** Run `docker compose -f docker-compose.ghcr.yml up -d` to pull `ghcr.io/fishyweed/certflow:latest`.
-- **Build from source:** Download this repository and double-click **`Start-CertFlow.bat`** (Windows) or **`Start-CertFlow.command`** (macOS), or run `docker compose up -d --build`.
-- Open `http://localhost:3000` and finish the setup screen. Technical users can expand **Advanced Settings** on `/setup` to customise keys, connect an external PostgreSQL database or set a server-wide email relay.
+[![View GHCR Image](https://img.shields.io/badge/Docker%20Image-ghcr.io%2Ffishyweed%2Fcertflow-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://github.com/FishyWeed/CertFlow/pkgs/container/certflow)
+
+- **Instant prebuilt image (fastest)**: Run `docker compose -f docker-compose.ghcr.yml up -d` to pull `ghcr.io/fishyweed/certflow:latest`.
+- **Build from source**: Clone this repository and run `docker compose up -d --build`.
+- Open `http://localhost:3000` and finish the `/setup` wizard. Technical users can expand **Advanced Settings** on `/setup` to customise keys, connect an external PostgreSQL database or set a server-wide email relay.
+
+---
 
 ## What You Can Do
 
 ### Visual Certificate Editor
+- **Unified top formatting toolbar**: Control font family, font size, bold, italic, underline, colour, alignment (`left`, `centre`, `right`, `justify`), vertical alignment, case, line spacing, wrap mode and canvas centring (`Centre: Horizontal | Vertical`) from one top bar.
+- **Direct on-canvas WYSIWYG editing**: Double-click any text element on the certificate to type directly on canvas and highlight individual words to style font, size, weight, underline or colour live without raw formatting tags.
+- **Optical centring and shrink-only box sizing**: Text centres optically inside its bounding box; expanding a box never enlarges font sizes past their set sizes, and shrinking a box scales mixed-size text proportionally only when needed to fit.
 - **114 built-in fonts**: Browse and search serif, calligraphy, sans-serif, ceremonial display, slab serif and monospace fonts with live typeface previews.
-- **Dynamic Properties and rules**: Insert `{{name}}`, `{{role}}`, `{{rank}}` or any spreadsheet column into text boxes. Add conditional rules to change wording automatically (for example, `Certificate of Participation` for participants and `Certificate of Award` for winners).
-- **Per-word inline formatting**: Style individual words inside the same text box with bold, italic, underline, colour or a different font.
-- **Precise layout tools**: Use smart alignment and equal-spacing snap guides, marquee multi-selection with live border feedback, element grouping, draggable line endpoints, image cropping and freehand or uploaded signatures.
+- **Dynamic Properties and rules**: Insert `{{name}}`, `{{role}}`, `{{rank}}` or any spreadsheet column into text boxes and add conditional rules to switch wording automatically.
+- **Gridded sandbox and layout tools**: Start marquee drag-selection from the gridded sandbox outside the certificate or inside empty canvas space, use smart alignment and equal-spacing snap guides, group elements, drag line endpoints, crop images and draw or upload signatures.
 - **Flexible canvas sizes**: Choose from 13 print and digital presets (A4, A5, A3, US Letter, 16:9, 1:1) or enter custom dimensions.
 
 ### Spreadsheet Data and Automatic Routing
@@ -78,17 +104,17 @@ If you already use Docker Desktop or host on a VPS or NAS:
 - **Unified Export menu**: Download the selected certificate as **PNG**, **JPG** or **PDF**, or export all filtered certificates together in a **ZIP** archive organised by role.
 
 ### Bulk Email Delivery
-- **Saved drafts and sender settings**: Write personalised subjects and messages with `{{property}}` placeholders and save drafts per project.
-- **Flexible sender options**: Send with your account email, a custom display name and Reply-To address or your own encrypted SMTP server (such as a Gmail account with an App Password) saved in **Account Settings**.
-- **Safe delivery tracking**: Recipients without an email address are skipped automatically. Delivery counts and any SMTP errors appear in **Recent Send Runs**.
+- **Four sender profile modes with built-in setup guides**: Connect **Brevo** (free 300/day with Gmail or custom domain), **Resend** (free 100/day with custom domain), **Custom SMTP Server** (Gmail App Password, Outlook, Zoho or private mail on local/self-hosted installs) or **Custom Reply-To** (shared server relay) in **Account Settings**.
+- **Saved drafts and safe tracking**: Write personalised subjects and messages with `{{property}}` placeholders, save drafts per project, skip recipients without email addresses automatically and track send history in **Recent Send Runs**.
+- **Unlimited local usage**: Local installations (Windows Installer, Portable ZIP, local Docker and local dev) lift the hosted cloud project, storage, upload size and recipient caps automatically.
 
 ## Quick Walkthrough
 
 1. **Create a project**: Sign in, open the dashboard and create a project for your event.
-2. **1. Design Editor**: Upload a background, arrange text, logos, shapes and signatures, then save your templates.
+2. **1. Editor**: Upload a background, arrange text, logos, shapes and signatures, then save your templates.
 3. **2. Data & Mapping**: Import your CSV or Excel file (or add rows manually) and check the **Matched Template** column.
 4. **3. Generate Certificates**: Click **Generate from Dataset**, review live previews and use **Export** to download single files or a ZIP archive.
-5. **4. Email**: Choose a sender profile, write and save your draft, then send certificates to every recipient with an email address.
+5. **4. Send Email**: Choose a sender profile, write and save your draft, then send certificates to every recipient with an email address.
 
 ## Editor Keyboard Shortcuts
 
@@ -108,7 +134,7 @@ If you already use Docker Desktop or host on a VPS or NAS:
 
 ## Technical Overview
 
-CertFlow runs on SvelteKit 3, Svelte 5, PostgreSQL (Drizzle ORM), Better Auth, Konva, `pdf-lib`, `jszip` and Nodemailer.
+CertFlow runs on SvelteKit 3, Svelte 5, PostgreSQL (Drizzle ORM + embedded `PGlite` for local/portable runs), Better Auth, Konva, `pdf-lib`, `jszip` and Nodemailer.
 
 ## Self-Hosting with Docker (One-Click Setup Wizard)
 
@@ -201,6 +227,11 @@ CertFlow includes `@sveltejs/adapter-node`, a `/api/health` endpoint and automat
 7. Deploy — Railway runs `pnpm build` and `pnpm start`, which applies `drizzle/` migrations automatically before starting the Node server.
 
 ## Architecture and Guides
+
+[![Structure Map](https://img.shields.io/badge/Docs-STRUCTURE.md-4f46e5?style=for-the-badge)](./STRUCTURE.md)
+[![Pipelines Guide](https://img.shields.io/badge/Docs-PIPELINES.md-059669?style=for-the-badge)](./docs/PIPELINES.md)
+[![Architecture Blueprint](https://img.shields.io/badge/Docs-BLUEPRINT.md-0284c7?style=for-the-badge)](./docs/BLUEPRINT.md)
+[![Development Trail](https://img.shields.io/badge/Docs-DEV__TRAIL.md-d97706?style=for-the-badge)](./docs/DEV_TRAIL.md)
 
 - [STRUCTURE.md](./STRUCTURE.md) — Folder map and module placement rules.
 - [docs/PIPELINES.md](./docs/PIPELINES.md) — All six development and delivery pipelines (Local, Railway, Render, Docker and Portable).

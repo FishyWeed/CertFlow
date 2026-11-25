@@ -6,13 +6,16 @@
 	interface Props {
 		brandHref?: string;
 		brandName?: string;
+		sticky?: boolean;
 		actions?: Snippet;
 	}
 
-	let { brandHref = '/', brandName = 'CertFlow', actions }: Props = $props();
+	let { brandHref = '/', brandName = 'CertFlow', sticky = true, actions }: Props = $props();
 </script>
 
-<header class="w-full border-b border-border-default bg-surface-card">
+<header
+	class="w-full border-b border-border-default bg-surface-card {sticky ? 'sticky top-0 z-40' : ''}"
+>
 	<div class="mx-auto flex max-w-[1600px] items-center justify-between gap-2 px-3 py-3 sm:gap-4 sm:px-6">
 		<a
 			href={brandHref}
