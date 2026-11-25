@@ -7,6 +7,19 @@ import type {
 	TemplateBackground,
 	TemplateCanvasState
 } from '#lib/types/certflow.ts';
+import type { InlineFormatAction } from './rich-text.ts';
+
+export interface ActiveTextSelection {
+	elementId: string;
+	fieldId: string;
+	label: string;
+	text: string;
+	start: number;
+	end: number;
+	selectedText: string;
+	apply: (action: InlineFormatAction, options?: { restoreFocus?: boolean }) => void;
+	clear: () => void;
+}
 
 function cloneState(state: TemplateCanvasState): TemplateCanvasState {
 	// Unwrap Svelte 5 $state proxies before cloning so structuredClone never throws DataCloneError.
@@ -36,6 +49,7 @@ export class EditorState {
 		elements: []
 	});
 	selectedIds = $state<string[]>([]);
+	activeTextSelection = $state<ActiveTextSelection | null>(null);
 	zoom = $state(0.72);
 	autoFitZoom = $state(true);
 	previewMode = $state<'placeholders' | 'sample'>('sample');
@@ -111,10 +125,14 @@ export class EditorState {
 	}
 
 	selectOnly(id: string | null) {
+		if (!id || this.activeTextSelection?.elementId !== id) {
+			this.activeTextSelection = null;
+		}
 		this.selectedIds = id ? [id] : [];
 	}
 
 	selectGroupById(groupId: string) {
+		this.activeTextSelection = null;
 		const memberIds = this.canvasState.elements
 			.filter((el) => el.groupId === groupId && el.visible)
 			.map((el) => el.id);
@@ -122,6 +140,9 @@ export class EditorState {
 	}
 
 	selectElement(id: string, options?: { additive?: boolean; ignoreGroup?: boolean }) {
+		if (this.activeTextSelection?.elementId !== id) {
+			this.activeTextSelection = null;
+		}
 		const target = this.canvasState.elements.find((el) => el.id === id);
 		if (!target) return;
 
@@ -147,6 +168,7 @@ export class EditorState {
 	}
 
 	toggleSelect(id: string) {
+		this.activeTextSelection = null;
 		if (this.selectedIds.includes(id)) {
 			this.selectedIds = this.selectedIds.filter((item) => item !== id);
 		} else {
@@ -155,11 +177,23 @@ export class EditorState {
 	}
 
 	selectMultiple(ids: string[]) {
+		this.activeTextSelection = null;
 		this.selectedIds = this.expandIdsWithGroups(ids);
 	}
 
 	clearSelection() {
+		this.activeTextSelection = null;
 		this.selectedIds = [];
+	}
+
+	setActiveTextSelection(next: ActiveTextSelection | null) {
+		this.activeTextSelection = next;
+	}
+
+	clearActiveTextSelection(fieldId?: string) {
+		if (!fieldId || this.activeTextSelection?.fieldId === fieldId) {
+			this.activeTextSelection = null;
+		}
 	}
 
 	groupSelected() {
@@ -222,6 +256,7 @@ export class EditorState {
 		});
 		this.canvasState = cloned;
 		this.selectedIds = [];
+		this.activeTextSelection = null;
 		this.past = [];
 		this.future = [];
 		this.dirty = false;
@@ -258,6 +293,7 @@ export class EditorState {
 		this.height = input.height;
 		this.canvasState = next;
 		this.selectedIds = [];
+		this.activeTextSelection = null;
 		this.dirty = true;
 	}
 
@@ -571,6 +607,9 @@ export class EditorState {
 			draft.elements = draft.elements.filter((el) => !toDelete.has(el.id));
 		});
 		this.selectedIds = this.selectedIds.filter((id) => !toDelete.has(id));
+		if (this.activeTextSelection && toDelete.has(this.activeTextSelection.elementId)) {
+			this.activeTextSelection = null;
+		}
 	}
 
 	duplicateElement(id: string) {

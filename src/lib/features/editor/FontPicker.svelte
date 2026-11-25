@@ -10,10 +10,13 @@
 	interface Props {
 		id?: string;
 		value: string;
+		compact?: boolean;
+		title?: string;
 		onSelect: (family: string) => void;
 	}
 
-	let { id = 'el-font', value, onSelect }: Props = $props();
+	let { id = 'el-font', value, compact = false, title = 'Choose font family', onSelect }: Props =
+		$props();
 
 	let open = $state(false);
 	let query = $state('');
@@ -46,10 +49,9 @@
 			const top = openUpward
 				? Math.max(8, Math.round(rect.top - maxHeight - 6))
 				: Math.round(rect.bottom + 6);
-			const left = Math.max(
-				8,
-				Math.min(Math.round(rect.right - width), window.innerWidth - width - 8)
-			);
+			const left = compact
+				? Math.max(8, Math.min(Math.round(rect.left), window.innerWidth - width - 8))
+				: Math.max(8, Math.min(Math.round(rect.right - width), window.innerWidth - width - 8));
 			menuPos = { top, left, width, maxHeight };
 		}
 		open = true;
@@ -115,12 +117,19 @@
 	bind:this={triggerEl}
 	{id}
 	type="button"
+	{title}
 	aria-haspopup="listbox"
 	aria-expanded={open}
+	onmousedown={(e) => e.preventDefault()}
 	onclick={toggleMenu}
-	class="mt-1 flex w-full items-center justify-between gap-2 rounded-lg border border-border-strong bg-white px-2.5 py-1.5 text-left text-xs text-ink-primary transition hover:border-accent/60 focus:border-accent focus:outline-none"
+	class={compact
+		? 'flex h-8 w-40 shrink-0 items-center justify-between gap-1.5 rounded-lg border border-border-strong bg-white px-2.5 text-left text-xs text-ink-primary transition hover:border-accent/60 focus:border-accent focus:outline-none sm:w-44'
+		: 'mt-1 flex w-full items-center justify-between gap-2 rounded-lg border border-border-strong bg-white px-2.5 py-1.5 text-left text-xs text-ink-primary transition hover:border-accent/60 focus:border-accent focus:outline-none'}
 >
-	<span class="truncate text-sm leading-tight" style="font-family: {quoteFontFamily(value)};">
+	<span
+		class="truncate leading-tight {compact ? 'text-xs' : 'text-sm'}"
+		style="font-family: {quoteFontFamily(value)};"
+	>
 		{value}
 	</span>
 	<ChevronDown class="h-3.5 w-3.5 shrink-0 text-ink-muted" />

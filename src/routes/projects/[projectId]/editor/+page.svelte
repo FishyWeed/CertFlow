@@ -4,6 +4,7 @@
 	import { ChevronDown, ChevronUp, Layers, Sliders } from '@lucide/svelte';
 	import { getViewportTier } from '#lib/config/layout.ts';
 	import CertificateCanvas from '#lib/features/editor/CertificateCanvas.svelte';
+	import EditorToolbar from '#lib/features/editor/EditorToolbar.svelte';
 	import EditorToolbox from '#lib/features/editor/EditorToolbox.svelte';
 	import ElementInspector from '#lib/features/editor/ElementInspector.svelte';
 	import TemplateBar from '#lib/features/editor/TemplateBar.svelte';
@@ -238,6 +239,8 @@
 		onDeleteTemplate={handleDeleteTemplate}
 		onGenerateCertificates={handleGenerateCertificates}
 	/>
+
+	<EditorToolbar {editor} {sampleData} />
 
 	{#if statusMessage}
 		<div class="shrink-0 border-b border-indigo-200 bg-indigo-50 px-4 py-1.5 text-xs text-indigo-800">

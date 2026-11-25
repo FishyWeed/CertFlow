@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	applyInlineFormatToSelection,
 	hasRichTextMarkup,
+	inspectSelectionStyle,
 	parseRichTextRuns,
 	stripRichTextMarkup,
 	type RichTextStyle
@@ -96,5 +97,36 @@ describe('inline rich text formatting', () => {
 			{ ...baseStyle, text: 'Participant', fontFamily: 'Cinzel', fontSize: 36 },
 			{ ...baseStyle, text: '\nduring' }
 		]);
+
+		// Changing font again while <size=36> is nested replaces the outer <font> in place.
+		const swappedFont = applyInlineFormatToSelection(
+			sized.text,
+			sized.selectionStart,
+			sized.selectionEnd,
+			{ kind: 'font', value: 'Playfair Display' }
+		);
+		expect(swappedFont.text).toBe(
+			'as a\n<font=Playfair Display><size=36>Participant</size></font>\nduring'
+		);
+
+		// Inspecting the highlighted range reports its effective inline font and size.
+		const inspected = inspectSelectionStyle(
+			swappedFont.text,
+			swappedFont.selectionStart,
+			swappedFont.selectionEnd,
+			baseStyle
+		);
+		expect(inspected.fontFamily).toBe('Playfair Display');
+		expect(inspected.fontSize).toBe(36);
+		expect(inspected.fontWeight).toBe(400);
+
+		// Clearing formatting strips all enclosing wrappers around the highlighted word cleanly.
+		const cleared = applyInlineFormatToSelection(
+			swappedFont.text,
+			swappedFont.selectionStart,
+			swappedFont.selectionEnd,
+			{ kind: 'clear' }
+		);
+		expect(cleared.text).toBe(text);
 	});
 });

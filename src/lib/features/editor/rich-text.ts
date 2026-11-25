@@ -194,6 +194,212 @@ export type InlineFormatAction =
 	| { kind: 'size'; value: number }
 	| { kind: 'clear' };
 
+interface MatchedWrapper {
+	kind: 'bold' | 'italic' | 'underline' | 'color' | 'font' | 'size';
+	openLen: number;
+	closeLen: number;
+	openStart: number;
+	closeStart: number;
+}
+
+function matchOuterWrapperPair(
+	before: string,
+	after: string
+): { kind: MatchedWrapper['kind']; openLen: number; closeLen: number } | null {
+	if (before.endsWith('**') && after.startsWith('**')) {
+		return { kind: 'bold', openLen: 2, closeLen: 2 };
+	}
+	if (before.endsWith('*') && !before.endsWith('**') && after.startsWith('*') && !after.startsWith('**')) {
+		return { kind: 'italic', openLen: 1, closeLen: 1 };
+	}
+	const simpleBefore = before.match(/<(b|i|u)>$/i);
+	if (simpleBefore) {
+		const tag = simpleBefore[1].toLowerCase();
+		const close = `</${tag}>`;
+		if (after.toLowerCase().startsWith(close)) {
+			return {
+				kind: tag === 'b' ? 'bold' : tag === 'i' ? 'italic' : 'underline',
+				openLen: simpleBefore[0].length,
+				closeLen: close.length
+			};
+		}
+	}
+	for (const kind of ['color', 'font', 'size'] as const) {
+		const openMatch = before.match(new RegExp(`<${kind}=[^>]+>$`, 'i'));
+		const closeMatch = after.match(new RegExp(`^</${kind}>`, 'i'));
+		if (openMatch && closeMatch) {
+			return { kind, openLen: openMatch[0].length, closeLen: closeMatch[0].length };
+		}
+	}
+	return null;
+}
+
+function collectOuterWrappers(before: string, after: string): MatchedWrapper[] {
+	const wrappers: MatchedWrapper[] = [];
+	let b = before;
+	let a = after;
+	let afterOffset = 0;
+
+	while (true) {
+		const match = matchOuterWrapperPair(b, a);
+		if (!match) break;
+		const openStart = b.length - match.openLen;
+		const closeStart = afterOffset;
+		wrappers.push({
+			kind: match.kind,
+			openLen: match.openLen,
+			closeLen: match.closeLen,
+			openStart,
+			closeStart
+		});
+		b = b.slice(0, openStart);
+		a = a.slice(match.closeLen);
+		afterOffset += match.closeLen;
+	}
+	return wrappers;
+}
+
+function matchInnerWrapperPair(
+	selected: string
+): { kind: MatchedWrapper['kind']; openLen: number; closeLen: number } | null {
+	if (selected.startsWith('**') && selected.endsWith('**') && selected.length > 4) {
+		return { kind: 'bold', openLen: 2, closeLen: 2 };
+	}
+	if (
+		selected.startsWith('*') &&
+		!selected.startsWith('**') &&
+		selected.endsWith('*') &&
+		!selected.endsWith('**') &&
+		selected.length > 2
+	) {
+		return { kind: 'italic', openLen: 1, closeLen: 1 };
+	}
+	const simpleOpen = selected.match(/^<(b|i|u)>/i);
+	if (simpleOpen) {
+		const tag = simpleOpen[1].toLowerCase();
+		const close = `</${tag}>`;
+		if (selected.toLowerCase().endsWith(close) && selected.length > simpleOpen[0].length + close.length) {
+			return {
+				kind: tag === 'b' ? 'bold' : tag === 'i' ? 'italic' : 'underline',
+				openLen: simpleOpen[0].length,
+				closeLen: close.length
+			};
+		}
+	}
+	for (const kind of ['color', 'font', 'size'] as const) {
+		const openMatch = selected.match(new RegExp(`^<${kind}=[^>]+>`, 'i'));
+		const closeMatch = selected.match(new RegExp(`</${kind}>$`, 'i'));
+		if (
+			openMatch &&
+			closeMatch &&
+			selected.length > openMatch[0].length + closeMatch[0].length
+		) {
+			return { kind, openLen: openMatch[0].length, closeLen: closeMatch[0].length };
+		}
+	}
+	return null;
+}
+
+/**
+ * Inspects the effective rich-text style of the highlighted range inside `text` so the top
+ * editor toolbar displays the highlighted words' font, size, colour, bold, italic and underline.
+ */
+export function inspectSelectionStyle(
+	text: string,
+	start: number,
+	end: number,
+	base: RichTextStyle
+): RichTextStyle {
+	const from = Math.max(0, Math.min(start, end));
+	const to = Math.max(from, Math.min(text.length, Math.max(start, end)));
+	let resolved: RichTextStyle | null = null;
+
+	function walk(str: string, offset: number, style: RichTextStyle) {
+		let i = 0;
+		while (i < str.length) {
+			const abs = offset + i;
+			if (str.startsWith('**', i)) {
+				const close = str.indexOf('**', i + 2);
+				if (close > i + 2) {
+					walk(str.slice(i + 2, close), abs + 2, { ...style, fontWeight: 700 });
+					i = close + 2;
+					continue;
+				}
+			}
+			if (str[i] === '*' && str[i + 1] !== '*') {
+				const close = str.indexOf('*', i + 1);
+				if (close > i + 1 && !str.slice(i + 1, close).includes('\n')) {
+					walk(str.slice(i + 1, close), abs + 1, { ...style, fontStyle: 'italic' });
+					i = close + 1;
+					continue;
+				}
+			}
+			const simpleTag = str.slice(i).match(/^<(b|i|u)>/i);
+			if (simpleTag) {
+				const tag = simpleTag[1].toLowerCase();
+				const closeTag = `</${tag}>`;
+				const closeIdx = str.toLowerCase().indexOf(closeTag, i + simpleTag[0].length);
+				if (closeIdx !== -1) {
+					const nextStyle: RichTextStyle =
+						tag === 'b'
+							? { ...style, fontWeight: 700 }
+							: tag === 'i'
+								? { ...style, fontStyle: 'italic' }
+								: { ...style, underline: true };
+					walk(str.slice(i + simpleTag[0].length, closeIdx), abs + simpleTag[0].length, nextStyle);
+					i = closeIdx + closeTag.length;
+					continue;
+				}
+			}
+			const colorTag = str.slice(i).match(/^<color=([^>]+)>/i);
+			if (colorTag) {
+				const closeIdx = str.toLowerCase().indexOf('</color>', i + colorTag[0].length);
+				if (closeIdx !== -1) {
+					walk(str.slice(i + colorTag[0].length, closeIdx), abs + colorTag[0].length, {
+						...style,
+						fill: colorTag[1].trim() || style.fill
+					});
+					i = closeIdx + '</color>'.length;
+					continue;
+				}
+			}
+			const sizeTag = str.slice(i).match(/^<size=(\d+(?:\.\d+)?)>/i);
+			if (sizeTag) {
+				const closeIdx = str.toLowerCase().indexOf('</size>', i + sizeTag[0].length);
+				if (closeIdx !== -1) {
+					const parsed = Number(sizeTag[1]);
+					walk(str.slice(i + sizeTag[0].length, closeIdx), abs + sizeTag[0].length, {
+						...style,
+						fontSize: Number.isFinite(parsed) ? Math.max(8, Math.min(240, parsed)) : style.fontSize
+					});
+					i = closeIdx + '</size>'.length;
+					continue;
+				}
+			}
+			const fontTag = str.slice(i).match(/^<font=([^>]+)>/i);
+			if (fontTag) {
+				const closeIdx = str.toLowerCase().indexOf('</font>', i + fontTag[0].length);
+				if (closeIdx !== -1) {
+					walk(str.slice(i + fontTag[0].length, closeIdx), abs + fontTag[0].length, {
+						...style,
+						fontFamily: fontTag[1].trim() || style.fontFamily
+					});
+					i = closeIdx + '</font>'.length;
+					continue;
+				}
+			}
+
+			if (!resolved && abs >= from && abs < to) {
+				resolved = { ...style };
+			}
+			i += 1;
+		}
+	}
+
+	walk(text, 0, base);
+	return resolved ?? { ...base };
+}
+
 /**
  * Wraps or unwraps the highlighted slice of `text` with inline formatting tags,
  * returning the updated string and the adjusted selection range.
@@ -215,11 +421,19 @@ export function applyInlineFormatToSelection(
 			const cleaned = stripRichTextMarkup(text);
 			return { text: cleaned, selectionStart: 0, selectionEnd: cleaned.length };
 		}
+		const outer = collectOuterWrappers(before, after);
+		let nextBefore = before;
+		let nextAfter = after;
+		if (outer.length > 0) {
+			const outermost = outer[outer.length - 1];
+			nextBefore = before.slice(0, outermost.openStart);
+			nextAfter = after.slice(outermost.closeStart + outermost.closeLen);
+		}
 		const cleaned = stripRichTextMarkup(selected);
 		return {
-			text: before + cleaned + after,
-			selectionStart: from,
-			selectionEnd: from + cleaned.length
+			text: nextBefore + cleaned + nextAfter,
+			selectionStart: nextBefore.length,
+			selectionEnd: nextBefore.length + cleaned.length
 		};
 	}
 
@@ -248,17 +462,36 @@ export function applyInlineFormatToSelection(
 		close = '</size>';
 	}
 
-	// Replace existing surrounding or enclosing parameterized tag cleanly instead of nesting duplicates.
-	if (
-		selected &&
-		(action.kind === 'font' || action.kind === 'color' || action.kind === 'size')
-	) {
-		const tagName = action.kind;
-		const beforeMatch = before.match(new RegExp(`<${tagName}=[^>]+>$`, 'i'));
-		const afterMatch = after.match(new RegExp(`^</${tagName}>`, 'i'));
-		if (beforeMatch && afterMatch) {
-			const nextBefore = before.slice(0, -beforeMatch[0].length) + open;
-			const nextAfter = close + after.slice(afterMatch[0].length);
+	// Inspect all immediately enclosing wrappers so chained edits (e.g. font -> size -> font or bold)
+	// update or toggle the matching wrapper cleanly without nesting duplicate tags.
+	if (selected) {
+		const outerWrappers = collectOuterWrappers(before, after);
+		const matchingOuter = outerWrappers.find((w) => w.kind === action.kind);
+
+		if (matchingOuter) {
+			if (action.kind === 'font' || action.kind === 'color' || action.kind === 'size') {
+				const nextBefore =
+					before.slice(0, matchingOuter.openStart) +
+					open +
+					before.slice(matchingOuter.openStart + matchingOuter.openLen);
+				const nextAfter =
+					after.slice(0, matchingOuter.closeStart) +
+					close +
+					after.slice(matchingOuter.closeStart + matchingOuter.closeLen);
+				return {
+					text: nextBefore + selected + nextAfter,
+					selectionStart: nextBefore.length,
+					selectionEnd: nextBefore.length + selected.length
+				};
+			}
+
+			// Toggle off bold, italic or underline wrapper while keeping sibling wrappers intact.
+			const nextBefore =
+				before.slice(0, matchingOuter.openStart) +
+				before.slice(matchingOuter.openStart + matchingOuter.openLen);
+			const nextAfter =
+				after.slice(0, matchingOuter.closeStart) +
+				after.slice(matchingOuter.closeStart + matchingOuter.closeLen);
 			return {
 				text: nextBefore + selected + nextAfter,
 				selectionStart: nextBefore.length,
@@ -266,44 +499,35 @@ export function applyInlineFormatToSelection(
 			};
 		}
 
-		const innerMatch = selected.match(
-			new RegExp(`^<${tagName}=[^>]+>([\\s\\S]*?)</${tagName}>$`, 'i')
-		);
-		if (innerMatch) {
-			const inner = innerMatch[1];
-			return {
-				text: before + open + inner + close + after,
-				selectionStart: from + open.length,
-				selectionEnd: from + open.length + inner.length
-			};
-		}
-	}
-
-	// Toggle off when the exact surrounding delimiters already wrap the selection.
-	if (
-		selected &&
-		(action.kind === 'bold' || action.kind === 'italic' || action.kind === 'underline')
-	) {
-		if (before.endsWith(open) && after.startsWith(close)) {
-			const nextBefore = before.slice(0, -open.length);
-			const nextAfter = after.slice(close.length);
-			return {
-				text: nextBefore + selected + nextAfter,
-				selectionStart: nextBefore.length,
-				selectionEnd: nextBefore.length + selected.length
-			};
-		}
-		if (
-			selected.startsWith(open) &&
-			selected.endsWith(close) &&
-			selected.length > open.length + close.length
-		) {
-			const unwrapped = selected.slice(open.length, -close.length);
-			return {
-				text: before + unwrapped + after,
-				selectionStart: from,
-				selectionEnd: from + unwrapped.length
-			};
+		// Also inspect wrappers directly inside the selected text itself.
+		let innerSlice = selected;
+		let innerOpenOffset = 0;
+		let innerCloseOffset = 0;
+		while (true) {
+			const innerMatch = matchInnerWrapperPair(innerSlice);
+			if (!innerMatch) break;
+			if (innerMatch.kind === action.kind) {
+				const prefixInSel = selected.slice(0, innerOpenOffset);
+				const core = innerSlice.slice(innerMatch.openLen, innerSlice.length - innerMatch.closeLen);
+				const suffixInSel = selected.slice(selected.length - innerCloseOffset);
+				if (action.kind === 'font' || action.kind === 'color' || action.kind === 'size') {
+					const replaced = prefixInSel + open + core + close + suffixInSel;
+					return {
+						text: before + replaced + after,
+						selectionStart: from + prefixInSel.length + open.length,
+						selectionEnd: from + prefixInSel.length + open.length + core.length
+					};
+				}
+				const unwrapped = prefixInSel + core + suffixInSel;
+				return {
+					text: before + unwrapped + after,
+					selectionStart: from,
+					selectionEnd: from + unwrapped.length
+				};
+			}
+			innerOpenOffset += innerMatch.openLen;
+			innerCloseOffset += innerMatch.closeLen;
+			innerSlice = innerSlice.slice(innerMatch.openLen, innerSlice.length - innerMatch.closeLen);
 		}
 	}
 

@@ -1,20 +1,13 @@
 <script lang="ts">
 	import {
-		AlignCenter,
-		AlignJustify,
-		AlignLeft,
-		AlignRight,
 		ArrowLeftRight,
-		Bold,
 		Copy,
 		Crop,
 		Group,
 		ImagePlus,
-		Italic,
 		PenTool,
 		Plus,
 		Trash2,
-		Underline,
 		Ungroup,
 		Upload,
 		X
@@ -32,25 +25,15 @@
 		CriterionDefinition,
 		ImageEditState,
 		StaticTextCanvasElement,
-		TextAlign,
-		TextTransformMode,
-		TextWrapMode,
 		TitleBindingRule,
 		TitleRuleCondition,
-		TitleRuleOperator,
-		VerticalAlign
+		TitleRuleOperator
 	} from '#lib/types/certflow.ts';
 	import type { EditorState } from './editor-state.svelte.ts';
-	import FontPicker from './FontPicker.svelte';
 	import { ensureTemplateFontsLoaded } from './fonts.ts';
 	import RichTextEditor from './RichTextEditor.svelte';
 	import { stripRichTextMarkup } from './rich-text.ts';
-	import {
-		resolveElementText,
-		scaleBoxForFontFamilyChange,
-		scaleBoxForFontSizeChange,
-		type TextBoxGeometry
-	} from './text-utils.ts';
+	import { resolveElementText } from './text-utils.ts';
 
 	interface Props {
 		editor: EditorState;
@@ -68,7 +51,6 @@
 		propertyValueOptions = {}
 	}: Props = $props();
 
-	let fontSizeScrubStart = $state<(TextBoxGeometry & { fontSize: number }) | null>(null);
 	let customConditionMode = $state<Record<string, boolean>>({});
 	const CUSTOM_VALUE_SENTINEL = '__custom_value__';
 
@@ -448,26 +430,6 @@
 		}
 		clearCropSource();
 	}
-
-	const alignOptions: Array<{ value: TextAlign; label: string }> = [
-		{ value: 'left', label: 'Left' },
-		{ value: 'center', label: 'Centre' },
-		{ value: 'right', label: 'Right' },
-		{ value: 'justify', label: 'Justify' }
-	];
-
-	const vAlignOptions: VerticalAlign[] = ['top', 'middle', 'bottom'];
-	const wrapOptions: Array<{ value: TextWrapMode; label: string }> = [
-		{ value: 'word', label: 'Word Wrap' },
-		{ value: 'char', label: 'Character Wrap' },
-		{ value: 'none', label: 'No Wrap (Single Line)' }
-	];
-	const transformOptions: Array<{ value: TextTransformMode; label: string }> = [
-		{ value: 'none', label: 'Normal' },
-		{ value: 'uppercase', label: 'UPPERCASE' },
-		{ value: 'capitalize', label: 'Title Case' },
-		{ value: 'lowercase', label: 'lowercase' }
-	];
 </script>
 
 <aside
@@ -1007,12 +969,15 @@
 			<section class="space-y-3">
 				<div class="space-y-2">
 					<label for="el-text-content" class="block text-xs font-medium text-ink-secondary">
-						Text Content (highlight words to format, change font or insert {`{{property}}`})
+						Text Content (highlight words to style them with the top toolbar)
 					</label>
 
 					<RichTextEditor
 						id="el-text-content"
 						value={selected.text}
+						{editor}
+						elementId={selected.id}
+						fieldLabel="Text Content"
 						rows={3}
 						{criteria}
 						onChange={(nextText) => editor.updateElement(selected.id, { text: nextText })}
@@ -1203,6 +1168,9 @@
 										<RichTextEditor
 											id="rule-out-{rule.id}"
 											value={rule.output}
+											{editor}
+											elementId={selected.id}
+											fieldLabel="Rule {ruleIdx + 1}"
 											rows={3}
 											compact
 											{criteria}
@@ -1221,282 +1189,6 @@
 							</span>
 						</div>
 					{/if}
-				</div>
-			</section>
-		{/if}
-
-		<!-- Typography & Wrap Controls -->
-		{#if selected.type === 'placeholder' || selected.type === 'text' || selected.type === 'title'}
-			<section class="space-y-3 border-t border-border-default pt-3">
-				<h3 class="text-xs font-semibold tracking-wide text-ink-secondary uppercase">Typography</h3>
-
-				<div>
-					<label for="el-font" class="block text-xs font-medium text-ink-secondary">Font</label>
-					<FontPicker
-						id="el-font"
-						value={selected.fontFamily}
-						onSelect={(nextFont) => {
-							const previewText = stripRichTextMarkup(
-								resolveElementText(selected, sampleData, editor.previewMode)
-							);
-							const nextBox = scaleBoxForFontFamilyChange(
-								{
-									x: selected.x,
-									y: selected.y,
-									width: selected.width,
-									height: selected.height
-								},
-								previewText,
-								selected.fontFamily,
-								nextFont,
-								selected.fontSize,
-								selected.fontWeight,
-								selected.fontStyle,
-								selected.lineHeight,
-								{ width: editor.width, height: editor.height }
-							);
-							editor.updateElement(selected.id, { fontFamily: nextFont, ...nextBox });
-						}}
-					/>
-				</div>
-
-				<div class="grid grid-cols-2 gap-2">
-					<ScrubNumberInput
-						id="el-size"
-						label="Font Size"
-						min={8}
-						max={240}
-						step={1}
-						pixelsPerStep={3}
-						value={selected.fontSize}
-						onScrubStart={() => {
-							editor.pushHistorySnapshot();
-							fontSizeScrubStart = {
-								fontSize: selected.fontSize,
-								x: selected.x,
-								y: selected.y,
-								width: selected.width,
-								height: selected.height
-							};
-						}}
-						onValueChange={(next, { scrubbing }) => {
-							const base =
-								scrubbing && fontSizeScrubStart
-									? fontSizeScrubStart
-									: {
-											fontSize: selected.fontSize,
-											x: selected.x,
-											y: selected.y,
-											width: selected.width,
-											height: selected.height
-										};
-							if (!scrubbing) fontSizeScrubStart = null;
-							const nextBox = scaleBoxForFontSizeChange(
-								base,
-								base.fontSize,
-								next,
-								selected.lineHeight,
-								{ width: editor.width, height: editor.height }
-							);
-							editor.updateElement(selected.id, { fontSize: next, ...nextBox }, !scrubbing);
-						}}
-					/>
-					<div>
-						<label for="el-color" class="block text-xs font-medium text-ink-secondary">
-							Colour
-						</label>
-						<div class="mt-1 flex items-center gap-1.5">
-							<input
-								id="el-color"
-								type="color"
-								value={selected.fill}
-								oninput={(e) => editor.updateElement(selected.id, { fill: e.currentTarget.value })}
-								class="h-7 w-9 cursor-pointer rounded border border-border-strong"
-							/>
-							<input
-								type="text"
-								aria-label="Text colour hex"
-								value={selected.fill}
-								onchange={(e) => editor.updateElement(selected.id, { fill: e.currentTarget.value })}
-								class="min-h-8 w-full rounded-lg border border-border-strong px-2 py-1 text-xs font-mono"
-							/>
-						</div>
-					</div>
-				</div>
-
-				<!-- Style Toggles -->
-				<div class="flex items-center gap-1.5">
-					<button
-						type="button"
-						title="Bold"
-						onclick={() =>
-							editor.updateElement(selected.id, {
-								fontWeight: selected.fontWeight >= 600 ? 400 : 700
-							})}
-						class="flex h-8 w-8 items-center justify-center rounded-lg border text-xs {selected.fontWeight >=
-						600
-							? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-							: 'border-border-default text-ink-secondary hover:bg-surface-subtle'}"
-					>
-						<Bold class="h-3.5 w-3.5" />
-					</button>
-					<button
-						type="button"
-						title="Italic"
-						onclick={() =>
-							editor.updateElement(selected.id, {
-								fontStyle: selected.fontStyle === 'italic' ? 'normal' : 'italic'
-							})}
-						class="flex h-8 w-8 items-center justify-center rounded-lg border text-xs {selected.fontStyle ===
-						'italic'
-							? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-							: 'border-border-default text-ink-secondary hover:bg-surface-subtle'}"
-					>
-						<Italic class="h-3.5 w-3.5" />
-					</button>
-					<button
-						type="button"
-						title="Underline"
-						onclick={() =>
-							editor.updateElement(selected.id, {
-								textDecoration: selected.textDecoration === 'underline' ? '' : 'underline'
-							})}
-						class="flex h-8 w-8 items-center justify-center rounded-lg border text-xs {selected.textDecoration ===
-						'underline'
-							? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-							: 'border-border-default text-ink-secondary hover:bg-surface-subtle'}"
-					>
-						<Underline class="h-3.5 w-3.5" />
-					</button>
-
-					<select
-						aria-label="Text Case"
-						value={selected.textTransform}
-						onchange={(e) =>
-							editor.updateElement(selected.id, {
-								textTransform: e.currentTarget.value as TextTransformMode
-							})}
-						class="ml-auto rounded-lg border border-border-strong bg-white px-2 py-1.5 text-xs"
-					>
-						{#each transformOptions as opt (opt.value)}
-							<option value={opt.value}>{opt.label}</option>
-						{/each}
-					</select>
-				</div>
-
-				<!-- Horizontal Alignment -->
-				<div>
-					<span class="block text-xs font-medium text-ink-secondary">Horizontal Alignment</span>
-					<div class="mt-1 grid grid-cols-4 gap-1">
-						{#each alignOptions as opt (opt.value)}
-							<button
-								type="button"
-								title={opt.label}
-								onclick={() => editor.updateElement(selected.id, { align: opt.value })}
-								class="flex items-center justify-center rounded-lg border py-1.5 text-xs {selected.align ===
-								opt.value
-									? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-									: 'border-border-default text-ink-secondary hover:bg-surface-subtle'}"
-							>
-								{#if opt.value === 'left'}
-									<AlignLeft class="h-3.5 w-3.5" />
-								{:else if opt.value === 'center'}
-									<AlignCenter class="h-3.5 w-3.5" />
-								{:else if opt.value === 'right'}
-									<AlignRight class="h-3.5 w-3.5" />
-								{:else}
-									<AlignJustify class="h-3.5 w-3.5" />
-								{/if}
-							</button>
-						{/each}
-					</div>
-				</div>
-
-				<!-- Vertical Alignment -->
-				<div>
-					<span class="block text-xs font-medium text-ink-secondary">Vertical Alignment</span>
-					<div class="mt-1 grid grid-cols-3 gap-1">
-						{#each vAlignOptions as vOpt (vOpt)}
-							<button
-								type="button"
-								onclick={() => editor.updateElement(selected.id, { verticalAlign: vOpt })}
-								class="rounded-lg border py-1 text-xs capitalize {selected.verticalAlign === vOpt
-									? 'border-indigo-500 bg-indigo-50 font-medium text-indigo-700'
-									: 'border-border-default text-ink-secondary hover:bg-surface-subtle'}"
-							>
-								{vOpt}
-							</button>
-						{/each}
-					</div>
-				</div>
-
-				<!-- Word Wrap & Auto-Fit -->
-				<div class="grid grid-cols-2 gap-2">
-					<div>
-						<label for="el-wrap" class="block text-xs font-medium text-ink-secondary">
-							Word Wrap
-						</label>
-						<select
-							id="el-wrap"
-							value={selected.wrap}
-							onchange={(e) =>
-								editor.updateElement(selected.id, {
-									wrap: e.currentTarget.value as TextWrapMode
-								})}
-							class="mt-1 block w-full rounded-lg border border-border-strong bg-white px-2 py-1.5 text-xs"
-						>
-							{#each wrapOptions as opt (opt.value)}
-								<option value={opt.value}>{opt.label}</option>
-							{/each}
-						</select>
-					</div>
-					<ScrubNumberInput
-						id="el-line-height"
-						label="Line Height"
-						min={0.8}
-						max={3}
-						step={0.05}
-						pixelsPerStep={6}
-						value={selected.lineHeight}
-						onScrubStart={() => editor.pushHistorySnapshot()}
-						onValueChange={(next, { scrubbing }) =>
-							editor.updateElement(selected.id, { lineHeight: next }, !scrubbing)}
-					/>
-				</div>
-
-				<div class="grid grid-cols-2 gap-2">
-					<ScrubNumberInput
-						id="el-letter-spacing"
-						label="Letter Spacing"
-						min={-5}
-						max={30}
-						step={0.5}
-						pixelsPerStep={4}
-						value={selected.letterSpacing}
-						onScrubStart={() => editor.pushHistorySnapshot()}
-						onValueChange={(next, { scrubbing }) =>
-							editor.updateElement(selected.id, { letterSpacing: next }, !scrubbing)}
-					/>
-					<div class="flex flex-col justify-end gap-1 pb-1">
-						<label class="flex items-center gap-2 text-xs text-ink-primary">
-							<input
-								type="checkbox"
-								checked={selected.autoFit}
-								onchange={(e) =>
-									editor.updateElement(selected.id, { autoFit: e.currentTarget.checked })}
-							/>
-							Auto-Fit Long Text
-						</label>
-						<label class="flex items-center gap-2 text-xs text-ink-primary">
-							<input
-								type="checkbox"
-								checked={selected.ellipsis}
-								onchange={(e) =>
-									editor.updateElement(selected.id, { ellipsis: e.currentTarget.checked })}
-							/>
-							Ellipsis on Overflow
-						</label>
-					</div>
 				</div>
 			</section>
 		{/if}
