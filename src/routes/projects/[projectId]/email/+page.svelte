@@ -762,14 +762,14 @@
 
 			<div class="mt-3 max-h-[420px] overflow-auto rounded-lg border border-border-default">
 				<table class="min-w-full divide-y divide-border-default text-left text-xs">
-					<thead class="sticky top-0 bg-surface-page text-[11px] font-semibold tracking-wide text-ink-secondary uppercase">
+					<thead class="sticky top-0 z-20 bg-surface-page text-[11px] font-semibold tracking-wide text-ink-secondary uppercase shadow-[inset_0_-1px_0_0_var(--color-border-default)]">
 						<tr>
-							<th class="px-3 py-2.5">#</th>
-							<th class="px-3 py-2.5">Recipient</th>
-							<th class="px-3 py-2.5">Email</th>
-							<th class="px-3 py-2.5">Status</th>
-							<th class="px-3 py-2.5">Details</th>
-							<th class="px-3 py-2.5 text-right">Action</th>
+							<th class="sticky top-0 z-20 bg-surface-page px-3 py-2.5">#</th>
+							<th class="sticky top-0 z-20 bg-surface-page px-3 py-2.5">Recipient</th>
+							<th class="sticky top-0 z-20 bg-surface-page px-3 py-2.5">Email</th>
+							<th class="sticky top-0 z-20 bg-surface-page px-3 py-2.5">Status</th>
+							<th class="sticky top-0 z-20 bg-surface-page px-3 py-2.5">Details</th>
+							<th class="sticky top-0 z-20 bg-surface-page px-3 py-2.5 text-right">Action</th>
 						</tr>
 					</thead>
 					<tbody class="divide-y divide-border-default bg-white">
