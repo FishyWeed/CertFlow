@@ -1589,89 +1589,18 @@
 		stage.add(contentLayer);
 		stage.add(guideLayer);
 
-		// Empty-canvas click deselects; dragging on empty canvas draws a rubber-band multi-select box.
-		let marqueeStart: { x: number; y: number } | null = null;
-		let marqueeActive = false;
-		let marqueeRect: KonvaType.Rect | null = null;
-		let marqueeAdditive = false;
-
+		// Empty-canvas click deselects; dragging on empty canvas or from the surrounding sandbox
+		// draws a unified rubber-band multi-select box across the sandbox and certificate.
 		stage.on('mousedown', (evt) => {
 			if (evt.target !== stage && evt.target.name() !== 'canvas-bg') return;
-			const pos = stage?.getPointerPosition();
-			if (!pos) return;
 			const mouseEvt = evt.evt as MouseEvent | undefined;
-			marqueeAdditive = Boolean(mouseEvt?.shiftKey || mouseEvt?.ctrlKey || mouseEvt?.metaKey);
-			marqueeStart = { x: pos.x / editor.zoom, y: pos.y / editor.zoom };
-			marqueeActive = false;
-			marqueeActiveState = false;
-			clearHoverOutline();
-		});
-
-		stage.on('mousemove', () => {
-			if (!marqueeStart || !Konva || !guideLayer || !stage) return;
-			const pos = stage.getPointerPosition();
-			if (!pos) return;
-			const cx = pos.x / editor.zoom;
-			const cy = pos.y / editor.zoom;
-			if (!marqueeActive && Math.hypot(cx - marqueeStart.x, cy - marqueeStart.y) < 4) return;
-
-			marqueeActive = true;
-			marqueeActiveState = true;
-			const rx = Math.min(marqueeStart.x, cx);
-			const ry = Math.min(marqueeStart.y, cy);
-			const rw = Math.abs(cx - marqueeStart.x);
-			const rh = Math.abs(cy - marqueeStart.y);
-
-			const hitIds = findMarqueeHitIds(rx, ry, rw, rh);
-			const previewIds = marqueeAdditive
-				? Array.from(new Set([...editor.selectedIds, ...hitIds]))
-				: hitIds;
-			renderMarqueePreviewBorders(previewIds);
-
-			if (!marqueeRect) {
-				marqueeRect = new Konva.Rect({
-					x: rx,
-					y: ry,
-					width: rw,
-					height: rh,
-					fill: 'rgba(79, 70, 229, 0.12)',
-					stroke: '#4f46e5',
-					strokeWidth: 1 / Math.max(0.2, editor.zoom),
-					dash: [4 / Math.max(0.2, editor.zoom), 3 / Math.max(0.2, editor.zoom)]
-				});
-				guideLayer.add(marqueeRect);
-			} else {
-				marqueeRect.setAttrs({ x: rx, y: ry, width: rw, height: rh });
-				marqueeRect.moveToTop();
-			}
-			guideLayer.batchDraw();
-		});
-
-		stage.on('mouseup', () => {
-			if (!marqueeStart) return;
-			if (marqueeActive && marqueeRect) {
-				const rx = marqueeRect.x();
-				const ry = marqueeRect.y();
-				const rw = marqueeRect.width();
-				const rh = marqueeRect.height();
-				const hitIds = findMarqueeHitIds(rx, ry, rw, rh);
-
-				if (marqueeAdditive) {
-					editor.selectMultiple([...editor.selectedIds, ...hitIds]);
-				} else {
-					editor.selectMultiple(hitIds);
-				}
-			} else if (!marqueeAdditive) {
-				editor.clearSelection();
-			}
-
-			marqueeStart = null;
-			marqueeActive = false;
-			marqueeActiveState = false;
-			clearMarqueePreviewBorders();
-			marqueeRect?.destroy();
-			marqueeRect = null;
-			guideLayer?.batchDraw();
+			if (!mouseEvt || mouseEvt.button !== 0) return;
+			finishInlineTextEdit();
+			startMarqueeSelection(
+				mouseEvt.clientX,
+				mouseEvt.clientY,
+				Boolean(mouseEvt.shiftKey || mouseEvt.ctrlKey || mouseEvt.metaKey)
+			);
 		});
 
 		stage.on('tap', (evt) => {
@@ -1722,6 +1651,7 @@
 	});
 
 	onDestroy(() => {
+		cancelMarqueeSelection();
 		if (typeof window !== 'undefined') {
 			window.removeEventListener('wheel', handleCtrlWheel);
 		}
@@ -1733,13 +1663,135 @@
 		stage = null;
 	});
 	let isDragOver = $state(false);
+	let marqueeOverlay = $state<{ left: number; top: number; width: number; height: number } | null>(
+		null
+	);
+	let marqueeSession: {
+		startCanvasX: number;
+		startCanvasY: number;
+		startClientX: number;
+		startClientY: number;
+		active: boolean;
+		additive: boolean;
+		lastCanvasRect: { x: number; y: number; width: number; height: number } | null;
+	} | null = null;
 
-	function handleViewportPointerDown(event: PointerEvent) {
-		// Clicking the grey sandbox area surrounding the certificate finishes inline edits and deselects elements.
-		if (event.target === viewportEl) {
-			finishInlineTextEdit();
+	function detachMarqueeWindowListeners() {
+		if (typeof window === 'undefined') return;
+		window.removeEventListener('pointermove', handleMarqueePointerMove);
+		window.removeEventListener('pointerup', handleMarqueePointerUp);
+		window.removeEventListener('pointercancel', cancelMarqueeSelection);
+	}
+
+	function cancelMarqueeSelection() {
+		detachMarqueeWindowListeners();
+		marqueeSession = null;
+		marqueeOverlay = null;
+		marqueeActiveState = false;
+		clearMarqueePreviewBorders();
+		guideLayer?.batchDraw();
+	}
+
+	function startMarqueeSelection(clientX: number, clientY: number, additive: boolean) {
+		if (!viewportEl || !containerEl) return;
+		cancelMarqueeSelection();
+		const canvasRect = containerEl.getBoundingClientRect();
+		marqueeSession = {
+			startCanvasX: (clientX - canvasRect.left) / editor.zoom,
+			startCanvasY: (clientY - canvasRect.top) / editor.zoom,
+			startClientX: clientX,
+			startClientY: clientY,
+			active: false,
+			additive,
+			lastCanvasRect: null
+		};
+		clearHoverOutline();
+		if (typeof window !== 'undefined') {
+			window.addEventListener('pointermove', handleMarqueePointerMove);
+			window.addEventListener('pointerup', handleMarqueePointerUp);
+			window.addEventListener('pointercancel', cancelMarqueeSelection);
+		}
+	}
+
+	function handleMarqueePointerMove(event: PointerEvent) {
+		if (!marqueeSession || !viewportEl || !containerEl) return;
+		if (
+			!marqueeSession.active &&
+			Math.hypot(
+				event.clientX - marqueeSession.startClientX,
+				event.clientY - marqueeSession.startClientY
+			) < 4
+		) {
+			return;
+		}
+
+		marqueeSession.active = true;
+		marqueeActiveState = true;
+
+		const canvasRect = containerEl.getBoundingClientRect();
+		const vpRect = viewportEl.getBoundingClientRect();
+		const curCanvasX = (event.clientX - canvasRect.left) / editor.zoom;
+		const curCanvasY = (event.clientY - canvasRect.top) / editor.zoom;
+
+		const rx = Math.min(marqueeSession.startCanvasX, curCanvasX);
+		const ry = Math.min(marqueeSession.startCanvasY, curCanvasY);
+		const rw = Math.abs(curCanvasX - marqueeSession.startCanvasX);
+		const rh = Math.abs(curCanvasY - marqueeSession.startCanvasY);
+		marqueeSession.lastCanvasRect = { x: rx, y: ry, width: rw, height: rh };
+
+		const canvasOffsetX = canvasRect.left - vpRect.left + viewportEl.scrollLeft;
+		const canvasOffsetY = canvasRect.top - vpRect.top + viewportEl.scrollTop;
+		marqueeOverlay = {
+			left: canvasOffsetX + rx * editor.zoom,
+			top: canvasOffsetY + ry * editor.zoom,
+			width: rw * editor.zoom,
+			height: rh * editor.zoom
+		};
+
+		const hitIds = findMarqueeHitIds(rx, ry, rw, rh);
+		const previewIds = marqueeSession.additive
+			? Array.from(new Set([...editor.selectedIds, ...hitIds]))
+			: hitIds;
+		renderMarqueePreviewBorders(previewIds);
+		guideLayer?.batchDraw();
+	}
+
+	function handleMarqueePointerUp() {
+		const session = marqueeSession;
+		cancelMarqueeSelection();
+		if (!session) return;
+
+		if (session.active && session.lastCanvasRect) {
+			const { x, y, width, height } = session.lastCanvasRect;
+			const hitIds = findMarqueeHitIds(x, y, width, height);
+			if (session.additive) {
+				editor.selectMultiple([...editor.selectedIds, ...hitIds]);
+			} else {
+				editor.selectMultiple(hitIds);
+			}
+		} else if (!session.additive) {
 			editor.clearSelection();
 		}
+	}
+
+	function handleViewportPointerDown(event: PointerEvent) {
+		// Clicking or dragging in the gridded sandbox outside the certificate finishes inline edits
+		// and starts a rubber-band marquee selection that can sweep into the certificate.
+		if (event.target !== viewportEl || event.button !== 0 || !viewportEl) return;
+		const vpRect = viewportEl.getBoundingClientRect();
+		if (
+			event.clientX - vpRect.left > viewportEl.clientWidth ||
+			event.clientY - vpRect.top > viewportEl.clientHeight
+		) {
+			return;
+		}
+		event.preventDefault();
+		finishInlineTextEdit();
+		startMarqueeSelection(
+			event.clientX,
+			event.clientY,
+			Boolean(event.shiftKey || event.ctrlKey || event.metaKey)
+		);
 	}
 
 	function handleCanvasDragOver(event: DragEvent) {
@@ -1801,10 +1853,17 @@
 	bind:this={viewportEl}
 	role="presentation"
 	onpointerdown={handleViewportPointerDown}
-	class="relative flex min-h-[260px] w-full min-w-0 flex-1 bg-surface-subtle p-3 sm:p-6 lg:min-h-0 dark:bg-[#070b14] {editor.autoFitZoom
+	class="editor-sandbox-grid relative flex min-h-[260px] w-full min-w-0 flex-1 p-3 sm:p-6 lg:min-h-0 {editor.autoFitZoom
 		? 'overflow-hidden'
-		: 'overflow-auto'}"
+		: 'overflow-auto'} {marqueeOverlay ? 'select-none' : ''}"
 >
+	{#if marqueeOverlay}
+		<div
+			aria-hidden="true"
+			style="left: {marqueeOverlay.left}px; top: {marqueeOverlay.top}px; width: {marqueeOverlay.width}px; height: {marqueeOverlay.height}px;"
+			class="pointer-events-none absolute z-30 border border-dashed border-indigo-600 bg-indigo-500/12"
+		></div>
+	{/if}
 	<div
 		class="preserve-light relative m-auto shrink-0 rounded-sm bg-white shadow-md ring-2 transition {isDragOver
 			? 'ring-accent'
