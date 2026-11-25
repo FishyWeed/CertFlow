@@ -4,6 +4,7 @@ import { getUserAccountUsage } from '#lib/server/asset-cleanup.ts';
 import { db } from '#lib/server/db/index.ts';
 import { senderProfiles } from '#lib/server/db/schema.ts';
 import { getMailCapabilities } from '#lib/server/mail.ts';
+import { getPortableRuntimeInfo } from '#lib/server/portable-updater.ts';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -34,10 +35,17 @@ export const load: PageServerLoad = async ({ locals }) => {
 		hasSmtpPassword: Boolean(smtpPassEncrypted)
 	}));
 
+	const portableInfo = getPortableRuntimeInfo();
+
 	return {
 		user: locals.user,
 		profiles,
 		usage,
-		mailCapabilities: getMailCapabilities()
+		mailCapabilities: getMailCapabilities(),
+		portableInfo: {
+			isPortable: portableInfo.isPortable,
+			currentVersion: portableInfo.currentVersion,
+			target: portableInfo.target
+		}
 	};
 };

@@ -32,7 +32,7 @@ Use this map to place each new file in its fixed folder.
 | `src/lib/features/certificates/` | Offscreen PDF, PNG, JPG and ZIP renderer (`renderer.ts`), `CertificatePreviewPane.svelte` and `CertificatePropertiesPanel.svelte`. |
 | `src/lib/templates/` | Six starter certificate template presets (`starter.ts`). |
 | `src/lib/server/db/` | PostgreSQL / PGlite connection (`index.ts`) and Drizzle schema (`schema.ts`). |
-| `src/lib/server/` | Server-only modules (`runtime-config.ts`, `auth.ts`, `crypto.ts`, `storage.ts`, `asset-cleanup.ts`, `projects.ts`, `mail.ts`). |
+| `src/lib/server/` | Server-only modules (`runtime-config.ts`, `portable-updater.ts`, `auth.ts`, `crypto.ts`, `storage.ts`, `asset-cleanup.ts`, `projects.ts`, `mail.ts`). |
 
 ## Rules for New Work
 

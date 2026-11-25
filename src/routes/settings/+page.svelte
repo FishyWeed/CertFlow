@@ -6,12 +6,15 @@
 		BookOpen,
 		ChevronDown,
 		ChevronUp,
+		Download,
 		ExternalLink,
 		HardDrive,
 		KeyRound,
+		Loader2,
 		Mail,
 		Pencil,
 		Plus,
+		RefreshCw,
 		Save,
 		Trash2,
 		User,
@@ -48,6 +51,92 @@
 	let cleaningStorage = $state(false);
 	let cleanupStatus = $state('');
 	let cleanupStatusTone = $state<'success' | 'error'>('success');
+
+	// Portable app self-updater state (only rendered in Portable Edition)
+	interface PortableUpdateCheck {
+		currentVersion: string;
+		latestVersion: string;
+		updateAvailable: boolean;
+		releaseUrl: string;
+		releaseNotes: string;
+		publishedAt: string | null;
+		assetName: string | null;
+		assetUrl: string | null;
+		assetSizeBytes: number;
+	}
+	let checkingUpdates = $state(false);
+	let installingUpdate = $state(false);
+	let updateCheckResult = $state<PortableUpdateCheck | null>(null);
+	let updateMessage = $state('');
+	let updateMessageTone = $state<'info' | 'success' | 'error'>('info');
+
+	async function handleCheckPortableUpdates() {
+		checkingUpdates = true;
+		updateMessage = '';
+		try {
+			const res = await fetch('/api/portable/update');
+			if (!res.ok) {
+				const err = await res.json().catch(() => ({}));
+				throw new Error(err.message ?? 'Could not check GitHub for updates.');
+			}
+			const result = (await res.json()) as PortableUpdateCheck;
+			updateCheckResult = result;
+			if (!result.updateAvailable) {
+				updateMessageTone = 'success';
+				updateMessage = `You are running the latest version (${result.currentVersion}).`;
+			} else {
+				updateMessageTone = 'info';
+				updateMessage = `Version ${result.latestVersion} is available.`;
+			}
+		} catch (err) {
+			updateMessageTone = 'error';
+			updateMessage = err instanceof Error ? err.message : 'Update check failed.';
+		} finally {
+			checkingUpdates = false;
+		}
+	}
+
+	async function waitForServerRestartAndReload() {
+		// Wait briefly for the old process to exit and hand off to the updater script.
+		await new Promise((r) => setTimeout(r, 2500));
+		const deadline = Date.now() + 90_000;
+		while (Date.now() < deadline) {
+			try {
+				const res = await fetch('/api/health', { cache: 'no-store' });
+				if (res.ok) {
+					window.location.reload();
+					return;
+				}
+			} catch {
+				// Server is restarting; keep polling until it comes back online.
+			}
+			await new Promise((r) => setTimeout(r, 1500));
+		}
+		installingUpdate = false;
+		updateMessageTone = 'info';
+		updateMessage =
+			'Update installed. If this page did not reload automatically, refresh your browser or double-click Start-CertFlow.';
+	}
+
+	async function handleInstallPortableUpdate() {
+		installingUpdate = true;
+		updateMessageTone = 'info';
+		updateMessage = 'Downloading update archive from GitHub... Please keep this window open.';
+		try {
+			const res = await fetch('/api/portable/update', { method: 'POST' });
+			if (!res.ok) {
+				const err = await res.json().catch(() => ({}));
+				throw new Error(err.message ?? 'Could not install the update.');
+			}
+			const body = (await res.json()) as { version: string };
+			updateMessage = `Installing ${body.version} and restarting CertFlow... This page will reload automatically.`;
+			await waitForServerRestartAndReload();
+		} catch (err) {
+			installingUpdate = false;
+			updateMessageTone = 'error';
+			updateMessage = err instanceof Error ? err.message : 'Could not install the update.';
+		}
+	}
 
 	const projectPercent = $derived(
 		Math.min(100, Math.round((data.usage.projectCount / Math.max(1, data.usage.maxProjects)) * 100))
@@ -595,6 +684,111 @@
 					</div>
 				</div>
 			</section>
+
+			{#if data.portableInfo?.isPortable}
+				<!-- Portable Edition Self-Updater -->
+				<section class="rounded-xl border border-border-default bg-surface-card p-5">
+					<div class="flex flex-wrap items-center justify-between gap-3">
+						<div class="flex items-center gap-2">
+							<Download class="h-4 w-4 text-accent" />
+							<h2 class="text-sm font-semibold text-ink-primary">Portable App Updates</h2>
+							<Badge tone="indigo">{data.portableInfo.currentVersion}</Badge>
+							{#if data.portableInfo.target}
+								<Badge tone="neutral">{data.portableInfo.target}</Badge>
+							{/if}
+						</div>
+						<Button
+							type="button"
+							size="sm"
+							variant="secondary"
+							disabled={checkingUpdates || installingUpdate}
+							onclick={handleCheckPortableUpdates}
+						>
+							{#if checkingUpdates}
+								<Loader2 class="h-3.5 w-3.5 animate-spin" />
+								Checking...
+							{:else}
+								<RefreshCw class="h-3.5 w-3.5" />
+								Check for Updates
+							{/if}
+						</Button>
+					</div>
+					<p class="mt-1 text-xs text-ink-secondary">
+						Check GitHub Releases for newer CertFlow Portable versions and update this folder in
+						place. Your projects, database and uploaded images inside <code>data/</code> stay untouched.
+					</p>
+
+					{#if updateMessage}
+						<div
+							class="mt-3 rounded-lg border px-3.5 py-2.5 text-xs {updateMessageTone === 'error'
+								? 'border-red-200 bg-red-50 text-red-900'
+								: updateMessageTone === 'success'
+									? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+									: 'border-indigo-200 bg-indigo-50 text-indigo-900'}"
+						>
+							{updateMessage}
+						</div>
+					{/if}
+
+					{#if updateCheckResult?.updateAvailable}
+						<div class="mt-4 space-y-3 rounded-lg border border-indigo-200 bg-surface-page p-4">
+							<div class="flex flex-wrap items-center justify-between gap-2">
+								<div>
+									<p class="text-xs font-semibold text-ink-primary">
+										New release ready: {updateCheckResult.latestVersion}
+									</p>
+									{#if updateCheckResult.assetName}
+										<p class="mt-0.5 text-[11px] text-ink-muted">
+											{updateCheckResult.assetName}
+											{#if updateCheckResult.assetSizeBytes > 0}
+												({formatBytes(updateCheckResult.assetSizeBytes)})
+											{/if}
+										</p>
+									{/if}
+								</div>
+								<a
+									href={updateCheckResult.releaseUrl}
+									target="_blank"
+									rel="noopener noreferrer"
+									class="inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline"
+								>
+									Release Notes
+									<ExternalLink class="h-3 w-3" />
+								</a>
+							</div>
+
+							{#if updateCheckResult.releaseNotes}
+								<pre
+									class="max-h-32 overflow-y-auto rounded-md border border-border-default bg-surface-card p-2.5 text-[11px] whitespace-pre-wrap text-ink-secondary"
+								>{updateCheckResult.releaseNotes}</pre>
+							{/if}
+
+							<div class="flex flex-wrap items-center gap-2">
+								<Button
+									type="button"
+									size="sm"
+									variant="primary"
+									disabled={installingUpdate || !updateCheckResult.assetUrl}
+									onclick={handleInstallPortableUpdate}
+								>
+									{#if installingUpdate}
+										<Loader2 class="h-3.5 w-3.5 animate-spin" />
+										Downloading &amp; Installing...
+									{:else}
+										<Download class="h-3.5 w-3.5" />
+										Download &amp; Install Update
+									{/if}
+								</Button>
+								{#if !updateCheckResult.assetUrl}
+									<span class="text-[11px] text-amber-700">
+										No matching archive for {data.portableInfo.target} was found in this release yet.
+									</span>
+								{/if}
+							</div>
+						</div>
+					{/if}
+				</section>
+			{/if}
 		{:else}
 			<!-- Email Sender Profiles Tab -->
 			{#if status}

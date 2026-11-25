@@ -72,15 +72,20 @@ function buildWindowsLauncher() {
 		'setlocal',
 		'title CertFlow',
 		'set "ROOT=%~dp0"',
+		'if "%ROOT:~-1%"=="\\" set "ROOT=%ROOT:~0,-1%"',
 		'if "%CERTFLOW_PORT%"=="" (set "PORT=3000") else (set "PORT=%CERTFLOW_PORT%")',
 		'set "HOST=127.0.0.1"',
 		'set "ORIGIN=http://localhost:%PORT%"',
 		'set "NODE_ENV=production"',
 		'set "CERTFLOW_SELF_HOSTED=true"',
-		'set "CERTFLOW_DATA_DIR=%ROOT%data"',
-		'set "LOCAL_UPLOAD_DIR=%ROOT%data\\uploads"',
+		'set "CERTFLOW_PORTABLE=true"',
+		'set "CERTFLOW_PORTABLE_ROOT=%ROOT%"',
+		'set "CERTFLOW_PORTABLE_TARGET=win-x64"',
+		`set "CERTFLOW_VERSION=${RELEASE_VERSION}"`,
+		'set "CERTFLOW_DATA_DIR=%ROOT%\\data"',
+		'set "LOCAL_UPLOAD_DIR=%ROOT%\\data\\uploads"',
 		'set "STORAGE_DRIVER=local"',
-		'set "CERTFLOW_APP_DIR=%ROOT%app"',
+		'set "CERTFLOW_APP_DIR=%ROOT%\\app"',
 		'',
 		'echo ========================================',
 		'echo   CertFlow Portable Edition',
@@ -102,8 +107,8 @@ function buildWindowsLauncher() {
 		'',
 		'start "" /b powershell -NoProfile -Command "$deadline = (Get-Date).AddSeconds(45); while ((Get-Date) -lt $deadline) { try { $r = Invoke-WebRequest -UseBasicParsing -TimeoutSec 2 \'http://127.0.0.1:%PORT%/api/health\'; if ($r.StatusCode -eq 200) { Start-Process \'http://localhost:%PORT%\'; break } } catch {}; Start-Sleep -Milliseconds 700 }"',
 		'',
-		'cd /d "%ROOT%app"',
-		'"%ROOT%runtime\\node.exe" "%ROOT%app\\scripts\\start.mjs"',
+		'cd /d "%ROOT%\\app"',
+		'"%ROOT%\\runtime\\node.exe" "%ROOT%\\app\\scripts\\start.mjs"',
 		'',
 		'echo.',
 		'echo CertFlow has stopped.',
@@ -112,7 +117,7 @@ function buildWindowsLauncher() {
 	].join('\r\n');
 }
 
-function buildUnixLauncher(isMac) {
+function buildUnixLauncher(targetKey, isMac) {
 	const openCmd = isMac ? 'open "http://localhost:${PORT}"' : 'xdg-open "http://localhost:${PORT}"';
 	return [
 		'#!/usr/bin/env bash',
@@ -124,6 +129,10 @@ function buildUnixLauncher(isMac) {
 		'export ORIGIN="http://localhost:${PORT}"',
 		'export NODE_ENV="production"',
 		'export CERTFLOW_SELF_HOSTED="true"',
+		'export CERTFLOW_PORTABLE="true"',
+		'export CERTFLOW_PORTABLE_ROOT="${ROOT}"',
+		`export CERTFLOW_PORTABLE_TARGET="${targetKey}"`,
+		`export CERTFLOW_VERSION="${RELEASE_VERSION}"`,
 		'export CERTFLOW_DATA_DIR="${ROOT}/data"',
 		'export LOCAL_UPLOAD_DIR="${ROOT}/data/uploads"',
 		'export STORAGE_DRIVER="local"',
@@ -287,6 +296,22 @@ async function buildTarget(targetKey) {
 		recursive: true
 	});
 
+	// Write portable metadata so Settings can check GitHub Releases and apply in-place updates safely.
+	writeFileSync(
+		join(appDir, 'portable-meta.json'),
+		`${JSON.stringify(
+			{
+				portable: true,
+				version: RELEASE_VERSION,
+				target: targetKey,
+				repo: 'FishyWeed/CertFlow'
+			},
+			null,
+			2
+		)}\n`,
+		'utf8'
+	);
+
 	// Download and bundle only the single portable Node.js binary for this OS/arch.
 	const archivePath = await downloadNodeArchive(cfg.nodeArchive);
 	extractNodeBinary(archivePath, cfg.archiveType, cfg.nodeBinRel, join(bundleDir, cfg.destNodeRel));
@@ -296,7 +321,7 @@ async function buildTarget(targetKey) {
 	const launcherBody =
 		targetKey === 'win-x64'
 			? buildWindowsLauncher()
-			: buildUnixLauncher(targetKey.startsWith('darwin'));
+			: buildUnixLauncher(targetKey, targetKey.startsWith('darwin'));
 	writeFileSync(launcherPath, launcherBody, 'utf8');
 	if (cfg.launcherMode === 0o755) {
 		chmodSync(launcherPath, 0o755);
