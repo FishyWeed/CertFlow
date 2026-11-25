@@ -26,7 +26,8 @@
 					password
 				});
 				if (res.error) {
-					errorMessage = res.error.message ?? 'Could not create account.';
+					errorMessage =
+						res.error.message || res.error.statusText || 'Could not create account.';
 					return;
 				}
 			} else {
@@ -35,7 +36,8 @@
 					password
 				});
 				if (res.error) {
-					errorMessage = res.error.message ?? 'Invalid email or password.';
+					errorMessage =
+						res.error.message || res.error.statusText || 'Invalid email or password.';
 					return;
 				}
 			}

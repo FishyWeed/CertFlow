@@ -6,10 +6,23 @@ import { BETTER_AUTH_SECRET, BETTER_AUTH_URL } from '$app/env/private';
 import { db } from './db/index.ts';
 import * as schema from './db/schema.ts';
 
+const railwayUrl = process.env.RAILWAY_PUBLIC_DOMAIN
+	? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+	: null;
+
+const resolvedBaseUrl =
+	BETTER_AUTH_URL && BETTER_AUTH_URL !== 'http://localhost:5678'
+		? BETTER_AUTH_URL
+		: (railwayUrl ?? BETTER_AUTH_URL);
+
+const trustedOrigins = Array.from(
+	new Set([resolvedBaseUrl, railwayUrl].filter((value): value is string => Boolean(value)))
+);
+
 export const auth = betterAuth({
-	baseURL: BETTER_AUTH_URL,
+	baseURL: resolvedBaseUrl,
 	secret: BETTER_AUTH_SECRET,
-	trustedOrigins: [BETTER_AUTH_URL],
+	trustedOrigins,
 	database: drizzleAdapter(db, {
 		provider: 'pg',
 		schema
