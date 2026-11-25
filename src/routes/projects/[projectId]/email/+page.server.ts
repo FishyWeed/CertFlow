@@ -14,7 +14,8 @@ export const load: PageServerLoad = async ({ parent }) => {
 				label: senderProfiles.label,
 				mode: senderProfiles.mode,
 				senderName: senderProfiles.senderName,
-				senderEmail: senderProfiles.senderEmail
+				senderEmail: senderProfiles.senderEmail,
+				smtpHost: senderProfiles.smtpHost
 			})
 			.from(senderProfiles)
 			.where(eq(senderProfiles.userId, user.id))

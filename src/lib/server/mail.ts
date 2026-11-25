@@ -54,17 +54,22 @@ export function interpolateEmailTemplate(
 	return template.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, key: string) => values[key] ?? '');
 }
 
-async function sendViaBrevoApi(input: SendCertificateEmailInput): Promise<{ messageId: string }> {
+async function sendViaBrevoApi(
+	input: SendCertificateEmailInput,
+	apiKey: string,
+	explicitFromEmail?: string
+): Promise<{ messageId: string }> {
 	const fromEmail =
-		DEFAULT_FROM_EMAIL && DEFAULT_FROM_EMAIL !== 'certificates@certflow.local'
+		explicitFromEmail ||
+		(DEFAULT_FROM_EMAIL && DEFAULT_FROM_EMAIL !== 'certificates@certflow.local'
 			? DEFAULT_FROM_EMAIL
-			: input.sender.senderEmail;
+			: input.sender.senderEmail);
 	const fromName = input.sender.senderName || DEFAULT_FROM_NAME || 'CertFlow';
 
 	const res = await fetch('https://api.brevo.com/v3/smtp/email', {
 		method: 'POST',
 		headers: {
-			'api-key': BREVO_API_KEY.trim(),
+			'api-key': apiKey.trim(),
 			'content-type': 'application/json',
 			accept: 'application/json'
 		},
@@ -90,17 +95,22 @@ async function sendViaBrevoApi(input: SendCertificateEmailInput): Promise<{ mess
 	return { messageId: data.messageId ?? `brevo-${Date.now()}` };
 }
 
-async function sendViaResendApi(input: SendCertificateEmailInput): Promise<{ messageId: string }> {
+async function sendViaResendApi(
+	input: SendCertificateEmailInput,
+	apiKey: string,
+	explicitFromEmail?: string
+): Promise<{ messageId: string }> {
 	const fromEmail =
-		DEFAULT_FROM_EMAIL && DEFAULT_FROM_EMAIL !== 'certificates@certflow.local'
+		explicitFromEmail ||
+		(DEFAULT_FROM_EMAIL && DEFAULT_FROM_EMAIL !== 'certificates@certflow.local'
 			? DEFAULT_FROM_EMAIL
-			: input.sender.senderEmail;
+			: input.sender.senderEmail);
 	const fromName = input.sender.senderName || DEFAULT_FROM_NAME || 'CertFlow';
 
 	const res = await fetch('https://api.resend.com/emails', {
 		method: 'POST',
 		headers: {
-			authorization: `Bearer ${RESEND_API_KEY.trim()}`,
+			authorization: `Bearer ${apiKey.trim()}`,
 			'content-type': 'application/json'
 		},
 		body: JSON.stringify({
@@ -127,25 +137,44 @@ async function sendViaResendApi(input: SendCertificateEmailInput): Promise<{ mes
 
 /**
  * Sends a single certificate email using:
+ * - a saved Brevo or Resend HTTPS API sender profile (port 443, works on Railway Free/Hobby), OR
  * - the user's encrypted custom SMTP server (mode === 'smtp'), OR
- * - Brevo HTTPS API (when BREVO_API_KEY is set — port 443, works on Railway Free/Hobby), OR
- * - Resend HTTPS API (when RESEND_API_KEY is set — port 443, works on Railway Free/Hobby), OR
+ * - server-wide Brevo/Resend HTTPS API (when BREVO_API_KEY / RESEND_API_KEY is set), OR
  * - local file outbox (when SMTP_HOST === 'local-outbox', zero external services needed in dev), OR
  * - platform default SMTP relay with Reply-To set to the chosen sender.
  */
 export async function sendCertificateEmail(
 	input: SendCertificateEmailInput
 ): Promise<{ messageId: string; deliveryMode: MailDeliveryMode }> {
+	const profileHost = input.sender.smtpHost?.trim().toLowerCase() ?? '';
+	if (input.sender.mode === 'smtp' && profileHost === 'api.brevo.com') {
+		if (!input.sender.smtpPassEncrypted) {
+			throw new Error('Saved Brevo profile is missing an API key. Edit the profile in Account Settings.');
+		}
+		const apiKey = decryptSecret(input.sender.smtpPassEncrypted).trim();
+		const res = await sendViaBrevoApi(input, apiKey, input.sender.senderEmail);
+		return { messageId: res.messageId, deliveryMode: 'api' };
+	}
+
+	if (input.sender.mode === 'smtp' && profileHost === 'api.resend.com') {
+		if (!input.sender.smtpPassEncrypted) {
+			throw new Error('Saved Resend profile is missing an API key. Edit the profile in Account Settings.');
+		}
+		const apiKey = decryptSecret(input.sender.smtpPassEncrypted).trim();
+		const res = await sendViaResendApi(input, apiKey, input.sender.senderEmail);
+		return { messageId: res.messageId, deliveryMode: 'api' };
+	}
+
 	const useCustomSmtp =
 		input.sender.mode === 'smtp' && input.sender.smtpHost && input.sender.smtpPort;
 
 	if (!useCustomSmtp && BREVO_API_KEY.trim()) {
-		const res = await sendViaBrevoApi(input);
+		const res = await sendViaBrevoApi(input, BREVO_API_KEY);
 		return { messageId: res.messageId, deliveryMode: 'api' };
 	}
 
 	if (!useCustomSmtp && RESEND_API_KEY.trim()) {
-		const res = await sendViaResendApi(input);
+		const res = await sendViaResendApi(input, RESEND_API_KEY);
 		return { messageId: res.messageId, deliveryMode: 'api' };
 	}
 

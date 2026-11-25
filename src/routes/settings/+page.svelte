@@ -14,8 +14,10 @@
 	let deletingId = $state<string | null>(null);
 	let formSectionEl = $state<HTMLElement | null>(null);
 
+	type ProfileFormMode = 'brevo_api' | 'resend_api' | 'smtp' | 'custom_reply_to';
+
 	let label = $state('');
-	let mode = $state<'custom_reply_to' | 'smtp'>('custom_reply_to');
+	let mode = $state<ProfileFormMode>('brevo_api');
 	let senderName = $state('');
 	let senderEmail = $state('');
 	let smtpHost = $state('smtp.gmail.com');
@@ -27,11 +29,27 @@
 	let statusTone = $state<'success' | 'error'>('success');
 	let saving = $state(false);
 
+	function detectFormMode(profile: { mode: string; smtpHost?: string | null }): ProfileFormMode {
+		const host = profile.smtpHost?.trim().toLowerCase() ?? '';
+		if (profile.mode === 'smtp' && host === 'api.brevo.com') return 'brevo_api';
+		if (profile.mode === 'smtp' && host === 'api.resend.com') return 'resend_api';
+		if (profile.mode === 'smtp') return 'smtp';
+		return 'custom_reply_to';
+	}
+
+	function profileBadgeLabel(profile: { mode: string; smtpHost?: string | null }): string {
+		const kind = detectFormMode(profile);
+		if (kind === 'brevo_api') return 'Brevo API';
+		if (kind === 'resend_api') return 'Resend API';
+		if (kind === 'smtp') return 'SMTP';
+		return 'Reply-To';
+	}
+
 	function resetForm() {
 		editingId = null;
 		editingHasPassword = false;
 		label = '';
-		mode = 'custom_reply_to';
+		mode = 'brevo_api';
 		senderName = '';
 		senderEmail = '';
 		smtpHost = 'smtp.gmail.com';
@@ -46,12 +64,13 @@
 		editingHasPassword = profile.hasSmtpPassword;
 		confirmDeleteId = null;
 		label = profile.label;
-		mode = profile.mode === 'smtp' ? 'smtp' : 'custom_reply_to';
+		mode = detectFormMode(profile);
 		senderName = profile.senderName;
 		senderEmail = profile.senderEmail;
-		smtpHost = profile.smtpHost ?? 'smtp.gmail.com';
-		smtpPort = profile.smtpPort ?? 465;
-		smtpSecure = profile.smtpSecure ?? smtpPort === 465;
+		smtpHost =
+			mode === 'smtp' ? (profile.smtpHost ?? 'smtp.gmail.com') : 'smtp.gmail.com';
+		smtpPort = mode === 'smtp' ? (profile.smtpPort ?? 465) : 465;
+		smtpSecure = mode === 'smtp' ? (profile.smtpSecure ?? smtpPort === 465) : true;
 		smtpUser = profile.smtpUser ?? '';
 		smtpPassword = '';
 		status = '';
@@ -63,6 +82,10 @@
 		saving = true;
 		status = '';
 		const isEditing = editingId !== null;
+		const isBrevo = mode === 'brevo_api';
+		const isResend = mode === 'resend_api';
+		const isApiOrSmtp = isBrevo || isResend || mode === 'smtp';
+		const payloadMode = isApiOrSmtp ? 'smtp' : 'custom_reply_to';
 		try {
 			const url = isEditing ? `/api/sender-profiles/${editingId}` : '/api/sender-profiles';
 			const res = await fetch(url, {
@@ -70,14 +93,20 @@
 				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify({
 					label,
-					mode,
+					mode: payloadMode,
 					senderName,
 					senderEmail,
-					smtpHost: mode === 'smtp' ? smtpHost : undefined,
-					smtpPort: mode === 'smtp' ? Number(smtpPort) : undefined,
-					smtpSecure: mode === 'smtp' ? smtpSecure : undefined,
-					smtpUser: mode === 'smtp' ? smtpUser : undefined,
-					smtpPassword: mode === 'smtp' && smtpPassword ? smtpPassword : undefined
+					smtpHost: isBrevo
+						? 'api.brevo.com'
+						: isResend
+							? 'api.resend.com'
+							: mode === 'smtp'
+								? smtpHost
+								: undefined,
+					smtpPort: isBrevo || isResend ? 443 : mode === 'smtp' ? Number(smtpPort) : undefined,
+					smtpSecure: isBrevo || isResend ? true : mode === 'smtp' ? smtpSecure : undefined,
+					smtpUser: isBrevo || isResend ? senderEmail : mode === 'smtp' ? smtpUser : undefined,
+					smtpPassword: isApiOrSmtp && smtpPassword ? smtpPassword : undefined
 				})
 			});
 			if (!res.ok) {
@@ -192,8 +221,10 @@
 							bind:value={mode}
 							class="mt-1 block w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm"
 						>
-							<option value="custom_reply_to">Custom Reply-To (uses default mail relay)</option>
-							<option value="smtp">Custom SMTP Server (true From: address)</option>
+							<option value="brevo_api">Brevo HTTPS API (Free, works on Railway &amp; Gmail)</option>
+							<option value="resend_api">Resend HTTPS API (Free, works on Railway with custom domain)</option>
+							<option value="smtp">Custom SMTP Server (ports 465/587 — local dev / Railway Pro)</option>
+							<option value="custom_reply_to">Custom Reply-To (uses server default relay)</option>
 						</select>
 					</div>
 				</div>
@@ -227,8 +258,42 @@
 					</div>
 				</div>
 
-				{#if mode === 'smtp'}
+				{#if mode === 'brevo_api' || mode === 'resend_api'}
+					<div class="space-y-2 rounded-lg border border-border-default bg-surface-page p-3">
+						<label for="api-key-input" class="block text-xs font-medium text-ink-secondary">
+							{mode === 'brevo_api'
+								? 'Brevo API Key (AES-256-GCM encrypted)'
+								: 'Resend API Key (AES-256-GCM encrypted)'}
+						</label>
+						<input
+							id="api-key-input"
+							type="password"
+							required={!editingId || !editingHasPassword}
+							autocomplete="new-password"
+							placeholder={editingId && editingHasPassword
+								? 'Leave blank to keep saved API key'
+								: mode === 'brevo_api'
+									? 'xkeysib-...'
+									: 're_...'}
+							bind:value={smtpPassword}
+							class="block w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm"
+						/>
+						<p class="text-[11px] text-ink-muted">
+							{#if mode === 'brevo_api'}
+								Sends over HTTPS (port 443), so it works on Railway Free and Hobby plans. Verify
+								your Sender Email in Brevo under Senders, then paste your API key from SMTP &amp; API.
+							{:else}
+								Sends over HTTPS (port 443), so it works on Railway Free and Hobby plans. Verify
+								your sending domain in Resend, then paste your API key.
+							{/if}
+						</p>
+					</div>
+				{:else if mode === 'smtp'}
 					<div class="grid gap-3 rounded-lg border border-border-default bg-surface-page p-3 sm:grid-cols-2">
+						<p class="text-[11px] text-amber-800 sm:col-span-2">
+							Note: Railway Free, Trial and Hobby plans block outbound SMTP ports 465 and 587. Use
+							<strong>Brevo HTTPS API</strong> above on Railway Free/Hobby.
+						</p>
 						<div>
 							<label for="smtp-host" class="block text-xs font-medium text-ink-secondary">
 								SMTP Host
@@ -337,7 +402,9 @@
 								</p>
 							</div>
 							<div class="flex flex-wrap items-center gap-2">
-								<Badge tone={profile.mode === 'smtp' ? 'sky' : 'neutral'}>{profile.mode}</Badge>
+								<Badge tone={profile.mode === 'smtp' ? 'sky' : 'neutral'}>
+									{profileBadgeLabel(profile)}
+								</Badge>
 								<Button
 									type="button"
 									size="sm"

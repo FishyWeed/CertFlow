@@ -331,7 +331,7 @@
 							? 'border-sky-500 bg-sky-50 text-sky-950'
 							: 'border-border-default bg-white text-ink-secondary'}"
 					>
-						<p class="font-semibold">Saved SMTP Profile</p>
+						<p class="font-semibold">Saved SMTP / API Profile</p>
 						<p class="mt-0.5 text-[11px]">{data.senderProfiles.length} saved in Account</p>
 					</button>
 				</div>
@@ -377,8 +377,17 @@
 							>
 								<option value="">Select a saved profile</option>
 								{#each data.senderProfiles as profile (profile.id)}
+									{@const host = profile.smtpHost?.toLowerCase() ?? ''}
+									{@const modeLabel =
+										profile.mode === 'smtp' && host === 'api.brevo.com'
+											? 'Brevo API'
+											: profile.mode === 'smtp' && host === 'api.resend.com'
+												? 'Resend API'
+												: profile.mode === 'smtp'
+													? 'SMTP'
+													: 'Reply-To'}
 									<option value={profile.id}>
-										{profile.label} — {profile.senderEmail} ({profile.mode})
+										{profile.label} — {profile.senderEmail} ({modeLabel})
 									</option>
 								{/each}
 							</select>
