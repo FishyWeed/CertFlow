@@ -1338,14 +1338,46 @@
 										>
 											Show Text
 										</label>
-										<input
+										<textarea
 											id="rule-out-{rule.id}"
-											type="text"
+											rows={3}
 											value={rule.output}
 											oninput={(e) => updateRuleOutput(rule.id, e.currentTarget.value)}
-											placeholder="e.g. Certificate of Award"
-											class="mt-1 block w-full rounded-md border border-border-strong bg-white px-2 py-1 text-xs font-medium outline-none focus:border-accent"
-										/>
+											ondragover={(e) => {
+												if (e.dataTransfer?.types.includes('text/plain')) {
+													e.preventDefault();
+													e.dataTransfer.dropEffect = 'copy';
+												}
+											}}
+											ondrop={(e) => {
+												const token = e.dataTransfer?.getData('text/plain');
+												if (!token) return;
+												e.preventDefault();
+												const ta = e.currentTarget;
+												const start = ta.selectionStart ?? rule.output.length;
+												const end = ta.selectionEnd ?? rule.output.length;
+												const nextOutput =
+													rule.output.slice(0, start) + token + rule.output.slice(end);
+												updateRuleOutput(rule.id, nextOutput);
+											}}
+											placeholder={'e.g. for winning {{rank}}\nat {{title}}'}
+											class="mt-1 block w-full resize-y rounded-md border border-border-strong bg-white px-2 py-1.5 text-xs font-medium outline-none focus:border-accent"
+										></textarea>
+										<div class="mt-1.5 flex flex-wrap gap-1">
+											{#each criteria as prop (prop.key)}
+												<button
+													type="button"
+													onclick={() =>
+														updateRuleOutput(
+															rule.id,
+															`${rule.output}${rule.output && !rule.output.endsWith(' ') && !rule.output.endsWith('\n') ? ' ' : ''}{{${prop.key}}}`
+														)}
+													class="rounded border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 font-mono text-[10px] text-indigo-700 hover:bg-indigo-100"
+												>
+													{`{{${prop.key}}}`}
+												</button>
+											{/each}
+										</div>
 									</div>
 								</div>
 							{/each}
@@ -1353,7 +1385,7 @@
 
 						<div class="rounded-lg border border-amber-200 bg-white px-2.5 py-1.5 text-[11px]">
 							<span class="text-ink-muted">Current preview output:</span>
-							<span class="ml-1 font-semibold text-ink-primary">
+							<span class="mt-0.5 block whitespace-pre-wrap font-semibold text-ink-primary">
 								{stripRichTextMarkup(resolveElementText(selected, sampleData, 'sample'))}
 							</span>
 						</div>
