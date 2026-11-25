@@ -30,20 +30,25 @@ Deploy CertFlow on Railway with PostgreSQL and a persistent Volume mounted at `/
 
 > **Maintainer note for 1-click stack provisioning**: Open the CertFlow project in Railway, go to **Project Settings -> General -> Create Template**, replace personal values for `BETTER_AUTH_SECRET` and `ENCRYPTION_KEY` with `${{secret(64)}}` and publish the template. Then replace `https://railway.com/new` in the button above with `https://railway.com/new/template/<TEMPLATE_CODE>` so Railway provisions CertFlow, PostgreSQL, the Volume and secrets in one click.
 
-### Option 3: Portable Desktop ZIP (No Docker, No Node.js Required)
+### Option 3: Windows Installer or Portable Desktop ZIP (No Docker, No Node.js Required)
 
 Run CertFlow offline on Windows, macOS or Linux with zero dependencies installed:
 
-1. Open [GitHub Releases](https://github.com/FishyWeed/CertFlow/releases) and download the ZIP for your computer:
-   - Windows: `CertFlow-vX.Y.Z-win-x64.zip`
-   - macOS (Apple Silicon): `CertFlow-vX.Y.Z-darwin-arm64.zip`
-   - macOS (Intel): `CertFlow-vX.Y.Z-darwin-x64.zip`
-   - Linux: `CertFlow-vX.Y.Z-linux-x64.zip`
-2. Unzip the folder anywhere (Desktop, Documents or a USB drive).
-3. Double-click **`Start-CertFlow.bat`** (Windows) or **`Start-CertFlow.command`** (macOS).
-4. Your browser opens `http://localhost:3000` automatically. Enter your name, email and password, then click **Start CertFlow**.
+- **Windows Installer (recommended on Windows)**:
+  1. Open [GitHub Releases](https://github.com/FishyWeed/CertFlow/releases) and download `CertFlow-vX.Y.Z-win-x64-Setup.exe`.
+  2. Run the installer, choose any destination folder (CertFlow installs inside a `CertFlow` folder) and leave **Create a Desktop shortcut** ticked.
+  3. Launch CertFlow from the Desktop shortcut or Start Menu. Your browser opens `http://localhost:3000` automatically.
+- **Portable Desktop ZIP (Windows, macOS, Linux)**:
+  1. Open [GitHub Releases](https://github.com/FishyWeed/CertFlow/releases) and download the ZIP for your computer:
+     - Windows: `CertFlow-vX.Y.Z-win-x64.zip`
+     - macOS (Apple Silicon): `CertFlow-vX.Y.Z-darwin-arm64.zip`
+     - macOS (Intel): `CertFlow-vX.Y.Z-darwin-x64.zip`
+     - Linux: `CertFlow-vX.Y.Z-linux-x64.zip`
+  2. Unzip the folder anywhere (Desktop, Documents or a USB drive).
+  3. Double-click **`Start-CertFlow.bat`** (Windows) or **`Start-CertFlow.command`** (macOS). On Windows, you can also double-click **`Create-Desktop-Shortcut.bat`** to add a Desktop shortcut.
+  4. Your browser opens `http://localhost:3000` automatically. Enter your name, email and password, then click **Start CertFlow**.
 
-All settings, projects, database files and uploaded images stay inside the `data/` folder next to the launcher.
+All settings, projects, database files and uploaded images stay inside the `data/` folder next to the launcher, and you can check for and install newer releases directly from **Account Settings -> Portable App Updates**.
 
 ### Option 4: Docker on Desktop or Server
 

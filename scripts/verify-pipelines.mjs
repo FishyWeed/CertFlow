@@ -73,6 +73,28 @@ for (const wf of [
 ]) {
 	readText(wf);
 }
+const releaseWf = readText('.github/workflows/release-portable.yml');
+assert(
+	releaseWf.includes('build-windows-installer'),
+	'release-portable.yml must include the build-windows-installer job.'
+);
+
+// 7. Validate Windows Inno Setup installer definition and icon
+const iss = readText('installer/certflow.iss');
+assert(iss.includes('DefaultDirName={localappdata}\\CertFlow'), 'installer/certflow.iss must default to {localappdata}\\CertFlow.');
+assert(iss.includes('Name: "desktopicon"'), 'installer/certflow.iss must offer a Desktop shortcut task.');
+assert(iss.includes('Start-CertFlow.bat'), 'installer/certflow.iss must launch Start-CertFlow.bat.');
+assert(!iss.includes('Source: "{#MySourceDir}\\data'), 'installer/certflow.iss must not overwrite user data\\ files.');
+const icoPath = join(ROOT, 'installer', 'certflow.ico');
+if (!existsSync(icoPath)) {
+	failures.push('Missing installer/certflow.ico icon file.');
+} else {
+	const icoHeader = readFileSync(icoPath).subarray(0, 4);
+	assert(
+		icoHeader[0] === 0 && icoHeader[1] === 0 && icoHeader[2] === 1 && icoHeader[3] === 0,
+		'installer/certflow.ico must have a valid Windows ICO header.'
+	);
+}
 
 if (failures.length > 0) {
 	console.error('[verify-pipelines] Pipeline verification failed:');

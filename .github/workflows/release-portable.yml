@@ -17,6 +17,8 @@ permissions:
 jobs:
   package-portable:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -66,3 +68,65 @@ jobs:
         with:
           generate_release_notes: true
           files: release/*.zip
+
+  build-windows-installer:
+    needs: package-portable
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Windows portable bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: certflow-portable-${{ needs.package-portable.outputs.version }}
+          path: .tmp/portable
+
+      - name: Extract Windows portable bundle
+        shell: pwsh
+        run: |
+          $version = "${{ needs.package-portable.outputs.version }}"
+          $zip = ".tmp/portable/CertFlow-$version-win-x64.zip"
+          New-Item -ItemType Directory -Force -Path ".tmp/extracted" | Out-Null
+          tar.exe -xf $zip -C ".tmp/extracted"
+
+      - name: Build Windows Setup.exe with Inno Setup
+        shell: pwsh
+        run: |
+          $version = "${{ needs.package-portable.outputs.version }}"
+          $semver = $version.TrimStart('v')
+          $sourceDir = (Resolve-Path ".tmp/extracted/CertFlow-$version-win-x64").Path
+          New-Item -ItemType Directory -Force -Path "release" | Out-Null
+          $outputDir = (Resolve-Path "release").Path
+
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            choco install innosetup -y --no-progress
+          }
+          if (-not (Test-Path $iscc)) {
+            $cmd = Get-Command ISCC.exe -ErrorAction SilentlyContinue
+            if ($cmd) { $iscc = $cmd.Source }
+          }
+          if (-not (Test-Path $iscc)) {
+            throw "Inno Setup compiler (ISCC.exe) not found."
+          }
+
+          & $iscc `
+            "/DMyAppVersion=$semver" `
+            "/DMySourceDir=$sourceDir" `
+            "/DMyOutputDir=$outputDir" `
+            "/DMyOutputBaseFilename=CertFlow-$version-win-x64-Setup" `
+            "installer\certflow.iss"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Upload Windows installer artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: certflow-windows-installer-${{ needs.package-portable.outputs.version }}
+          path: release/*-Setup.exe
+
+      - name: Attach Windows installer to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*-Setup.exe

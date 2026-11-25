@@ -373,7 +373,7 @@ export function buildWindowsUpdateScriptContent(params: {
 		'        }',
 		'    }',
 		'',
-		'    foreach ($file in @("Start-CertFlow.bat", "README-FIRST.txt")) {',
+		'    foreach ($file in @("Start-CertFlow.bat", "Create-Desktop-Shortcut.bat", "README-FIRST.txt", "certflow.ico")) {',
 		'        $srcFile = Join-Path $NewBundle $file',
 		'        if (Test-Path -LiteralPath $srcFile) {',
 		'            Copy-Item -LiteralPath $srcFile -Destination (Join-Path $Root $file) -Force',

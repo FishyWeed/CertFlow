@@ -123,6 +123,22 @@ function buildWindowsLauncher() {
 	].join('\r\n');
 }
 
+function buildWindowsDesktopShortcutHelper() {
+	return [
+		'@echo off',
+		'setlocal',
+		'set "ROOT=%~dp0"',
+		'if "%ROOT:~-1%"=="\\" set "ROOT=%ROOT:~0,-1%"',
+		'set "TARGET=%ROOT%\\Start-CertFlow.bat"',
+		'set "ICON=%ROOT%\\certflow.ico"',
+		'',
+		'powershell -NoProfile -ExecutionPolicy Bypass -Command "$desktop = [Environment]::GetFolderPath(\'Desktop\'); $lnk = Join-Path $desktop \'CertFlow.lnk\'; $ws = New-Object -ComObject WScript.Shell; $s = $ws.CreateShortcut($lnk); $s.TargetPath = $env:TARGET; $s.WorkingDirectory = $env:ROOT; if (Test-Path -LiteralPath $env:ICON) { $s.IconLocation = ($env:ICON + \',0\') }; $s.Description = \'CertFlow - Bulk Certificate Generator\'; $s.Save(); Write-Host (\'Desktop shortcut created: \' + $lnk)"',
+		'echo.',
+		'pause',
+		''
+	].join('\r\n');
+}
+
 function buildUnixLauncher(targetKey, isMac) {
 	const openCmd = isMac ? 'open "http://localhost:${PORT}"' : 'xdg-open "http://localhost:${PORT}"';
 	return [
@@ -196,6 +212,13 @@ function buildReadmeFirst(targetKey, launcherName) {
 		'2. Your browser will open http://localhost:3000 automatically.',
 		'3. On first launch, enter your name, email and password, then click "Start CertFlow".',
 		'4. Keep the terminal window open while using CertFlow. Close it when finished.',
+		...(targetKey === 'win-x64'
+			? [
+					'',
+					'Desktop shortcut:',
+					'- Double-click Create-Desktop-Shortcut.bat to add a CertFlow shortcut to your Desktop.'
+				]
+			: []),
 		'',
 		'Where your data lives:',
 		'- All settings, projects, database files and uploaded images are stored inside the "data" folder.',
@@ -331,6 +354,18 @@ async function buildTarget(targetKey) {
 	writeFileSync(launcherPath, launcherBody, 'utf8');
 	if (cfg.launcherMode === 0o755) {
 		chmodSync(launcherPath, 0o755);
+	}
+
+	if (targetKey === 'win-x64') {
+		writeFileSync(
+			join(bundleDir, 'Create-Desktop-Shortcut.bat'),
+			buildWindowsDesktopShortcutHelper(),
+			'utf8'
+		);
+		const iconSource = join(ROOT, 'installer', 'certflow.ico');
+		if (existsSync(iconSource)) {
+			cpSync(iconSource, join(bundleDir, 'certflow.ico'));
+		}
 	}
 
 	writeFileSync(join(bundleDir, 'README-FIRST.txt'), buildReadmeFirst(targetKey, cfg.launcherName), 'utf8');

@@ -139,13 +139,13 @@ GitHub Actions (`.github/workflows/ci.yml`) runs this exact gate on every push a
 
 | Aspect | Behaviour |
 | :--- | :--- |
-| Packager | `scripts/package-portable.mjs` |
-| Targets | `win-x64`, `darwin-arm64`, `darwin-x64`, `linux-x64` |
+| Packager | `scripts/package-portable.mjs` + `installer/certflow.iss` (Inno Setup 6 Windows Installer) |
+| Targets | `win-x64` (`Setup.exe` + `.zip`), `darwin-arm64`, `darwin-x64`, `linux-x64` |
 | Bundled runtime | Official Node.js 22 LTS single binary (`runtime/node.exe` or `runtime/bin/node`) |
 | Dependencies | Flat zero-symlink hoisted production `node_modules` (`nodeLinker: hoisted`) |
-| Database and storage | Embedded PostgreSQL (`PGlite`) + `config.json` + `uploads/` inside `data/` next to the launcher |
-| Launchers | `Start-CertFlow.bat`, `Start-CertFlow.command`, `start-certflow.sh` (auto-opens browser; re-opens tab if already running) |
-| Release workflow | `.github/workflows/release-portable.yml` |
+| Database and storage | Embedded PostgreSQL (`PGlite`) + `config.json` + `uploads/` inside `data/` next to the launcher (unlimited projects and storage locally) |
+| Launchers and shortcuts | `Start-CertFlow.bat`, `Create-Desktop-Shortcut.bat`, `Start-CertFlow.command`, `start-certflow.sh`, plus Desktop and Start Menu shortcuts from `Setup.exe` |
+| Release workflow | `.github/workflows/release-portable.yml` (builds all 4 ZIPs on Ubuntu, then compiles `Setup.exe` on Windows) |
 
 **How to test locally:**
 ```bash
