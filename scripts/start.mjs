@@ -87,6 +87,14 @@ const railwayUrl = process.env.RAILWAY_PUBLIC_DOMAIN
 const renderUrl = process.env.RENDER_EXTERNAL_URL?.trim() || null;
 const authUrl = process.env.BETTER_AUTH_URL || railwayUrl || renderUrl || `http://localhost:${port}`;
 
+// @sveltejs/adapter-node defaults request protocol to "https" when x-forwarded-proto is absent.
+// On direct local HTTP (Portable app and local Docker), set ORIGIN so SvelteKit CSRF checks match http://localhost:<port>.
+if (!isManagedCloud && !process.env.ORIGIN) {
+	if (authUrl.startsWith('http://')) {
+		process.env.ORIGIN = authUrl.replace(/\/+$/, '');
+	}
+}
+
 if (isSelfHostedUnconfigured) {
 	console.log(`[certflow] First-run setup required. Open http://localhost:${port}/setup to configure CertFlow.`);
 } else {

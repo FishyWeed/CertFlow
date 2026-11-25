@@ -19,7 +19,7 @@ function readText(relPath) {
 	return readFileSync(full, 'utf8');
 }
 
-// 1. Validate Node script syntax
+// 1. Validate Node script syntax and local HTTP ORIGIN guard
 for (const scriptPath of ['scripts/start.mjs', 'scripts/package-portable.mjs']) {
 	try {
 		execFileSync(process.execPath, ['--check', join(ROOT, scriptPath)], { stdio: 'pipe' });
@@ -27,6 +27,11 @@ for (const scriptPath of ['scripts/start.mjs', 'scripts/package-portable.mjs']) 
 		failures.push(`Syntax check failed for ${scriptPath}: ${err instanceof Error ? err.message : String(err)}`);
 	}
 }
+const startScript = readText('scripts/start.mjs');
+assert(
+	startScript.includes('process.env.ORIGIN'),
+	'scripts/start.mjs must set process.env.ORIGIN for direct local HTTP launches to prevent 403 CSRF errors.'
+);
 
 // 2. Validate Dockerfile compatibility across Railway, Render and Docker
 const dockerfile = readText('Dockerfile');
