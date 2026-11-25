@@ -272,6 +272,132 @@ function locateExtractedBundleDir(extractRoot: string): string | null {
 	return null;
 }
 
+const UPDATE_RESTART_EXIT_CODE = 75;
+
+export function buildWindowsUpdateScriptContent(params: {
+	rootDir: string;
+	bundleDir: string;
+	stagingDir: string;
+	pid: number;
+	port: string;
+}): string {
+	const psQuote = (val: string) => `'${val.replace(/'/g, "''")}'`;
+	const { rootDir, bundleDir, stagingDir, pid, port } = params;
+
+	return [
+		'$ErrorActionPreference = "Stop"',
+		'$ProgressPreference = "SilentlyContinue"',
+		`$Root = ${psQuote(rootDir)}`,
+		`$NewBundle = ${psQuote(bundleDir)}`,
+		`$Staging = ${psQuote(stagingDir)}`,
+		`$OldPid = ${pid}`,
+		`$Port = ${psQuote(port)}`,
+		'$LogFile = Join-Path (Join-Path $Root "data") "last-update.log"',
+		'',
+		'function Write-Log([string]$msg) {',
+		'    try {',
+		'        $ts = (Get-Date).ToString("s")',
+		'        Add-Content -LiteralPath $LogFile -Value "[$ts] $msg" -Encoding UTF8',
+		'    } catch {}',
+		'}',
+		'',
+		'function Move-WithRetry([string]$Source, [string]$Dest) {',
+		'    for ($i = 0; $i -lt 25; $i++) {',
+		'        try {',
+		'            Move-Item -LiteralPath $Source -Destination $Dest -Force',
+		'            return',
+		'        } catch {',
+		'            if ($i -eq 24) { throw }',
+		'            Start-Sleep -Milliseconds 400',
+		'        }',
+		'    }',
+		'}',
+		'',
+		'function Remove-Quiet([string]$PathToRemove) {',
+		'    if (-not (Test-Path -LiteralPath $PathToRemove)) { return }',
+		'    for ($i = 0; $i -lt 8; $i++) {',
+		'        try {',
+		'            Remove-Item -LiteralPath $PathToRemove -Recurse -Force -ErrorAction Stop',
+		'            return',
+		'        } catch {',
+		'            Start-Sleep -Milliseconds 300',
+		'        }',
+		'    }',
+		'}',
+		'',
+		'try {',
+		'    Set-Location -LiteralPath $Root',
+		'    Write-Log "Waiting for PID $OldPid to exit..."',
+		'    $deadline = (Get-Date).AddSeconds(15)',
+		'    while ((Get-Date) -lt $deadline) {',
+		'        if (-not (Get-Process -Id $OldPid -ErrorAction SilentlyContinue)) { break }',
+		'        Start-Sleep -Milliseconds 300',
+		'    }',
+		'    if (Get-Process -Id $OldPid -ErrorAction SilentlyContinue) {',
+		'        Write-Log "PID $OldPid still alive after timeout; terminating..."',
+		'        Stop-Process -Id $OldPid -Force -ErrorAction SilentlyContinue',
+		'        Start-Sleep -Milliseconds 600',
+		'    }',
+		'    Start-Sleep -Milliseconds 400',
+		'',
+		'    $AppDir = Join-Path $Root "app"',
+		'    $AppBak = Join-Path $Root "app.bak"',
+		'    $NewApp = Join-Path $NewBundle "app"',
+		'    $RuntimeDir = Join-Path $Root "runtime"',
+		'    $RuntimeBak = Join-Path $Root "runtime.bak"',
+		'    $NewRuntime = Join-Path $NewBundle "runtime"',
+		'',
+		'    Remove-Quiet $AppBak',
+		'    Remove-Quiet $RuntimeBak',
+		'',
+		'    Write-Log "Swapping app folder..."',
+		'    if (Test-Path -LiteralPath $AppDir) { Move-WithRetry $AppDir $AppBak }',
+		'    try {',
+		'        Move-WithRetry $NewApp $AppDir',
+		'    } catch {',
+		'        Write-Log "Failed to move new app folder; rolling back: $_"',
+		'        if (Test-Path -LiteralPath $AppBak) { Move-WithRetry $AppBak $AppDir }',
+		'        throw',
+		'    }',
+		'',
+		'    if (Test-Path -LiteralPath $NewRuntime) {',
+		'        Write-Log "Swapping runtime folder..."',
+		'        try {',
+		'            if (Test-Path -LiteralPath $RuntimeDir) { Move-WithRetry $RuntimeDir $RuntimeBak }',
+		'            Move-WithRetry $NewRuntime $RuntimeDir',
+		'        } catch {',
+		'            Write-Log "Runtime swap skipped/rolled back: $_"',
+		'            if ((Test-Path -LiteralPath $RuntimeBak) -and -not (Test-Path -LiteralPath $RuntimeDir)) {',
+		'                Move-WithRetry $RuntimeBak $RuntimeDir',
+		'            }',
+		'        }',
+		'    }',
+		'',
+		'    foreach ($file in @("Start-CertFlow.bat", "README-FIRST.txt")) {',
+		'        $srcFile = Join-Path $NewBundle $file',
+		'        if (Test-Path -LiteralPath $srcFile) {',
+		'            Copy-Item -LiteralPath $srcFile -Destination (Join-Path $Root $file) -Force',
+		'        }',
+		'    }',
+		'',
+		'    Remove-Quiet $AppBak',
+		'    Remove-Quiet $RuntimeBak',
+		'',
+		'    $env:CERTFLOW_PORT = $Port',
+		'    $Launcher = Join-Path $Root "Start-CertFlow.bat"',
+		'    Write-Log "Starting updated CertFlow via $Launcher..."',
+		'    Start-Process -FilePath $Launcher -WorkingDirectory $Root',
+		'    Start-Sleep -Seconds 2',
+		'    Remove-Quiet $Staging',
+		'    Write-Log "Update completed cleanly."',
+		'} catch {',
+		'    Write-Log "Update failed: $_"',
+		'    exit 1',
+		'}',
+		''
+	].join('\r\n');
+}
+
 function writeWindowsUpdateScript(params: {
 	scriptPath: string;
 	rootDir: string;
@@ -280,55 +406,7 @@ function writeWindowsUpdateScript(params: {
 	pid: number;
 	port: string;
 }) {
-	const { scriptPath, rootDir, bundleDir, stagingDir, pid, port } = params;
-	const lines = [
-		'@echo off',
-		'setlocal',
-		`set "ROOT=${rootDir}"`,
-		`set "NEWBUNDLE=${bundleDir}"`,
-		`set "STAGING=${stagingDir}"`,
-		`set "OLDPID=${pid}"`,
-		`set "CERTFLOW_PORT=${port}"`,
-		'',
-		'echo Waiting for CertFlow to close before applying update...',
-		'for /L %%I in (1,1,40) do (',
-		'    tasklist /FI "PID eq %OLDPID%" 2>NUL | find /I "%OLDPID%" >NUL',
-		'    if errorlevel 1 goto :pid_exited',
-		'    timeout /t 1 /nobreak >NUL',
-		')',
-		':pid_exited',
-		'timeout /t 1 /nobreak >NUL',
-		'',
-		'if exist "%ROOT%\\app.bak" rmdir /s /q "%ROOT%\\app.bak"',
-		'if exist "%ROOT%\\runtime.bak" rmdir /s /q "%ROOT%\\runtime.bak"',
-		'',
-		'if exist "%ROOT%\\app" move /Y "%ROOT%\\app" "%ROOT%\\app.bak" >NUL',
-		'move /Y "%NEWBUNDLE%\\app" "%ROOT%\\app" >NUL',
-		'if errorlevel 1 (',
-		'    if exist "%ROOT%\\app.bak" move /Y "%ROOT%\\app.bak" "%ROOT%\\app" >NUL',
-		'    exit /b 1',
-		')',
-		'',
-		'if exist "%NEWBUNDLE%\\runtime" (',
-		'    if exist "%ROOT%\\runtime" move /Y "%ROOT%\\runtime" "%ROOT%\\runtime.bak" >NUL',
-		'    move /Y "%NEWBUNDLE%\\runtime" "%ROOT%\\runtime" >NUL',
-		'    if errorlevel 1 (',
-		'        if exist "%ROOT%\\runtime.bak" move /Y "%ROOT%\\runtime.bak" "%ROOT%\\runtime" >NUL',
-		'    )',
-		')',
-		'',
-		'if exist "%NEWBUNDLE%\\Start-CertFlow.bat" copy /Y "%NEWBUNDLE%\\Start-CertFlow.bat" "%ROOT%\\Start-CertFlow.bat" >NUL',
-		'if exist "%NEWBUNDLE%\\README-FIRST.txt" copy /Y "%NEWBUNDLE%\\README-FIRST.txt" "%ROOT%\\README-FIRST.txt" >NUL',
-		'',
-		'if exist "%ROOT%\\app.bak" rmdir /s /q "%ROOT%\\app.bak"',
-		'if exist "%ROOT%\\runtime.bak" rmdir /s /q "%ROOT%\\runtime.bak"',
-		'',
-		'start "CertFlow" cmd /c "%ROOT%\\Start-CertFlow.bat"',
-		'timeout /t 2 /nobreak >NUL',
-		'rmdir /s /q "%STAGING%" 2>NUL',
-		''
-	];
-	writeFileSync(scriptPath, lines.join('\r\n'), 'utf8');
+	writeFileSync(params.scriptPath, buildWindowsUpdateScriptContent(params), 'utf8');
 }
 
 function writeUnixUpdateScript(params: {
@@ -599,7 +677,7 @@ async function runPortableUpdatePipeline(info: PortableRuntimeInfo): Promise<voi
 		const port = process.env.PORT || '3000';
 
 		if (process.platform === 'win32') {
-			const scriptPath = join(stagingDir, 'apply-update.cmd');
+			const scriptPath = join(stagingDir, 'apply-update.ps1');
 			writeWindowsUpdateScript({
 				scriptPath,
 				rootDir: info.rootDir,
@@ -608,11 +686,16 @@ async function runPortableUpdatePipeline(info: PortableRuntimeInfo): Promise<voi
 				pid: process.pid,
 				port
 			});
-			const child = spawn('cmd.exe', ['/c', scriptPath], {
-				detached: true,
-				stdio: 'ignore',
-				windowsHide: true
-			});
+			const child = spawn(
+				'powershell.exe',
+				['-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', scriptPath],
+				{
+					cwd: info.rootDir,
+					detached: true,
+					stdio: 'ignore',
+					windowsHide: true
+				}
+			);
 			child.unref();
 		} else {
 			const scriptPath = join(stagingDir, 'apply-update.sh');
@@ -626,6 +709,7 @@ async function runPortableUpdatePipeline(info: PortableRuntimeInfo): Promise<voi
 				target: info.target as PortableTarget
 			});
 			const child = spawn('bash', [scriptPath], {
+				cwd: info.rootDir,
 				detached: true,
 				stdio: 'ignore'
 			});
@@ -638,10 +722,14 @@ async function runPortableUpdatePipeline(info: PortableRuntimeInfo): Promise<voi
 			message: `Installing ${check.latestVersion} and restarting CertFlow... This page will reload automatically.`
 		});
 
-		// Give the browser poll a moment to receive `restarting`, then close PGlite and exit cleanly.
+		// Give the browser poll a moment to receive `restarting`, close PGlite with a hard 4s cap,
+		// then exit with UPDATE_RESTART_EXIT_CODE so Start-CertFlow.bat closes cleanly without pausing.
 		setTimeout(() => {
-			void resetDatabaseConnection().finally(() => {
-				process.exit(0);
+			void Promise.race([
+				resetDatabaseConnection().catch(() => {}),
+				new Promise<void>((resolveCap) => setTimeout(resolveCap, 4000))
+			]).finally(() => {
+				process.exit(UPDATE_RESTART_EXIT_CODE);
 			});
 		}, 900).unref();
 	} catch (err) {

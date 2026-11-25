@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import JSZip from 'jszip';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+	buildWindowsUpdateScriptContent,
 	compareSemver,
 	extractZipArchive,
 	findMatchingReleaseAsset,
@@ -112,5 +113,22 @@ describe('portable updater helpers', () => {
 		expect(
 			readFileSync(join(extractDir, 'CertFlow', 'app', 'portable-meta.json'), 'utf8')
 		).toBe('{"version":"v1.0.8"}');
+	});
+
+	it('generates a PowerShell Windows handoff script without tasklist/find hangs', () => {
+		const script = buildWindowsUpdateScriptContent({
+			rootDir: 'C:\\Portable\\CertFlow',
+			bundleDir: 'C:\\Portable\\CertFlow\\.update-staging\\extracted\\CertFlow',
+			stagingDir: 'C:\\Portable\\CertFlow\\.update-staging',
+			pid: 23188,
+			port: '3000'
+		});
+
+		expect(script).toContain('Get-Process -Id $OldPid');
+		expect(script).toContain('Stop-Process -Id $OldPid -Force');
+		expect(script).toContain('Move-WithRetry');
+		expect(script).not.toContain('tasklist');
+		expect(script).not.toContain('find /I');
+		expect(script).not.toContain('timeout /t');
 	});
 });
