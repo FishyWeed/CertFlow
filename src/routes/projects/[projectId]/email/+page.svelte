@@ -381,7 +381,7 @@
 							<div class="rounded-lg border border-border-default bg-surface-page px-3.5 py-3 text-xs text-ink-secondary">
 								<p>
 									No sender profile connected yet. Add a Brevo or Resend sender profile in
-									<a href="/settings" class="font-semibold text-accent underline">Account Settings</a>
+									<a href="/settings?tab=sender" class="font-semibold text-accent underline">Account Settings</a>
 									to send certificates by email.
 								</p>
 							</div>
@@ -409,7 +409,7 @@
 									{/each}
 								</select>
 								<a
-									href="/settings"
+									href="/settings?tab=sender"
 									class="shrink-0 rounded-lg border border-border-default bg-white px-3 py-2 text-xs font-medium text-ink-secondary transition hover:bg-surface-subtle hover:text-ink-primary"
 								>
 									Manage Profiles
@@ -424,7 +424,7 @@
 						<p class="mt-1">
 							Emails are written to <code>.local/outbox/</code> instead of real inboxes. Add a
 							sender profile in
-							<a href="/settings" class="font-semibold underline">Account Settings</a> to send real
+							<a href="/settings?tab=sender" class="font-semibold underline">Account Settings</a> to send real
 							emails.
 						</p>
 					</div>
