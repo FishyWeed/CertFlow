@@ -15,6 +15,10 @@ export const variables = defineEnvVars({
 		description: 'Base URL for Better Auth callbacks',
 		schema: optionalString('http://localhost:5678')
 	},
+	PUBLIC_APP_URL: {
+		description: 'Public origin URL for links and auth callbacks',
+		schema: optionalString('http://localhost:5678')
+	},
 	ENCRYPTION_KEY: {
 		description: '64-char hex key (32 bytes) for AES-256-GCM encryption of user SMTP secrets',
 		schema: optionalString('0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef')
@@ -26,6 +30,26 @@ export const variables = defineEnvVars({
 	LOCAL_UPLOAD_DIR: {
 		description: 'Local directory for uploaded assets when STORAGE_DRIVER=local',
 		schema: optionalString('./uploads')
+	},
+	CERTFLOW_SELF_HOSTED: {
+		description: 'Enables the first-run /setup wizard for Docker and portable self-hosted launches',
+		schema: (value) => value === 'true'
+	},
+	CERTFLOW_DATA_DIR: {
+		description: 'Persistent root directory for config.json, uploads, pgdata and outbox in self-hosted mode',
+		schema: optionalString('./.local')
+	},
+	CERTFLOW_CONFIG_PATH: {
+		description: 'Optional explicit path override for persisted runtime config.json',
+		schema: optionalString('')
+	},
+	CERTFLOW_APP_DIR: {
+		description: 'Resolved application root directory used to locate drizzle/ migrations in portable builds',
+		schema: optionalString('')
+	},
+	ALLOW_CUSTOM_SMTP: {
+		description: 'Enables raw SMTP sender profiles in production when outbound SMTP ports are open',
+		schema: (value) => value === 'true'
 	},
 	SMTP_HOST: {
 		description: 'Default outbound SMTP host (use "local-outbox" for zero-config local dev)',

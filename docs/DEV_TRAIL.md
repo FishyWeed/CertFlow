@@ -114,4 +114,38 @@ This log records each milestone, architectural decision, file group, check resul
 
 ### Open Tasks
 1. **Custom Design System Pass**: Swap semantic tokens in `src/app.css` and primitives in `src/lib/components/ui/` once the final design system is ready.
-2. **Production Object Storage**: Wire S3, Cloudflare R2 or Vercel Blob in `src/lib/server/storage.ts` before Vercel deployment.
+2. **S3 / Cloudflare R2 Storage Driver**: Implement `STORAGE_DRIVER="s3"` in `src/lib/server/storage.ts` for stateless cloud hosts such as Render Free Tier.
+
+---
+
+## Milestone 7 — 114-Font Catalogue, Image Cropping, Signatures, Rich Text and Production Railway Launch (2026-11-25)
+
+### What Was Built
+- **114-Font Searchable Catalogue (`FontPicker.svelte`, `fonts.ts`)**: Added lazy Google Font stylesheet loading, DOM face pinning and inline `<font=...>` extraction across live canvas and offscreen exports.
+- **Image Cropping & Signatures (`ImageCropResizeModal.svelte`, `SignaturePad.svelte`)**: Added interactive crop/zoom/aspect modal with quality-0.92 WebP optimisation and freehand or uploaded signature support.
+- **Rich Text & Conditional Rules (`rich-text.ts`, `ElementInspector.svelte`)**: Unified text and rule-based text elements with inline bold, italic, underline, colour, font and size formatting plus multi-condition rules.
+- **Railway Production Deployment**: Migrated to `@sveltejs/adapter-node`, added `scripts/start.mjs` auto-migrations, `/api/health`, Brevo and Resend HTTPS API email delivery and deployed live to Railway (`https://cert-flow.up.railway.app`).
+
+---
+
+## Milestone 8 — Email Delivery Tracker, Starter Templates, Dark Mode and Storage Quotas (2026-11-25)
+
+### What Was Built
+- **Email Delivery Tracker & Send Remaining (`/projects/[projectId]/email`)**: Added per-recipient delivery status table with click-to-sort columns, live batch progress bar with Stop button and **Send Remaining** quota resumption.
+- **Six Starter Templates (`src/lib/templates/starter.ts`)**: Added `Classic Academic`, `Modern Executive`, `Gold Gala Award`, `Minimalist Editorial`, `Tech & Hackathon` and `Formal Diploma` with SVG previews and dimension-aware undo/redo.
+- **Light & Dark Mode (`ThemeToggle.svelte`, `theme.svelte.ts`, `src/app.css`)**: Added zero-FOUC theme toggle with complete dark semantic tokens while keeping canvas and signature pads light-accurate via `.preserve-light`.
+- **Resource Limits & Asset Cleanup (`limits.ts`, `asset-cleanup.ts`, `/api/account/storage/cleanup`)**: Enforced 10 projects, 30 MB per account and 10 MB per upload with automatic disk cleanup on delete/save and smooth no-flicker saves on Project Settings.
+
+---
+
+## Milestone 9 — Multi-Platform Self-Hosting, Portable Releases and Top Editor Toolbar (2026-11-26)
+
+### What Was Built
+- **Self-Hosted Runtime Config & `/setup` Wizard (`runtime-config.ts`, `src/routes/setup/`)**: Persists `/data/config.json` (mode `0600`) with automatic first-run setup for Docker and portable launches, gated off on Railway, Render and local dev.
+- **One-Click Cloud, Docker & Portable Release Pipelines**:
+  - `render.yaml` Render Blueprint + **Deploy to Render** button and **Deploy on Railway** button in `README.md`.
+  - `railway.json` Railway config-as-code, `docker-compose.yml` (local build), `docker-compose.ghcr.yml` (prebuilt GHCR image) and `.github/workflows/docker-publish.yml`.
+  - `scripts/package-portable.mjs` + `.github/workflows/release-portable.yml` with zero-symlink hoisted production dependencies (`nodeLinker: hoisted`), published live as GitHub Release `v1.0.0` (`win-x64`, `darwin-arm64`, `darwin-x64`, `linux-x64`).
+  - `.github/workflows/ci.yml` + `scripts/verify-pipelines.mjs` (`pnpm run verify`) and `docs/PIPELINES.md`.
+- **Unified Top Editor Toolbar (`EditorToolbar.svelte`)**: Moved all text, typography, spacing, wrap and alignment controls (including `Centre: Horizontal | Vertical` and rich-text `Justify`) into a fixed-height top bar that automatically styles highlighted words (including per-word font family and font size) in Text Content or any Conditional Rule.
+- **Cleanup & Hardening**: Removed unused `@sveltejs/adapter-auto`, aligned `src/env.ts` and `.env.example`, routed local outbox through `CERTFLOW_DATA_DIR`, added graceful shutdown to `scripts/start.mjs` and added already-running detection to portable launchers.

@@ -198,7 +198,8 @@ export async function sendCertificateEmail(
 		: `"${input.sender.senderName || cfg.defaultFromName}" <${cfg.defaultFromEmail}>`;
 
 	if (!useCustomSmtp && cfg.smtpHost === 'local-outbox') {
-		const outboxDir = resolve('./.local/outbox');
+		const dataDir = process.env.CERTFLOW_DATA_DIR?.trim();
+		const outboxDir = resolve(dataDir ? join(dataDir, 'outbox') : './.local/outbox');
 		await mkdir(outboxDir, { recursive: true });
 		const messageId = `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@certflow.local`;
 		const safeTo = input.to.replace(/[^a-z0-9@._-]/gi, '_');

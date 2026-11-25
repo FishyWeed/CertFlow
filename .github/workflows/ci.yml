@@ -1,0 +1,40 @@
+name: CI Quality Gate
+
+on:
+  push:
+    branches: ['main']
+  pull_request:
+    branches: ['main']
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install pnpm
+        run: npm install -g pnpm@12.10.1
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify pipeline configurations and scripts
+        run: pnpm run verify:pipelines
+
+      - name: Run unit tests
+        run: pnpm test
+
+      - name: Run TypeScript and Svelte checks
+        run: pnpm run check
+
+      - name: Build production bundle
+        run: pnpm build

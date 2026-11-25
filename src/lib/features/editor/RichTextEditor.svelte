@@ -2,11 +2,20 @@
 	import { onDestroy } from 'svelte';
 	import type { CriterionDefinition } from '#lib/types/certflow.ts';
 	import type { EditorState } from './editor-state.svelte.ts';
+	import { ensureFontLoaded, quoteFontFamily } from './fonts.ts';
 	import {
-		applyInlineFormatToSelection,
 		stripRichTextMarkup,
-		type InlineFormatAction
+		type InlineFormatAction,
+		type RichTextStyle
 	} from './rich-text.ts';
+	import {
+		applyFormatToPlainRange,
+		domToRichTextMarkup,
+		getPlainTextSelection,
+		inspectPlainRangeStyle,
+		richTextMarkupToHtml,
+		setPlainTextSelection
+	} from './wysiwyg.ts';
 
 	interface Props {
 		id: string;
@@ -14,6 +23,7 @@
 		editor: EditorState;
 		elementId: string;
 		fieldLabel: string;
+		baseStyle: RichTextStyle;
 		placeholder?: string;
 		rows?: number;
 		criteria: CriterionDefinition[];
@@ -27,6 +37,7 @@
 		editor,
 		elementId,
 		fieldLabel,
+		baseStyle,
 		placeholder = '',
 		rows = 3,
 		criteria,
@@ -34,23 +45,35 @@
 		onChange
 	}: Props = $props();
 
-	let textAreaEl = $state<HTMLTextAreaElement | null>(null);
-	// Preserve selection coordinates across focus shifts to the top EditorToolbar.
+	let editableEl = $state<HTMLDivElement | null>(null);
 	let savedSelection = $state<{ start: number; end: number } | null>(null);
-	let latestText = '';
-
-	$effect(() => {
-		latestText = value;
-	});
+	let latestMarkup = '';
+	let lastSyncedHtml = '';
 
 	const isSelectionActive = $derived(
 		editor.activeTextSelection?.fieldId === id &&
 			editor.activeTextSelection?.elementId === elementId
 	);
 
-	function publishSelection(text: string, start: number, end: number) {
-		const from = Math.max(0, Math.min(text.length, Math.min(start, end)));
-		const to = Math.max(from, Math.min(text.length, Math.max(start, end)));
+	// Keep WYSIWYG HTML in sync whenever `value` or element `baseStyle` changes externally.
+	$effect(() => {
+		latestMarkup = value;
+		if (!editableEl) return;
+		const desiredHtml = richTextMarkupToHtml(value, baseStyle, { compactSidebar: true });
+		if (desiredHtml === lastSyncedHtml) return;
+		const wasFocused = document.activeElement === editableEl;
+		const prevSel = wasFocused ? getPlainTextSelection(editableEl) : null;
+		editableEl.innerHTML = desiredHtml;
+		lastSyncedHtml = desiredHtml;
+		if (wasFocused && prevSel) {
+			setPlainTextSelection(editableEl, prevSel.start, prevSel.end);
+		}
+	});
+
+	function publishSelection(markup: string, start: number, end: number) {
+		const plain = stripRichTextMarkup(markup);
+		const from = Math.max(0, Math.min(plain.length, Math.min(start, end)));
+		const to = Math.max(from, Math.min(plain.length, Math.max(start, end)));
 		savedSelection = { start: from, end: to };
 
 		if (to > from) {
@@ -58,10 +81,11 @@
 				elementId,
 				fieldId: id,
 				label: fieldLabel,
-				text,
+				text: markup,
 				start: from,
 				end: to,
-				selectedText: text.slice(from, to),
+				selectedText: plain.slice(from, to),
+				effectiveStyle: inspectPlainRangeStyle(markup, baseStyle, from, to),
 				apply: applyFormat,
 				clear: clearHighlight
 			});
@@ -70,76 +94,132 @@
 		}
 	}
 
-	function syncSelectionFromTextarea() {
-		if (!textAreaEl) return;
-		const text = textAreaEl.value;
-		latestText = text;
-		const start = textAreaEl.selectionStart ?? text.length;
-		const end = textAreaEl.selectionEnd ?? text.length;
-		publishSelection(text, start, end);
+	function syncSelectionFromDom() {
+		if (!editableEl) return;
+		const sel = getPlainTextSelection(editableEl);
+		if (!sel) return;
+		publishSelection(latestMarkup, sel.start, sel.end);
 	}
 
 	function getActiveSelection(): { start: number; end: number } {
-		const text = latestText;
-		if (textAreaEl && document.activeElement === textAreaEl) {
-			return {
-				start: textAreaEl.selectionStart ?? text.length,
-				end: textAreaEl.selectionEnd ?? text.length
-			};
+		const plainLen = stripRichTextMarkup(latestMarkup).length;
+		if (editableEl && document.activeElement === editableEl) {
+			const live = getPlainTextSelection(editableEl);
+			if (live) return live;
 		}
 		if (savedSelection) {
 			return {
-				start: Math.max(0, Math.min(text.length, savedSelection.start)),
-				end: Math.max(0, Math.min(text.length, savedSelection.end))
+				start: Math.max(0, Math.min(plainLen, savedSelection.start)),
+				end: Math.max(0, Math.min(plainLen, savedSelection.end))
 			};
 		}
-		return { start: text.length, end: text.length };
+		return { start: plainLen, end: plainLen };
 	}
 
 	function clearHighlight() {
 		savedSelection = null;
 		editor.clearActiveTextSelection(id);
-		if (textAreaEl && document.activeElement === textAreaEl) {
-			const end = textAreaEl.selectionEnd ?? textAreaEl.value.length;
-			textAreaEl.setSelectionRange(end, end);
+		if (editableEl && document.activeElement === editableEl) {
+			const live = getPlainTextSelection(editableEl);
+			if (live) setPlainTextSelection(editableEl, live.end, live.end);
 		}
 	}
 
 	function applyFormat(action: InlineFormatAction, options?: { restoreFocus?: boolean }) {
-		const currentText = latestText;
+		if (action.kind === 'font') ensureFontLoaded(action.value);
 		const { start, end } = getActiveSelection();
-		const next = applyInlineFormatToSelection(currentText, start, end, action);
-		latestText = next.text;
-		onChange(next.text);
-		publishSelection(next.text, next.selectionStart, next.selectionEnd);
+		const nextMarkup = applyFormatToPlainRange(latestMarkup, baseStyle, start, end, action);
+		latestMarkup = nextMarkup;
+
+		if (editableEl) {
+			const nextHtml = richTextMarkupToHtml(nextMarkup, baseStyle, { compactSidebar: true });
+			editableEl.innerHTML = nextHtml;
+			lastSyncedHtml = nextHtml;
+		}
+
+		onChange(nextMarkup);
+		publishSelection(nextMarkup, start, end);
 
 		if (options?.restoreFocus !== false) {
 			requestAnimationFrame(() => {
-				if (!textAreaEl) return;
-				textAreaEl.focus();
-				textAreaEl.setSelectionRange(next.selectionStart, next.selectionEnd);
+				if (!editableEl) return;
+				editableEl.focus();
+				setPlainTextSelection(editableEl, start, end);
 			});
 		}
 	}
 
-	function insertToken(token: string) {
-		const currentText = latestText;
+	function insertPlainTextAtSelection(inserted: string) {
+		const plain = stripRichTextMarkup(latestMarkup);
 		const { start, end } = getActiveSelection();
-		const before = currentText.slice(0, start);
-		const after = currentText.slice(end);
+		const beforePlain = plain.slice(0, start);
 		const needsLeadingSpace =
-			before.length > 0 && !before.endsWith(' ') && !before.endsWith('\n') && !before.endsWith('>');
-		const inserted = `${needsLeadingSpace ? ' ' : ''}${token}`;
-		const nextText = before + inserted + after;
-		const nextCursor = before.length + inserted.length;
-		latestText = nextText;
-		onChange(nextText);
-		publishSelection(nextText, nextCursor, nextCursor);
-		requestAnimationFrame(() => {
-			if (!textAreaEl) return;
-			textAreaEl.focus();
-			textAreaEl.setSelectionRange(nextCursor, nextCursor);
-		});
+			inserted.startsWith('{{') &&
+			beforePlain.length > 0 &&
+			!beforePlain.endsWith(' ') &&
+			!beforePlain.endsWith('\n');
+		const finalInsert = `${needsLeadingSpace ? ' ' : ''}${inserted}`;
+
+		if (editableEl) {
+			editableEl.focus();
+			setPlainTextSelection(editableEl, start, end);
+			const sel = window.getSelection();
+			if (sel && sel.rangeCount > 0) {
+				const range = sel.getRangeAt(0);
+				range.deleteContents();
+				const textNode = document.createTextNode(finalInsert);
+				range.insertNode(textNode);
+				range.setStartAfter(textNode);
+				range.setEndAfter(textNode);
+				sel.removeAllRanges();
+				sel.addRange(range);
+				const nextMarkup = domToRichTextMarkup(editableEl, baseStyle);
+				latestMarkup = nextMarkup;
+				lastSyncedHtml = editableEl.innerHTML;
+				onChange(nextMarkup);
+				const nextCaret = start + finalInsert.length;
+				publishSelection(nextMarkup, nextCaret, nextCaret);
+				return;
+			}
+		}
+
+		const nextMarkup = latestMarkup + finalInsert;
+		latestMarkup = nextMarkup;
+		onChange(nextMarkup);
+	}
+
+	function handleInput() {
+		if (!editableEl) return;
+		const nextMarkup = domToRichTextMarkup(editableEl, baseStyle);
+		latestMarkup = nextMarkup;
+		lastSyncedHtml = editableEl.innerHTML;
+		onChange(nextMarkup);
+		syncSelectionFromDom();
+	}
+
+	function handlePaste(event: ClipboardEvent) {
+		event.preventDefault();
+		const plain = event.clipboardData?.getData('text/plain') ?? '';
+		if (!plain) return;
+		insertPlainTextAtSelection(plain);
+	}
+
+	function handleKeydown(event: KeyboardEvent) {
+		const mod = event.ctrlKey || event.metaKey;
+		const key = event.key.toLowerCase();
+		if (mod && key === 'b') {
+			event.preventDefault();
+			syncSelectionFromDom();
+			applyFormat({ kind: 'bold' });
+		} else if (mod && key === 'i') {
+			event.preventDefault();
+			syncSelectionFromDom();
+			applyFormat({ kind: 'italic' });
+		} else if (mod && key === 'u') {
+			event.preventDefault();
+			syncSelectionFromDom();
+			applyFormat({ kind: 'underline' });
+		}
 	}
 
 	onDestroy(() => {
@@ -148,68 +228,53 @@
 </script>
 
 <div class="space-y-1.5">
-	<textarea
-		bind:this={textAreaEl}
-		{id}
-		{rows}
-		{value}
-		{placeholder}
-		oninput={(e) => {
-			const nextVal = e.currentTarget.value;
-			latestText = nextVal;
-			onChange(nextVal);
-			publishSelection(
-				nextVal,
-				e.currentTarget.selectionStart ?? nextVal.length,
-				e.currentTarget.selectionEnd ?? nextVal.length
-			);
-		}}
-		onselect={syncSelectionFromTextarea}
-		onmouseup={syncSelectionFromTextarea}
-		onkeyup={syncSelectionFromTextarea}
-		onkeydown={(e) => {
-			if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+	<div class="relative">
+		{#if !stripRichTextMarkup(value) && placeholder}
+			<div
+				aria-hidden="true"
+				class="pointer-events-none absolute inset-0 overflow-hidden px-2.5 py-1.5 text-xs whitespace-pre-wrap text-ink-muted/70"
+			>
+				{placeholder}
+			</div>
+		{/if}
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div
+			bind:this={editableEl}
+			{id}
+			role="textbox"
+			tabindex={0}
+			aria-multiline="true"
+			aria-label={fieldLabel}
+			contenteditable="true"
+			spellcheck="true"
+			style="min-height: {Math.max(44, rows * 20 + 14)}px; font-family: {quoteFontFamily(baseStyle.fontFamily)}, sans-serif; font-weight: {baseStyle.fontWeight}; font-style: {baseStyle.fontStyle};"
+			oninput={handleInput}
+			onmouseup={syncSelectionFromDom}
+			onkeyup={syncSelectionFromDom}
+			onpaste={handlePaste}
+			onkeydown={handleKeydown}
+			ondragover={(e) => {
+				if (e.dataTransfer?.types.includes('text/plain')) {
+					e.preventDefault();
+					e.dataTransfer.dropEffect = 'copy';
+				}
+			}}
+			ondrop={(e) => {
+				const token = e.dataTransfer?.getData('text/plain');
+				if (!token) return;
 				e.preventDefault();
-				syncSelectionFromTextarea();
-				applyFormat({ kind: 'bold' });
-			} else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'i') {
-				e.preventDefault();
-				syncSelectionFromTextarea();
-				applyFormat({ kind: 'italic' });
-			} else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'u') {
-				e.preventDefault();
-				syncSelectionFromTextarea();
-				applyFormat({ kind: 'underline' });
-			}
-		}}
-		ondragover={(e) => {
-			if (e.dataTransfer?.types.includes('text/plain')) {
-				e.preventDefault();
-				e.dataTransfer.dropEffect = 'copy';
-			}
-		}}
-		ondrop={(e) => {
-			const token = e.dataTransfer?.getData('text/plain');
-			if (!token) return;
-			e.preventDefault();
-			const ta = e.currentTarget;
-			const start = ta.selectionStart ?? latestText.length;
-			const end = ta.selectionEnd ?? latestText.length;
-			const nextText = latestText.slice(0, start) + token + latestText.slice(end);
-			const nextCursor = start + token.length;
-			latestText = nextText;
-			onChange(nextText);
-			publishSelection(nextText, nextCursor, nextCursor);
-		}}
-		class="block w-full resize-y rounded-lg border bg-white px-2.5 py-1.5 text-xs outline-none transition {isSelectionActive
-			? 'border-accent ring-2 ring-indigo-200/80'
-			: 'border-border-strong focus:border-accent'}"
-	></textarea>
+				insertPlainTextAtSelection(token);
+			}}
+			class="block w-full resize-y overflow-auto rounded-lg border bg-white px-2.5 py-1.5 text-xs leading-relaxed whitespace-pre-wrap text-ink-primary outline-none transition {isSelectionActive
+				? 'border-accent ring-2 ring-indigo-200/80'
+				: 'border-border-strong focus:border-accent'}"
+		></div>
+	</div>
 
 	{#if isSelectionActive && editor.activeTextSelection}
 		<p class="text-[11px] font-medium text-indigo-700">
-			Selected "{stripRichTextMarkup(editor.activeTextSelection.selectedText).replace(/\s+/g, ' ')}"
-			— use the top toolbar to change font, size, colour or style.
+			Selected "{editor.activeTextSelection.selectedText.replace(/\s+/g, ' ')}" — use the top
+			toolbar to change font, size, colour or style.
 		</p>
 	{/if}
 
@@ -220,9 +285,9 @@
 				type="button"
 				onmousedown={(e) => {
 					e.preventDefault();
-					syncSelectionFromTextarea();
+					syncSelectionFromDom();
 				}}
-				onclick={() => insertToken(`{{${prop.key}}}`)}
+				onclick={() => insertPlainTextAtSelection(`{{${prop.key}}}`)}
 				class="rounded border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 font-mono text-indigo-700 hover:bg-indigo-100 {compact
 					? 'text-[10px]'
 					: 'text-[11px]'}"

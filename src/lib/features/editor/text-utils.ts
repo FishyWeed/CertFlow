@@ -55,16 +55,13 @@ export function interpolateInlineProperties(
 }
 
 /**
- * Evaluates a Title element's conditional binding table against a recipient's property map.
- * All conditions inside a rule use AND logic; the most specific matching rule wins
- * (for example, Role = Participant AND Rank not empty beats Role = Participant alone).
+ * Returns the highest-specificity matching rule for a recipient's property map, or null if none match.
  */
-export function resolveTitleBinding(
-	defaultTitle: string,
+export function findMatchingTitleRule(
 	rules: TitleBindingRule[],
 	data: Record<string, string>
-): string {
-	let bestOutput: string | null = null;
+): TitleBindingRule | null {
+	let bestRule: TitleBindingRule | null = null;
 	let bestScore = -1;
 
 	for (const rule of rules) {
@@ -100,11 +97,24 @@ export function resolveTitleBinding(
 
 		if (allMatched && score > bestScore) {
 			bestScore = score;
-			bestOutput = output;
+			bestRule = rule;
 		}
 	}
 
-	return bestOutput ?? defaultTitle;
+	return bestRule;
+}
+
+/**
+ * Evaluates a Title element's conditional binding table against a recipient's property map.
+ * All conditions inside a rule use AND logic; the most specific matching rule wins
+ * (for example, Role = Participant AND Rank not empty beats Role = Participant alone).
+ */
+export function resolveTitleBinding(
+	defaultTitle: string,
+	rules: TitleBindingRule[],
+	data: Record<string, string>
+): string {
+	return findMatchingTitleRule(rules, data)?.output.trim() ?? defaultTitle;
 }
 
 /**

@@ -47,10 +47,11 @@ All settings, projects, database files and uploaded images stay inside the `data
 
 ### Option 4: Docker on Desktop or Server
 
-If you already use Docker Desktop or host on a VPS/NAS:
+If you already use Docker Desktop or host on a VPS or NAS:
 
-1. Download this repository and double-click **`Start-CertFlow.bat`** (Windows) or **`Start-CertFlow.command`** (macOS), or run `docker compose up -d`.
-2. Open `http://localhost:3000` and finish the setup screen. Technical users can expand **Advanced Settings** on `/setup` to customise keys, connect an external PostgreSQL database or set a server-wide email relay.
+- **Instant prebuilt image (fastest):** Run `docker compose -f docker-compose.ghcr.yml up -d` to pull `ghcr.io/fishyweed/certflow:latest`.
+- **Build from source:** Download this repository and double-click **`Start-CertFlow.bat`** (Windows) or **`Start-CertFlow.command`** (macOS), or run `docker compose up -d --build`.
+- Open `http://localhost:3000` and finish the setup screen. Technical users can expand **Advanced Settings** on `/setup` to customise keys, connect an external PostgreSQL database or set a server-wide email relay.
 
 ## What You Can Do
 
@@ -164,10 +165,14 @@ docker compose --profile dev-mail up -d mailpit
 | `pnpm dev` | Start the local SvelteKit development server |
 | `pnpm db:push` | Synchronise the Drizzle schema to PostgreSQL (`PGlite` or remote Postgres) |
 | `pnpm db:studio` | Open the Drizzle visual database browser |
+| `pnpm run verify` | Run all pipeline checks, unit tests, type checks and production build |
 | `pnpm test` | Run Vitest unit tests |
 | `pnpm check` | Run `svelte-kit sync` and `svelte-check` |
 | `pnpm build` | Build production Node server bundle |
-| `pnpm start` | Run the built production server (`build/index.js`) |
+| `pnpm start` | Run the built production server (`scripts/start.mjs`) |
+| `pnpm run docker:up` | Build and start local Docker Compose stack |
+| `pnpm run docker:ghcr` | Start prebuilt GHCR Docker Compose stack |
+| `pnpm run release:portable` | Package portable ZIP bundles for Windows, macOS and Linux |
 
 ## Deployment (Railway)
 
@@ -193,5 +198,6 @@ CertFlow includes `@sveltejs/adapter-node`, a `/api/health` endpoint and automat
 ## Architecture and Guides
 
 - [STRUCTURE.md](./STRUCTURE.md) — Folder map and module placement rules.
-- [docs/BLUEPRINT.md](./docs/BLUEPRINT.md) — System architecture, tech stack, routes and workflows.
+- [docs/PIPELINES.md](./docs/PIPELINES.md) — All six development and delivery pipelines (Local, Railway, Render, Docker and Portable).
+- [docs/BLUEPRINT.md](./docs/BLUEPRINT.md) — System architecture, tech stack, routes, limitations and roadmap.
 - [docs/DEV_TRAIL.md](./docs/DEV_TRAIL.md) — Chronological development log and verified milestones.

@@ -1,0 +1,40 @@
+# Instant prebuilt Docker Compose stack using the published multi-arch GHCR image.
+# Run: docker compose -f docker-compose.ghcr.yml up -d
+services:
+  certflow:
+    image: ghcr.io/fishyweed/certflow:latest
+    container_name: certflow
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - '${CERTFLOW_PORT:-3000}:3000'
+    environment:
+      CERTFLOW_SELF_HOSTED: 'true'
+      CERTFLOW_DATA_DIR: /data
+      LOCAL_UPLOAD_DIR: /data/uploads
+      STORAGE_DRIVER: local
+      CERTFLOW_DEFAULT_DATABASE_URL: postgresql://certflow:certflow_password@postgres:5432/certflow
+    volumes:
+      - certflow_data:/data
+
+  postgres:
+    image: postgres:18-alpine
+    container_name: certflow-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: certflow
+      POSTGRES_PASSWORD: certflow_password
+      POSTGRES_DB: certflow
+    volumes:
+      - certflow_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U certflow -d certflow']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  certflow_data:
+  certflow_pgdata:

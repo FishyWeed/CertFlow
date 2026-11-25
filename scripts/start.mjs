@@ -119,9 +119,16 @@ if (isSelfHostedUnconfigured) {
 		}
 	} else {
 		console.warn(
-			'[certflow] WARNING: DATABASE_URL is not a postgresql:// URL. Set DATABASE_URL to your Railway Postgres service reference.'
+			'[certflow] WARNING: DATABASE_URL is not a postgresql:// URL. Set DATABASE_URL to your PostgreSQL connection string.'
 		);
 	}
+}
+
+for (const signal of ['SIGINT', 'SIGTERM']) {
+	process.on(signal, () => {
+		console.log(`[certflow] Received ${signal}. Shutting down cleanly...`);
+		setTimeout(() => process.exit(0), 250).unref();
+	});
 }
 
 await import('../build/index.js');

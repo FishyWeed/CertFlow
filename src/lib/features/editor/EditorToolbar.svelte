@@ -106,6 +106,7 @@
 			fill: selectedTextEl.fill
 		};
 		if (!activeSel) return base;
+		if (activeSel.effectiveStyle) return activeSel.effectiveStyle;
 		return inspectSelectionStyle(activeSel.text, activeSel.start, activeSel.end, base);
 	});
 
@@ -585,26 +586,31 @@
 
 		<div class="mx-0.5 h-5 w-px shrink-0 bg-border-default"></div>
 
-		<!-- Quick Canvas Centre Buttons -->
-		<div class="flex shrink-0 items-center gap-1">
-			<button
-				type="button"
-				title="Centre element horizontally on canvas"
-				onmousedown={(e) => e.preventDefault()}
-				onclick={() => editor.alignElementOnCanvas(selectedTextEl.id, 'center-x')}
-				class="h-8 rounded-lg border border-border-default bg-white px-2 text-[11px] font-medium text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary"
+		<!-- Quick Canvas Centre Controls -->
+		<div class="flex shrink-0 items-center gap-1.5" role="group" aria-label="Centre element on canvas">
+			<span class="text-[11px] font-medium text-ink-muted">Centre:</span>
+			<div
+				class="inline-flex h-8 shrink-0 items-center overflow-hidden rounded-lg border border-border-default bg-white divide-x divide-border-default"
 			>
-				Centre H
-			</button>
-			<button
-				type="button"
-				title="Centre element vertically on canvas"
-				onmousedown={(e) => e.preventDefault()}
-				onclick={() => editor.alignElementOnCanvas(selectedTextEl.id, 'center-y')}
-				class="h-8 rounded-lg border border-border-default bg-white px-2 text-[11px] font-medium text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary"
-			>
-				Centre V
-			</button>
+				<button
+					type="button"
+					title="Centre element horizontally on canvas"
+					onmousedown={(e) => e.preventDefault()}
+					onclick={() => editor.alignElementOnCanvas(selectedTextEl.id, 'center-x')}
+					class="h-full px-2 text-[11px] font-medium text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary"
+				>
+					Horizontal
+				</button>
+				<button
+					type="button"
+					title="Centre element vertically on canvas"
+					onmousedown={(e) => e.preventDefault()}
+					onclick={() => editor.alignElementOnCanvas(selectedTextEl.id, 'center-y')}
+					class="h-full px-2 text-[11px] font-medium text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary"
+				>
+					Vertical
+				</button>
+			</div>
 		</div>
 	{:else if editor.selectedElements.length > 1}
 		<span class="shrink-0 rounded-md bg-indigo-50 px-2 py-1 text-xs font-semibold text-indigo-800">
@@ -705,25 +711,33 @@
 		</button>
 		<button
 			type="button"
-			onclick={() => editor.alignElementOnCanvas(selected.id, 'center-x')}
-			class="h-8 shrink-0 rounded-lg border border-border-default bg-white px-2 text-xs text-ink-secondary hover:bg-surface-subtle"
-		>
-			Centre H
-		</button>
-		<button
-			type="button"
 			onclick={() => editor.alignElementOnCanvas(selected.id, 'right')}
 			class="h-8 shrink-0 rounded-lg border border-border-default bg-white px-2 text-xs text-ink-secondary hover:bg-surface-subtle"
 		>
 			Align Right
 		</button>
-		<button
-			type="button"
-			onclick={() => editor.alignElementOnCanvas(selected.id, 'center-y')}
-			class="h-8 shrink-0 rounded-lg border border-border-default bg-white px-2 text-xs text-ink-secondary hover:bg-surface-subtle"
-		>
-			Centre V
-		</button>
+		<div class="mx-0.5 h-5 w-px shrink-0 bg-border-default"></div>
+		<div class="flex shrink-0 items-center gap-1.5" role="group" aria-label="Centre element on canvas">
+			<span class="text-[11px] font-medium text-ink-muted">Centre:</span>
+			<div
+				class="inline-flex h-8 shrink-0 items-center overflow-hidden rounded-lg border border-border-default bg-white divide-x divide-border-default"
+			>
+				<button
+					type="button"
+					onclick={() => editor.alignElementOnCanvas(selected.id, 'center-x')}
+					class="h-full px-2 text-[11px] font-medium text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary"
+				>
+					Horizontal
+				</button>
+				<button
+					type="button"
+					onclick={() => editor.alignElementOnCanvas(selected.id, 'center-y')}
+					class="h-full px-2 text-[11px] font-medium text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary"
+				>
+					Vertical
+				</button>
+			</div>
+		</div>
 		<div class="mx-0.5 h-5 w-px shrink-0 bg-border-default"></div>
 		<button
 			type="button"
@@ -745,8 +759,8 @@
 		</button>
 	{:else}
 		<p class="truncate text-xs text-ink-muted">
-			Select a text element to edit font, size, colour and alignment, or highlight words in Text
-			Content to style individual words.
+			Select a text element to format font, size, colour and alignment, or double-click text on the
+			canvas to type and style individual words.
 		</p>
 		<span class="ml-auto shrink-0 font-mono text-[11px] text-ink-muted">
 			{editor.width} × {editor.height} px

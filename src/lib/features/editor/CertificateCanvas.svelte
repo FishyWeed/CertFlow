@@ -2,17 +2,37 @@
 	import { onDestroy, onMount } from 'svelte';
 	import type KonvaType from 'konva';
 	import { LAYOUT_BREAKPOINTS } from '#lib/config/layout.ts';
-	import type { CanvasElement, CriterionDefinition } from '#lib/types/certflow.ts';
+	import type { CanvasElement, CriterionDefinition, StaticTextCanvasElement } from '#lib/types/certflow.ts';
 	import type { EditorState } from './editor-state.svelte.ts';
-	import { ensureFontLoaded, extractInlineFontFamilies, preloadEditorFonts } from './fonts.ts';
-	import { createRichTextKonvaNode, hasElementRichText } from './rich-text.ts';
+	import {
+		ensureFontLoaded,
+		extractInlineFontFamilies,
+		preloadEditorFonts,
+		quoteFontFamily
+	} from './fonts.ts';
+	import {
+		createRichTextKonvaNode,
+		hasElementRichText,
+		stripRichTextMarkup,
+		type InlineFormatAction,
+		type RichTextStyle
+	} from './rich-text.ts';
 	import { computeSnapResult, type RectBox } from './snapping.ts';
 	import {
 		applyAutoFit,
 		buildKonvaFontStyle,
 		computeScaledFontSizeForResize,
+		findMatchingTitleRule,
 		resolveElementText
 	} from './text-utils.ts';
+	import {
+		applyFormatToPlainRange,
+		domToRichTextMarkup,
+		getPlainTextSelection,
+		inspectPlainRangeStyle,
+		richTextMarkupToHtml,
+		setPlainTextSelection
+	} from './wysiwyg.ts';
 
 	interface Props {
 		editor: EditorState;
@@ -94,6 +114,246 @@
 
 	let marqueeActiveState = false;
 	let isElementDragging = false;
+
+	// Direct on-canvas WYSIWYG text editing state (double-click any text element to edit live).
+	const CANVAS_INLINE_FIELD_ID = '__canvas_inline_editor__';
+	let inlineEdit = $state<{ elementId: string; ruleId: string | null; label: string } | null>(null);
+	let inlineEditorEl = $state<HTMLDivElement | null>(null);
+	let inlineSavedSelection = $state<{ start: number; end: number } | null>(null);
+	let inlineLatestMarkup = '';
+	let inlineLastSyncedHtml = '';
+
+	const editingTextEl = $derived.by<StaticTextCanvasElement | null>(() => {
+		if (!inlineEdit) return null;
+		const found = editor.canvasState.elements.find((e) => e.id === inlineEdit!.elementId);
+		if (!found || found.type !== 'text' || found.locked || !found.visible) return null;
+		return found;
+	});
+
+	const editingBaseStyle = $derived.by<RichTextStyle | null>(() => {
+		if (!editingTextEl) return null;
+		return {
+			fontFamily: editingTextEl.fontFamily,
+			fontSize: editingTextEl.fontSize,
+			fontWeight: editingTextEl.fontWeight,
+			fontStyle: editingTextEl.fontStyle,
+			underline: editingTextEl.textDecoration === 'underline',
+			fill: editingTextEl.fill
+		};
+	});
+
+	const editingMarkup = $derived.by(() => {
+		if (!editingTextEl || !inlineEdit) return '';
+		if (inlineEdit.ruleId) {
+			const rule = editingTextEl.rules?.find((r) => r.id === inlineEdit!.ruleId);
+			return rule?.output ?? '';
+		}
+		return editingTextEl.text;
+	});
+
+	function commitInlineMarkup(nextMarkup: string) {
+		if (!editingTextEl || !inlineEdit) return;
+		inlineLatestMarkup = nextMarkup;
+		if (inlineEdit.ruleId && editingTextEl.rules) {
+			const nextRules = editingTextEl.rules.map((r) =>
+				r.id === inlineEdit!.ruleId ? { ...r, output: nextMarkup } : r
+			);
+			editor.updateElement(editingTextEl.id, { rules: nextRules }, false);
+		} else {
+			editor.updateElement(editingTextEl.id, { text: nextMarkup }, false);
+		}
+	}
+
+	function publishInlineSelection(markup: string, start: number, end: number) {
+		if (!editingTextEl || !editingBaseStyle || !inlineEdit) return;
+		const plain = stripRichTextMarkup(markup);
+		const from = Math.max(0, Math.min(plain.length, Math.min(start, end)));
+		const to = Math.max(from, Math.min(plain.length, Math.max(start, end)));
+		inlineSavedSelection = { start: from, end: to };
+
+		if (to > from) {
+			editor.setActiveTextSelection({
+				elementId: editingTextEl.id,
+				fieldId: CANVAS_INLINE_FIELD_ID,
+				label: inlineEdit.label,
+				text: markup,
+				start: from,
+				end: to,
+				selectedText: plain.slice(from, to),
+				effectiveStyle: inspectPlainRangeStyle(markup, editingBaseStyle, from, to),
+				apply: applyInlineCanvasFormat,
+				clear: clearInlineHighlight
+			});
+		} else {
+			editor.clearActiveTextSelection(CANVAS_INLINE_FIELD_ID);
+		}
+	}
+
+	function syncInlineSelectionFromDom() {
+		if (!inlineEditorEl) return;
+		const sel = getPlainTextSelection(inlineEditorEl);
+		if (!sel) return;
+		publishInlineSelection(inlineLatestMarkup, sel.start, sel.end);
+	}
+
+	function getInlineActiveSelection(): { start: number; end: number } {
+		const plainLen = stripRichTextMarkup(inlineLatestMarkup).length;
+		if (inlineEditorEl && document.activeElement === inlineEditorEl) {
+			const live = getPlainTextSelection(inlineEditorEl);
+			if (live) return live;
+		}
+		if (inlineSavedSelection) {
+			return {
+				start: Math.max(0, Math.min(plainLen, inlineSavedSelection.start)),
+				end: Math.max(0, Math.min(plainLen, inlineSavedSelection.end))
+			};
+		}
+		return { start: plainLen, end: plainLen };
+	}
+
+	function clearInlineHighlight() {
+		inlineSavedSelection = null;
+		editor.clearActiveTextSelection(CANVAS_INLINE_FIELD_ID);
+		if (inlineEditorEl && document.activeElement === inlineEditorEl) {
+			const live = getPlainTextSelection(inlineEditorEl);
+			if (live) setPlainTextSelection(inlineEditorEl, live.end, live.end);
+		}
+	}
+
+	function applyInlineCanvasFormat(action: InlineFormatAction, options?: { restoreFocus?: boolean }) {
+		if (!editingBaseStyle) return;
+		if (action.kind === 'font') ensureFontLoaded(action.value);
+		const { start, end } = getInlineActiveSelection();
+		const nextMarkup = applyFormatToPlainRange(inlineLatestMarkup, editingBaseStyle, start, end, action);
+		commitInlineMarkup(nextMarkup);
+
+		if (inlineEditorEl) {
+			const nextHtml = richTextMarkupToHtml(nextMarkup, editingBaseStyle, { zoom: editor.zoom });
+			inlineEditorEl.innerHTML = nextHtml;
+			inlineLastSyncedHtml = nextHtml;
+		}
+
+		publishInlineSelection(nextMarkup, start, end);
+
+		if (options?.restoreFocus !== false) {
+			requestAnimationFrame(() => {
+				if (!inlineEditorEl) return;
+				inlineEditorEl.focus();
+				setPlainTextSelection(inlineEditorEl, start, end);
+			});
+		}
+	}
+
+	function startInlineTextEdit(el: StaticTextCanvasElement) {
+		if (el.locked) return;
+		editor.selectElement(el.id, { ignoreGroup: true });
+		editor.pushHistorySnapshot();
+
+		let ruleId: string | null = null;
+		let label = 'Canvas Text';
+		if (editor.previewMode === 'sample' && el.rules && el.rules.length > 0) {
+			const matched = findMatchingTitleRule(el.rules, sampleData);
+			if (matched) {
+				const idx = el.rules.findIndex((r) => r.id === matched.id);
+				ruleId = matched.id;
+				label = `Rule ${idx + 1}`;
+			}
+		}
+
+		inlineLastSyncedHtml = '';
+		inlineSavedSelection = null;
+		inlineEdit = { elementId: el.id, ruleId, label };
+
+		requestAnimationFrame(() => {
+			if (!inlineEditorEl) return;
+			inlineEditorEl.focus();
+			const plainLen = stripRichTextMarkup(inlineLatestMarkup).length;
+			setPlainTextSelection(inlineEditorEl, plainLen, plainLen);
+		});
+	}
+
+	function finishInlineTextEdit() {
+		if (!inlineEdit) return;
+		editor.clearActiveTextSelection(CANVAS_INLINE_FIELD_ID);
+		inlineEdit = null;
+		inlineSavedSelection = null;
+		inlineLastSyncedHtml = '';
+	}
+
+	function handleInlineCanvasInput() {
+		if (!inlineEditorEl || !editingBaseStyle) return;
+		const nextMarkup = domToRichTextMarkup(inlineEditorEl, editingBaseStyle);
+		inlineLastSyncedHtml = inlineEditorEl.innerHTML;
+		commitInlineMarkup(nextMarkup);
+		syncInlineSelectionFromDom();
+	}
+
+	function handleInlineCanvasPaste(event: ClipboardEvent) {
+		event.preventDefault();
+		const plain = event.clipboardData?.getData('text/plain') ?? '';
+		if (!plain || !inlineEditorEl || !editingBaseStyle) return;
+		const sel = window.getSelection();
+		if (sel && sel.rangeCount > 0) {
+			const range = sel.getRangeAt(0);
+			range.deleteContents();
+			const node = document.createTextNode(plain);
+			range.insertNode(node);
+			range.setStartAfter(node);
+			range.setEndAfter(node);
+			sel.removeAllRanges();
+			sel.addRange(range);
+			handleInlineCanvasInput();
+		}
+	}
+
+	function handleInlineCanvasKeydown(event: KeyboardEvent) {
+		if (event.key === 'Escape') {
+			event.preventDefault();
+			event.stopPropagation();
+			finishInlineTextEdit();
+			return;
+		}
+		const mod = event.ctrlKey || event.metaKey;
+		const key = event.key.toLowerCase();
+		if (mod && key === 'b') {
+			event.preventDefault();
+			syncInlineSelectionFromDom();
+			applyInlineCanvasFormat({ kind: 'bold' });
+		} else if (mod && key === 'i') {
+			event.preventDefault();
+			syncInlineSelectionFromDom();
+			applyInlineCanvasFormat({ kind: 'italic' });
+		} else if (mod && key === 'u') {
+			event.preventDefault();
+			syncInlineSelectionFromDom();
+			applyInlineCanvasFormat({ kind: 'underline' });
+		}
+	}
+
+	// Sync WYSIWYG overlay HTML whenever markup, baseStyle or zoom changes while editing on canvas.
+	$effect(() => {
+		if (!inlineEdit || !editingTextEl || !editingBaseStyle) return;
+		const markup = editingMarkup;
+		const zoom = editor.zoom;
+		inlineLatestMarkup = markup;
+		if (!inlineEditorEl) return;
+		const desiredHtml = richTextMarkupToHtml(markup, editingBaseStyle, { zoom });
+		if (desiredHtml === inlineLastSyncedHtml) return;
+		const wasFocused = document.activeElement === inlineEditorEl;
+		const prevSel = wasFocused ? getPlainTextSelection(inlineEditorEl) : inlineSavedSelection;
+		inlineEditorEl.innerHTML = desiredHtml;
+		inlineLastSyncedHtml = desiredHtml;
+		if (wasFocused && prevSel) {
+			setPlainTextSelection(inlineEditorEl, prevSel.start, prevSel.end);
+		}
+	});
+
+	// Exit inline canvas editing if the user switches selection away from the edited element.
+	$effect(() => {
+		if (inlineEdit && !editor.isSelected(inlineEdit.elementId)) {
+			finishInlineTextEdit();
+		}
+	});
 
 	function getLineEndpoints(el: { x: number; y: number; width: number; rotation: number }) {
 		const rad = ((el.rotation || 0) * Math.PI) / 180;
@@ -711,6 +971,9 @@
 
 			node.on('mousedown tap', (evt) => {
 				evt.cancelBubble = true;
+				if (inlineEdit && inlineEdit.elementId !== el.id) {
+					finishInlineTextEdit();
+				}
 				const mouseEvt = evt.evt as MouseEvent | undefined;
 				const multiKey = Boolean(mouseEvt?.shiftKey || mouseEvt?.ctrlKey || mouseEvt?.metaKey);
 				if (multiKey) {
@@ -730,6 +993,10 @@
 
 			node.on('dblclick dbltap', (evt) => {
 				evt.cancelBubble = true;
+				if (el.type === 'text' && !el.locked) {
+					startInlineTextEdit(el);
+					return;
+				}
 				if (el.groupId) {
 					editor.selectElement(el.id, { ignoreGroup: true });
 				}
@@ -852,8 +1119,12 @@
 				}
 			});
 
+			const isBeingEditedInline = Boolean(inlineEdit && inlineEdit.elementId === el.id);
+			if (isBeingEditedInline) {
+				node.visible(false);
+			}
 			contentLayer.add(node as KonvaType.Shape | KonvaType.Group);
-			if (editor.isSelected(el.id) && !el.locked) {
+			if (editor.isSelected(el.id) && !el.locked && !isBeingEditedInline) {
 				selectedNodes.push(node);
 			}
 		}
@@ -1063,7 +1334,22 @@
 		const key = event.key.toLowerCase();
 		const inDialog = Boolean(target?.closest('[role="dialog"]'));
 
-		// Global Undo / Redo / Save work anywhere on the editor page without clicking the canvas first.
+		if (mod && key === 's' && !inDialog) {
+			event.preventDefault();
+			onSaveShortcut?.();
+			return;
+		}
+
+		// When editing directly inside a canvas text box, let native typing/selection/undo work undisturbed.
+		if (inlineEdit) {
+			if (event.key === 'Escape') {
+				event.preventDefault();
+				finishInlineTextEdit();
+			}
+			return;
+		}
+
+		// Global Undo / Redo work anywhere on the editor page when not inline-editing on canvas.
 		if (mod && key === 'z' && !inDialog) {
 			event.preventDefault();
 			if (event.shiftKey) {
@@ -1077,12 +1363,6 @@
 		if (mod && key === 'y' && !inDialog) {
 			event.preventDefault();
 			editor.redo();
-			return;
-		}
-
-		if (mod && key === 's' && !inDialog) {
-			event.preventDefault();
-			onSaveShortcut?.();
 			return;
 		}
 
@@ -1530,6 +1810,7 @@
 		void editor.zoom;
 		void editor.previewMode;
 		void sampleData;
+		void inlineEdit;
 		syncKonva();
 	});
 
@@ -1547,8 +1828,9 @@
 	let isDragOver = $state(false);
 
 	function handleViewportPointerDown(event: PointerEvent) {
-		// Clicking the grey sandbox area surrounding the certificate deselects active elements.
+		// Clicking the grey sandbox area surrounding the certificate finishes inline edits and deselects elements.
 		if (event.target === viewportEl) {
+			finishInlineTextEdit();
 			editor.clearSelection();
 		}
 	}
@@ -1617,15 +1899,71 @@
 		: 'overflow-auto'}"
 >
 	<div
-		bind:this={containerEl}
-		role="region"
-		aria-label="Certificate canvas drop zone"
-		ondragover={handleCanvasDragOver}
-		ondragleave={handleCanvasDragLeave}
-		ondrop={handleCanvasDrop}
-		style="touch-action: none;"
-		class="preserve-light m-auto shrink-0 rounded-sm bg-white shadow-md ring-2 transition {isDragOver
+		class="preserve-light relative m-auto shrink-0 rounded-sm bg-white shadow-md ring-2 transition {isDragOver
 			? 'ring-accent'
 			: 'ring-border-strong'}"
-	></div>
+	>
+		<div
+			bind:this={containerEl}
+			role="region"
+			aria-label="Certificate canvas drop zone"
+			ondragover={handleCanvasDragOver}
+			ondragleave={handleCanvasDragLeave}
+			ondrop={handleCanvasDrop}
+			style="touch-action: none;"
+		></div>
+
+		<!-- Direct On-Canvas WYSIWYG Text Editor Overlay -->
+		{#if inlineEdit && editingTextEl && editingBaseStyle}
+			{@const z = editor.zoom}
+			{@const vAlignCss =
+				editingTextEl.verticalAlign === 'top'
+					? 'flex-start'
+					: editingTextEl.verticalAlign === 'bottom'
+						? 'flex-end'
+						: 'center'}
+			<div
+				style="left: {editingTextEl.x * z}px; top: {editingTextEl.y * z}px; width: {editingTextEl.width * z}px; min-height: {editingTextEl.height * z}px; transform: rotate({editingTextEl.rotation}deg); transform-origin: top left;"
+				class="absolute z-20 flex flex-col"
+			>
+				<!-- Subtle floating edit status bar above the active text box -->
+				<div
+					class="pointer-events-auto absolute -top-7 left-0 flex items-center gap-2 rounded-md bg-indigo-600 px-2 py-0.5 text-[10px] font-medium whitespace-nowrap text-white shadow-md"
+				>
+					<span>Editing {inlineEdit.label} · Highlight words for toolbar</span>
+					<button
+						type="button"
+						onmousedown={(e) => e.preventDefault()}
+						onclick={finishInlineTextEdit}
+						class="rounded bg-white/20 px-1.5 py-0.25 font-semibold hover:bg-white/30"
+					>
+						Done
+					</button>
+				</div>
+
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
+				<div
+					style="min-height: {editingTextEl.height * z}px; justify-content: {vAlignCss};"
+					class="flex w-full flex-col rounded-[2px] ring-2 ring-indigo-500 ring-offset-0"
+				>
+					<div
+						bind:this={inlineEditorEl}
+						role="textbox"
+						tabindex={0}
+						aria-multiline="true"
+						aria-label="Edit {editingTextEl.name} directly on canvas"
+						contenteditable="true"
+						spellcheck="false"
+						style="width: 100%; font-family: {quoteFontFamily(editingTextEl.fontFamily)}, sans-serif; font-size: {(editingTextEl.fontSize * z).toFixed(2)}px; font-weight: {editingTextEl.fontWeight}; font-style: {editingTextEl.fontStyle}; text-decoration: {editingTextEl.textDecoration === 'underline' ? 'underline' : 'none'}; color: {editingTextEl.fill}; text-align: {editingTextEl.align}; line-height: {editingTextEl.lineHeight}; letter-spacing: {(editingTextEl.letterSpacing * z).toFixed(2)}px; text-transform: {editingTextEl.textTransform}; word-break: {editingTextEl.wrap === 'char' ? 'break-all' : 'normal'}; white-space: {editingTextEl.wrap === 'none' ? 'pre' : 'pre-wrap'};"
+						oninput={handleInlineCanvasInput}
+						onmouseup={syncInlineSelectionFromDom}
+						onkeyup={syncInlineSelectionFromDom}
+						onpaste={handleInlineCanvasPaste}
+						onkeydown={handleInlineCanvasKeydown}
+						class="w-full cursor-text bg-transparent outline-none"
+					></div>
+				</div>
+			</div>
+		{/if}
+	</div>
 </div>

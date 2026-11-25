@@ -7,7 +7,7 @@ import type {
 	TemplateBackground,
 	TemplateCanvasState
 } from '#lib/types/certflow.ts';
-import type { InlineFormatAction } from './rich-text.ts';
+import type { InlineFormatAction, RichTextStyle } from './rich-text.ts';
 
 export interface ActiveTextSelection {
 	elementId: string;
@@ -17,6 +17,7 @@ export interface ActiveTextSelection {
 	start: number;
 	end: number;
 	selectedText: string;
+	effectiveStyle?: RichTextStyle;
 	apply: (action: InlineFormatAction, options?: { restoreFocus?: boolean }) => void;
 	clear: () => void;
 }

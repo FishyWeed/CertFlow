@@ -25,10 +25,11 @@ export interface RichTextLine {
 	width: number;
 	height: number;
 	baselineOffset: number;
+	isParagraphEnd: boolean;
 }
 
 const RICH_MARKUP_RE =
-	/\*\*[\s\S]+?\*\*|\*[^*\n]+?\*|<u>[\s\S]*?<\/u>|<b>[\s\S]*?<\/b>|<i>[\s\S]*?<\/i>|<color=[^>]+>[\s\S]*?<\/color>|<size=\d+>[\s\S]*?<\/size>|<font=[^>]+>[\s\S]*?<\/font>/i;
+	/\*\*[\s\S]+?\*\*|\*[^*\n]+?\*|<u>[\s\S]*?<\/u>|<b>[\s\S]*?<\/b>|<i>[\s\S]*?<\/i>|<color=[^>]+>[\s\S]*?<\/color>|<size=\d+(?:\.\d+)?>[\s\S]*?<\/size>|<font=[^>]+>[\s\S]*?<\/font>|<weight=\d+>[\s\S]*?<\/weight>/i;
 
 export function hasRichTextMarkup(text: string): boolean {
 	return RICH_MARKUP_RE.test(text);
@@ -43,7 +44,7 @@ export function hasElementRichText(element: TextualCanvasElement): boolean {
 export function stripRichTextMarkup(text: string): string {
 	return text
 		.replace(/<\/?(?:b|i|u)>/gi, '')
-		.replace(/<\/?(?:color|size|font)(?:=[^>]*)?>/gi, '')
+		.replace(/<\/?(?:color|size|font|weight)(?:=[^>]*)?>/gi, '')
 		.replace(/\*\*([\s\S]+?)\*\*/g, '$1')
 		.replace(/\*([^*\n]+?)\*/g, '$1');
 }
@@ -170,6 +171,22 @@ export function parseRichTextRuns(input: string, base: RichTextStyle): RichTextR
 						fontFamily: fontTag[1].trim() || style.fontFamily
 					});
 					i = closeIdx + '</font>'.length;
+					continue;
+				}
+			}
+
+			// <weight=400>...</weight> (allows un-bolding individual words inside a bold element)
+			const weightTag = str.slice(i).match(/^<weight=(\d+)>/i);
+			if (weightTag) {
+				const closeIdx = str.toLowerCase().indexOf('</weight>', i + weightTag[0].length);
+				if (closeIdx !== -1) {
+					flush();
+					const parsed = Number(weightTag[1]);
+					walk(str.slice(i + weightTag[0].length, closeIdx), {
+						...style,
+						fontWeight: Number.isFinite(parsed) ? parsed : style.fontWeight
+					});
+					i = closeIdx + '</weight>'.length;
 					continue;
 				}
 			}
@@ -575,15 +592,32 @@ export function layoutRichTextLines(
 	let currentRuns: Array<RichTextRun & { width: number }> = [];
 	let currentWidth = 0;
 
-	const pushLine = () => {
-		// Trim trailing whitespace width on wrapped lines for crisp centre/right alignment.
+	const pushLine = (isParagraphEnd: boolean) => {
+		// Trim trailing whitespace width on wrapped lines for crisp centre/right/justify alignment.
+		while (currentRuns.length > 0) {
+			const last = currentRuns[currentRuns.length - 1];
+			if (/^\s+$/.test(last.text)) {
+				currentWidth -= last.width;
+				currentRuns.pop();
+			} else {
+				const trimmed = last.text.replace(/\s+$/, '');
+				if (trimmed !== last.text) {
+					const newW = measureRunText(ctx, trimmed, last, scale, letterSpacing);
+					currentWidth -= last.width - newW;
+					last.text = trimmed;
+					last.width = newW;
+				}
+				break;
+			}
+		}
 		const maxFont = currentRuns.reduce((m, r) => Math.max(m, r.fontSize * scale), 12);
 		const height = maxFont * Math.max(1, lineHeight || 1.2);
 		lines.push({
 			runs: currentRuns,
-			width: currentWidth,
+			width: Math.max(0, currentWidth),
 			height,
-			baselineOffset: maxFont * 0.82
+			baselineOffset: maxFont * 0.82,
+			isParagraphEnd
 		});
 		currentRuns = [];
 		currentWidth = 0;
@@ -612,7 +646,7 @@ export function layoutRichTextLines(
 	for (const run of runs) {
 		const paragraphs = run.text.split('\n');
 		for (let p = 0; p < paragraphs.length; p++) {
-			if (p > 0) pushLine();
+			if (p > 0) pushLine(true);
 			const para = paragraphs[p];
 			if (!para) continue;
 
@@ -627,7 +661,7 @@ export function layoutRichTextLines(
 				const tokenW = measureRunText(ctx, token, run, scale, letterSpacing);
 				const isSpace = /^\s+$/.test(token);
 				if (currentWidth > 0 && !isSpace && currentWidth + tokenW > maxWidth) {
-					pushLine();
+					pushLine(false);
 				}
 				if (currentWidth === 0 && isSpace) continue;
 				appendPiece(token, run);
@@ -636,7 +670,7 @@ export function layoutRichTextLines(
 	}
 
 	if (currentRuns.length > 0 || lines.length === 0) {
-		pushLine();
+		pushLine(true);
 	}
 
 	return lines;
@@ -760,20 +794,32 @@ export function createRichTextKonvaNode(
 					cursorX = Math.max(0, boxW - line.width);
 				}
 
+				const shouldJustify = el.align === 'justify' && !line.isParagraphEnd && boxW > line.width;
+				const spaceCount = shouldJustify
+					? line.runs.reduce((sum, r) => sum + (r.text.match(/ /g)?.length ?? 0), 0)
+					: 0;
+				const extraSpacePx = spaceCount > 0 ? (boxW - line.width) / spaceCount : 0;
+
 				const baselineY = cursorY + line.baselineOffset;
 
 				for (const run of line.runs) {
 					ctx.font = buildCanvasFont(run, scale);
 					ctx.fillStyle = run.fill;
+					const runStartX = cursorX;
 
-					if (el.letterSpacing) {
+					if (el.letterSpacing || extraSpacePx > 0) {
 						let charX = cursorX;
 						for (const ch of run.text) {
 							ctx.fillText(ch, charX, baselineY);
-							charX += ctx.measureText(ch).width + el.letterSpacing * scale;
+							charX +=
+								ctx.measureText(ch).width +
+								(el.letterSpacing ? el.letterSpacing * scale : 0) +
+								(ch === ' ' ? extraSpacePx : 0);
 						}
+						cursorX = charX;
 					} else {
 						ctx.fillText(run.text, cursorX, baselineY);
+						cursorX += run.width;
 					}
 
 					if (run.underline && run.text.trim()) {
@@ -782,12 +828,10 @@ export function createRichTextKonvaNode(
 						ctx.beginPath();
 						ctx.strokeStyle = run.fill;
 						ctx.lineWidth = lineThickness;
-						ctx.moveTo(cursorX, underlineY);
-						ctx.lineTo(cursorX + run.width, underlineY);
+						ctx.moveTo(runStartX, underlineY);
+						ctx.lineTo(cursorX, underlineY);
 						ctx.stroke();
 					}
-
-					cursorX += run.width;
 				}
 
 				cursorY += line.height;

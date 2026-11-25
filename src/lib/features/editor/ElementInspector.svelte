@@ -963,13 +963,21 @@
 			</div>
 		{/if}
 
-		<!-- Text Content (supports dragging or clicking {{property}} tokens, per-word formatting and conditional rules) -->
+		<!-- Text Content (supports double-click canvas editing, WYSIWYG formatting, {{property}} tokens and conditional rules) -->
 		{#if selected.type === 'text'}
 			{@const textRules = selected.rules ?? []}
+			{@const elementBaseStyle = {
+				fontFamily: selected.fontFamily,
+				fontSize: selected.fontSize,
+				fontWeight: selected.fontWeight,
+				fontStyle: selected.fontStyle,
+				underline: selected.textDecoration === 'underline',
+				fill: selected.fill
+			}}
 			<section class="space-y-3">
 				<div class="space-y-2">
 					<label for="el-text-content" class="block text-xs font-medium text-ink-secondary">
-						Text Content (highlight words to style them with the top toolbar)
+						Text Content (double-click canvas or highlight words here for the top toolbar)
 					</label>
 
 					<RichTextEditor
@@ -978,6 +986,7 @@
 						{editor}
 						elementId={selected.id}
 						fieldLabel="Text Content"
+						baseStyle={elementBaseStyle}
 						rows={3}
 						{criteria}
 						onChange={(nextText) => editor.updateElement(selected.id, { text: nextText })}
@@ -1171,6 +1180,7 @@
 											{editor}
 											elementId={selected.id}
 											fieldLabel="Rule {ruleIdx + 1}"
+											baseStyle={elementBaseStyle}
 											rows={3}
 											compact
 											{criteria}

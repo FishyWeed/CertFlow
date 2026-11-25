@@ -17,6 +17,13 @@
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"test": "vitest run",
+		"verify:pipelines": "node scripts/verify-pipelines.mjs",
+		"verify": "node scripts/verify-pipelines.mjs && pnpm test && pnpm run check && pnpm build",
+		"docker:up": "docker compose up -d --build",
+		"docker:down": "docker compose down",
+		"docker:ghcr": "docker compose -f docker-compose.ghcr.yml up -d",
+		"release:portable": "node scripts/package-portable.mjs --target all",
+		"release:portable:win": "node scripts/package-portable.mjs --target win-x64",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "drizzle-kit migrate",
 		"db:push": "drizzle-kit push",
@@ -27,7 +34,6 @@
 		"node": ">=22.0.0"
 	},
 	"devDependencies": {
-		"@sveltejs/adapter-auto": "^8.0.1",
 		"@sveltejs/adapter-node": "^6.0.5",
 		"@sveltejs/kit": "^3.2.0",
 		"@sveltejs/vite-plugin-svelte": "^7.3.1",
