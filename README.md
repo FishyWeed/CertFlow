@@ -20,10 +20,15 @@ Deploy a private copy of CertFlow with a PostgreSQL database and auto-generated 
 
 ### Option 2: Deploy on Railway
 
-Deploy CertFlow on Railway with PostgreSQL and a persistent Volume mounted at `/data/uploads`.
+Deploy CertFlow on Railway with PostgreSQL and a persistent Volume mounted at `/data/uploads`:
 
-- **One-click Railway Template (for maintainers)**: Open your CertFlow project in Railway, go to **Project Settings -> General -> Create Template**, replace your personal values for `BETTER_AUTH_SECRET` and `ENCRYPTION_KEY` with `${{secret(64)}}`, publish the template and place its `https://railway.com/deploy/<code>` button here.
-- **Manual Railway setup**: Follow the step-by-step instructions in [Deployment (Railway)](#deployment-railway).
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/new)
+
+1. Click **Deploy on Railway** and choose **Deploy from GitHub repo** -> `FishyWeed/CertFlow`.
+2. Add a **PostgreSQL** service and a persistent **Volume** mounted at `/data/uploads`.
+3. Follow the environment variable steps in [Deployment (Railway)](#deployment-railway) to finish setup.
+
+> **Maintainer note for 1-click stack provisioning**: Open the CertFlow project in Railway, go to **Project Settings -> General -> Create Template**, replace personal values for `BETTER_AUTH_SECRET` and `ENCRYPTION_KEY` with `${{secret(64)}}` and publish the template. Then replace `https://railway.com/new` in the button above with `https://railway.com/new/template/<TEMPLATE_CODE>` so Railway provisions CertFlow, PostgreSQL, the Volume and secrets in one click.
 
 ### Option 3: Portable Desktop ZIP (No Docker, No Node.js Required)
 
