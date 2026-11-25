@@ -14,9 +14,10 @@ RUN pnpm build && pnpm prune --prod --ignore-scripts
 FROM node:22-alpine AS runner
 WORKDIR /app
 
+RUN npm install -g pnpm@12.10.1
+
 ENV NODE_ENV=production \
     HOST=0.0.0.0 \
-    PORT=3000 \
     BODY_SIZE_LIMIT=50M \
     CERTFLOW_SELF_HOSTED=true \
     CERTFLOW_DATA_DIR=/data \
