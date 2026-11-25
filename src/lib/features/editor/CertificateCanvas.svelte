@@ -12,19 +12,12 @@
 	} from './fonts.ts';
 	import {
 		createRichTextKonvaNode,
-		hasElementRichText,
 		stripRichTextMarkup,
 		type InlineFormatAction,
 		type RichTextStyle
 	} from './rich-text.ts';
 	import { computeSnapResult, type RectBox } from './snapping.ts';
-	import {
-		applyAutoFit,
-		buildKonvaFontStyle,
-		computeScaledFontSizeForResize,
-		findMatchingTitleRule,
-		resolveElementText
-	} from './text-utils.ts';
+	import { findMatchingTitleRule } from './text-utils.ts';
 	import {
 		applyFormatToPlainRange,
 		domToRichTextMarkup,
@@ -821,34 +814,9 @@
 					ensureFontLoaded(inlineFont, 700, 'normal', () => syncKonva());
 					ensureFontLoaded(inlineFont, 400, 'italic', () => syncKonva());
 				}
-				if (hasElementRichText(el)) {
-					node = createRichTextKonvaNode(Konva, el, sampleData, editor.previewMode, !el.locked);
-				} else {
-					const textNode = new Konva.Text({
-						id: el.id,
-						x: el.x,
-						y: el.y,
-						width: el.width,
-						height: el.height,
-						rotation: el.rotation,
-						opacity: el.opacity,
-						draggable: !el.locked,
-						text: resolveElementText(el, sampleData, editor.previewMode),
-						fontFamily: el.fontFamily,
-						fontSize: el.fontSize,
-						fontStyle: buildKonvaFontStyle(el.fontWeight, el.fontStyle),
-						textDecoration: el.textDecoration,
-						fill: el.fill,
-						align: el.align,
-						verticalAlign: el.verticalAlign,
-						lineHeight: el.lineHeight,
-						letterSpacing: el.letterSpacing,
-						wrap: el.wrap,
-						ellipsis: el.ellipsis
-					});
-					applyAutoFit(textNode, el);
-					node = textNode;
-				}
+				// Use the unified rich-text Konva renderer for all text elements so optical vertical
+				// centring and shrink-only overflow fitting stay identical for plain and mixed-size text.
+				node = createRichTextKonvaNode(Konva, el, sampleData, editor.previewMode, !el.locked);
 			} else if (el.type === 'shape') {
 				if (el.shapeKind === 'rect') {
 					node = new Konva.Rect({
@@ -1496,31 +1464,10 @@
 			}
 		});
 
-		// Snapshot initial dimensions & font sizes at transformstart so scaling stays drift-free.
-		const transformStartMeta = new Map<string, { fontSize: number; width: number; height: number }>();
-
-		transformer.on('transformstart', () => {
-			transformStartMeta.clear();
-			if (!transformer) return;
-			for (const n of transformer.nodes()) {
-				const el = editor.canvasState.elements.find((item) => item.id === n.id());
-				if (!el) continue;
-				if (el.type === 'placeholder' || el.type === 'text' || el.type === 'title') {
-					transformStartMeta.set(el.id, {
-						fontSize: el.fontSize,
-						width: el.width,
-						height: el.height
-					});
-				}
-			}
-		});
-
 		function normaliseNodeTransform(
 			n: KonvaType.Node,
 			el: CanvasElement,
-			roundOutput: boolean,
-			activeAnchor: string,
-			isGroupResize: boolean
+			roundOutput: boolean
 		): Partial<CanvasElement> {
 			const sx = Math.abs(n.scaleX());
 			const sy = Math.abs(n.scaleY());
@@ -1558,55 +1505,20 @@
 			}
 
 			if (el.type === 'placeholder' || el.type === 'text' || el.type === 'title') {
-				const start = transformStartMeta.get(el.id) ?? {
-					fontSize: el.fontSize,
-					width: el.width,
-					height: el.height
-				};
-
+				// Resizing a text box changes only its geometry; stored fontSize and inline word sizes
+				// remain untouched. Text shrinks visually only when the box is smaller than the text
+				// and never scales above its originally given font sizes when expanded.
 				const nextW = Math.max(24, (n.width() || el.width) * sx);
 				const nextH = Math.max(16, (n.height() || el.height) * sy);
 				n.width(nextW);
 				n.height(nextH);
 
-				const scaledFont = computeScaledFontSizeForResize(
-					start,
-					{ width: nextW, height: nextH },
-					activeAnchor,
-					isGroupResize
-				);
-
-				let targetFont = scaledFont ?? start.fontSize;
-
-				if (Konva && n instanceof Konva.Text) {
-					if (scaledFont === null) {
-						// Horizontal side resize: shrink fontSize automatically if the narrower box causes overflow.
-						n.fontSize(targetFont);
-						n.height(undefined as unknown as number);
-						while (targetFont > 8 && n.height() > nextH) {
-							targetFont -= 1;
-							n.fontSize(targetFont);
-						}
-						n.height(nextH);
-					} else {
-						const applied = roundOutput ? Math.round(targetFont) : targetFont;
-						n.fontSize(applied);
-						applyAutoFit(n, { ...el, width: nextW, height: nextH, fontSize: applied });
-						targetFont = n.fontSize();
-					}
-				} else {
-					const applied = roundOutput ? Math.round(targetFont) : targetFont;
-					n.setAttr('richFontSize', applied);
-				}
-
-				const committedFont = Math.max(8, Math.min(240, Math.round(targetFont)));
 				return {
 					x: roundOutput ? Math.round(n.x()) : n.x(),
 					y: roundOutput ? Math.round(n.y()) : n.y(),
 					width: roundOutput ? Math.round(nextW) : nextW,
 					height: roundOutput ? Math.round(nextH) : nextH,
-					rotation: roundOutput ? Math.round(n.rotation()) : n.rotation(),
-					fontSize: committedFont
+					rotation: roundOutput ? Math.round(n.rotation()) : n.rotation()
 				};
 			}
 
@@ -1644,16 +1556,14 @@
 			};
 		}
 
-		// Live-normalise width/height/fontSize on every drag frame so text stays crisp and scales with the box.
+		// Live-normalise width and height on every drag frame without mutating stored font sizes.
 		transformer.on('transform', () => {
 			if (!transformer) return;
 			const attached = transformer.nodes();
-			const activeAnchor = transformer.getActiveAnchor() ?? '';
-			const isGroupResize = attached.length > 1;
 			for (const n of attached) {
 				const el = editor.canvasState.elements.find((item) => item.id === n.id());
 				if (!el) continue;
-				normaliseNodeTransform(n, el, false, activeAnchor, isGroupResize);
+				normaliseNodeTransform(n, el, false);
 			}
 		});
 
@@ -1662,18 +1572,15 @@
 			const attached = transformer.nodes();
 			if (attached.length === 0) return;
 
-			const activeAnchor = transformer.getActiveAnchor() ?? '';
-			const isGroupResize = attached.length > 1;
 			const updates: Array<{ id: string; patch: Partial<CanvasElement> }> = [];
 			for (const n of attached) {
 				const el = editor.canvasState.elements.find((item) => item.id === n.id());
 				if (!el) continue;
 				updates.push({
 					id: el.id,
-					patch: normaliseNodeTransform(n, el, true, activeAnchor, isGroupResize)
+					patch: normaliseNodeTransform(n, el, true)
 				});
 			}
-			transformStartMeta.clear();
 			editor.updateElements(updates);
 		});
 

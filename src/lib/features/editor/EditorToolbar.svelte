@@ -34,6 +34,7 @@
 	import {
 		hasElementRichText,
 		inspectSelectionStyle,
+		parseRichTextRuns,
 		stripRichTextMarkup,
 		type RichTextStyle
 	} from './rich-text.ts';
@@ -206,6 +207,51 @@
 				{ kind: 'size', value: nextPx },
 				{ restoreFocus: options?.restoreFocus ?? true }
 			);
+			// Naturally grow the box height around its centre if the updated multi-line text exceeds box height.
+			const updatedEl = editor.selectedElement;
+			const targetEl =
+				updatedEl &&
+				(updatedEl.type === 'text' || updatedEl.type === 'placeholder' || updatedEl.type === 'title')
+					? updatedEl
+					: selectedTextEl;
+			const lh = Math.max(1, targetEl.lineHeight || 1.2);
+			let naturalHeight = nextPx * lh;
+			if (targetEl.type === 'text') {
+				const runs = parseRichTextRuns(targetEl.text, {
+					fontFamily: targetEl.fontFamily,
+					fontSize: targetEl.fontSize,
+					fontWeight: targetEl.fontWeight,
+					fontStyle: targetEl.fontStyle,
+					underline: targetEl.textDecoration === 'underline',
+					fill: targetEl.fill
+				});
+				let lineMax = targetEl.fontSize;
+				let total = 0;
+				for (const run of runs) {
+					const parts = run.text.split('\n');
+					for (let i = 0; i < parts.length; i++) {
+						if (i > 0) {
+							total += lineMax * lh;
+							lineMax = targetEl.fontSize;
+						}
+						if (parts[i].length > 0) {
+							lineMax = Math.max(lineMax, run.fontSize);
+						}
+					}
+				}
+				total += lineMax * lh;
+				naturalHeight = Math.max(naturalHeight, total);
+			}
+			const neededHeight = Math.round(naturalHeight * 1.15);
+			if (neededHeight > targetEl.height) {
+				const clampedH = Math.min(editor.height, neededHeight);
+				const cy = targetEl.y + targetEl.height / 2;
+				const nextY = Math.max(
+					0,
+					Math.min(editor.height - clampedH, Math.round(cy - clampedH / 2))
+				);
+				editor.updateElement(targetEl.id, { y: nextY, height: clampedH }, false);
+			}
 			return;
 		}
 

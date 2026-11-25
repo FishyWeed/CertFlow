@@ -25,6 +25,8 @@ export interface RichTextLine {
 	width: number;
 	height: number;
 	baselineOffset: number;
+	ascent: number;
+	descent: number;
 	isParagraphEnd: boolean;
 }
 
@@ -559,7 +561,7 @@ export function applyInlineFormatToSelection(
 function buildCanvasFont(run: RichTextStyle, scale = 1): string {
 	const style = buildKonvaFontStyle(run.fontWeight, run.fontStyle);
 	const quoted = /\s/.test(run.fontFamily.trim()) ? `"${run.fontFamily.trim()}"` : run.fontFamily.trim();
-	const px = Math.max(8, run.fontSize * scale);
+	const px = Math.max(4, run.fontSize * scale);
 	return `${style === 'normal' ? '' : `${style} `}${px}px ${quoted}`;
 }
 
@@ -611,12 +613,45 @@ export function layoutRichTextLines(
 			}
 		}
 		const maxFont = currentRuns.reduce((m, r) => Math.max(m, r.fontSize * scale), 12);
-		const height = maxFont * Math.max(1, lineHeight || 1.2);
+		let maxAscent = 0;
+		let maxDescent = 0;
+		for (const r of currentRuns) {
+			const px = r.fontSize * scale;
+			ctx.font = buildCanvasFont(r, scale);
+			const sample = r.text.trim() || 'Hg';
+			const metrics = ctx.measureText(sample);
+			const hasActualBox =
+				typeof metrics.actualBoundingBoxAscent === 'number' &&
+				Number.isFinite(metrics.actualBoundingBoxAscent) &&
+				metrics.actualBoundingBoxAscent > 0;
+			const asc = hasActualBox ? metrics.actualBoundingBoxAscent : px * 0.72;
+			const desc = hasActualBox
+				? Math.max(
+						0,
+						typeof metrics.actualBoundingBoxDescent === 'number' &&
+							Number.isFinite(metrics.actualBoundingBoxDescent)
+							? metrics.actualBoundingBoxDescent
+							: 0
+					)
+				: px * 0.18;
+			maxAscent = Math.max(maxAscent, asc);
+			maxDescent = Math.max(maxDescent, desc);
+		}
+		if (maxAscent === 0) {
+			maxAscent = maxFont * 0.72;
+			maxDescent = maxFont * 0.18;
+		}
+		const inkHeight = maxAscent + maxDescent;
+		const height = Math.max(inkHeight, maxFont * Math.max(1, lineHeight || 1.2));
+		// Optical vertical centre inside the line box so top gap above glyphs equals bottom gap below glyphs.
+		const baselineOffset = (height + maxAscent - maxDescent) / 2;
 		lines.push({
 			runs: currentRuns,
 			width: Math.max(0, currentWidth),
 			height,
-			baselineOffset: maxFont * 0.82,
+			baselineOffset,
+			ascent: maxAscent,
+			descent: maxDescent,
 			isParagraphEnd
 		});
 		currentRuns = [];
@@ -677,7 +712,7 @@ export function layoutRichTextLines(
 }
 
 /**
- * Resolves a rich-text element's string (interpolating {{property}} tokens while preserving markup),
+ * Resolves any textual element's string (interpolating {{property}} tokens while preserving markup),
  * parses runs and applies the element's textTransform to each run's text.
  */
 export function resolveRichTextRuns(
@@ -702,6 +737,24 @@ export function resolveRichTextRuns(
 				mode === 'sample'
 			);
 		}
+	} else if (element.type === 'title') {
+		if (mode === 'placeholders') {
+			raw = `${element.defaultTitle || 'Certificate Title'} (${element.rules.length} ${element.rules.length === 1 ? 'rule' : 'rules'})`;
+		} else {
+			const chosen = resolveTitleBinding(element.defaultTitle, element.rules, data);
+			raw = interpolateInlineProperties(chosen, data, '', mode === 'sample');
+		}
+	} else {
+		// Legacy placeholder elements (upgraded to ordinary text when loaded in the editor).
+		raw =
+			mode === 'placeholders'
+				? `{{${element.criterionKey}}}`
+				: interpolateInlineProperties(
+						`{{${element.criterionKey}}}`,
+						data,
+						element.fallbackText,
+						mode === 'sample'
+					);
 	}
 
 	const base: RichTextStyle = {
@@ -719,9 +772,83 @@ export function resolveRichTextRuns(
 	}));
 }
 
+export interface FitRichTextLayoutOptions {
+	boxWidth: number;
+	boxHeight: number;
+	lineHeight: number;
+	letterSpacing: number;
+	wrap: 'word' | 'char' | 'none';
+	verticalAlign: 'top' | 'middle' | 'bottom';
+	minFontSize?: number;
+}
+
+export interface FitRichTextLayoutResult {
+	lines: RichTextLine[];
+	scale: number;
+	totalHeight: number;
+	cursorY: number;
+}
+
 /**
- * Creates a Konva Shape that renders inline-formatted rich text (bold, italic, underline, colour,
- * font) with identical layout and auto-fit behaviour in both the editor canvas and export renderer.
+ * Lays out styled runs inside a bounding box at their exact original font sizes (`scale = 1`).
+ * Never scales text larger when the box expands; shrinks proportionally only when the box is
+ * smaller than the rendered text. Computes optically centred vertical placement for `middle`.
+ */
+export function fitRichTextLayout(
+	ctx: CanvasRenderingContext2D,
+	runs: RichTextRun[],
+	options: FitRichTextLayoutOptions
+): FitRichTextLayoutResult {
+	const { boxWidth: boxW, boxHeight: boxH, lineHeight, letterSpacing, wrap, verticalAlign } =
+		options;
+	const maxOriginalFont = runs.reduce((m, r) => Math.max(m, r.fontSize), 12);
+
+	let scale = 1;
+	let lines = layoutRichTextLines(ctx, runs, boxW, lineHeight, letterSpacing, wrap, scale);
+
+	const overflowsBox = (candidateLines: RichTextLine[]) => {
+		const totalH = candidateLines.reduce((sum, l) => sum + l.height, 0);
+		const maxW = candidateLines.reduce((m, l) => Math.max(m, l.width), 0);
+		const heightOver = boxH > 0 && totalH > boxH + 0.5;
+		const widthOver = boxW > 0 && maxW > boxW + 0.5;
+		return heightOver || widthOver;
+	};
+
+	if ((boxH > 0 || boxW > 0) && overflowsBox(lines)) {
+		const minPx = Math.max(6, Math.min(options.minFontSize || 8, maxOriginalFont));
+		const minScale = Math.max(0.12, Math.min(1, minPx / Math.max(1, maxOriginalFont)));
+		while (scale > minScale && overflowsBox(lines)) {
+			scale = Math.max(minScale, Number((scale - 0.03).toFixed(3)));
+			lines = layoutRichTextLines(ctx, runs, boxW, lineHeight, letterSpacing, wrap, scale);
+		}
+	}
+
+	const totalHeight = lines.reduce((sum, l) => sum + l.height, 0);
+	let cursorY = 0;
+	if (verticalAlign === 'middle') {
+		if (lines.length > 0) {
+			// Centre the actual visual ink bounds (top of first line's glyphs to bottom of last line's glyphs).
+			const first = lines[0];
+			const last = lines[lines.length - 1];
+			const inkTop = first.baselineOffset - first.ascent;
+			const lastLineStart = totalHeight - last.height;
+			const inkBottom = lastLineStart + last.baselineOffset + last.descent;
+			const inkCentre = (inkTop + inkBottom) / 2;
+			cursorY = boxH / 2 - inkCentre;
+		} else {
+			cursorY = (boxH - totalHeight) / 2;
+		}
+	} else if (verticalAlign === 'bottom') {
+		cursorY = boxH - totalHeight;
+	}
+
+	return { lines, scale, totalHeight, cursorY };
+}
+
+/**
+ * Creates a Konva Shape that renders both plain and inline-formatted text (bold, italic, underline,
+ * colour, font, size) with exact optical vertical centring and shrink-only overflow fitting (never
+ * scaling text larger than its originally given font sizes when the bounding box expands).
  */
 export function createRichTextKonvaNode(
 	Konva: typeof KonvaType,
@@ -730,7 +857,7 @@ export function createRichTextKonvaNode(
 	mode: 'placeholders' | 'sample' | 'export',
 	draggable: boolean
 ): KonvaType.Shape {
-	const shape = new Konva.Shape({
+	return new Konva.Shape({
 		id: el.id,
 		x: el.x,
 		y: el.y,
@@ -743,45 +870,19 @@ export function createRichTextKonvaNode(
 			const ctx = context._context as CanvasRenderingContext2D;
 			const boxW = node.width();
 			const boxH = node.height();
-			const activeFontSize = (node.getAttr('richFontSize') as number | undefined) ?? el.fontSize;
 
-			const runs = resolveRichTextRuns(el, data, mode, activeFontSize);
-			let scale = 1;
-			let lines = layoutRichTextLines(
-				ctx,
-				runs,
-				boxW,
-				el.lineHeight,
-				el.letterSpacing,
-				el.wrap,
-				scale
-			);
-
-			if (el.autoFit && boxH > 0) {
-				const minRatio = Math.max(8, el.minFontSize || 12) / Math.max(1, activeFontSize);
-				let totalH = lines.reduce((sum, l) => sum + l.height, 0);
-				while (totalH > boxH && scale > minRatio) {
-					scale = Math.max(minRatio, scale - 0.05);
-					lines = layoutRichTextLines(
-						ctx,
-						runs,
-						boxW,
-						el.lineHeight,
-						el.letterSpacing,
-						el.wrap,
-						scale
-					);
-					totalH = lines.reduce((sum, l) => sum + l.height, 0);
-				}
-			}
-
-			const totalHeight = lines.reduce((sum, l) => sum + l.height, 0);
-			let cursorY = 0;
-			if (el.verticalAlign === 'middle') {
-				cursorY = Math.max(0, (boxH - totalHeight) / 2);
-			} else if (el.verticalAlign === 'bottom') {
-				cursorY = Math.max(0, boxH - totalHeight);
-			}
+			const runs = resolveRichTextRuns(el, data, mode, el.fontSize);
+			const layout = fitRichTextLayout(ctx, runs, {
+				boxWidth: boxW,
+				boxHeight: boxH,
+				lineHeight: el.lineHeight,
+				letterSpacing: el.letterSpacing,
+				wrap: el.wrap,
+				verticalAlign: el.verticalAlign,
+				minFontSize: el.minFontSize
+			});
+			const { lines, scale } = layout;
+			let cursorY = layout.cursorY;
 
 			ctx.save();
 			ctx.textBaseline = 'alphabetic';
@@ -846,7 +947,4 @@ export function createRichTextKonvaNode(
 			context.fillStrokeShape(node);
 		}
 	});
-
-	shape.setAttr('richFontSize', el.fontSize);
-	return shape;
 }

@@ -3,8 +3,7 @@ import { PDFDocument } from 'pdf-lib';
 import JSZip from 'jszip';
 import type { ExportFormat, TemplateCanvasState } from '#lib/types/certflow.ts';
 import { ensureTemplateFontsLoaded } from '#lib/features/editor/fonts.ts';
-import { createRichTextKonvaNode, hasElementRichText } from '#lib/features/editor/rich-text.ts';
-import { applyAutoFit, buildKonvaFontStyle, resolveElementText } from '#lib/features/editor/text-utils.ts';
+import { createRichTextKonvaNode } from '#lib/features/editor/rich-text.ts';
 
 export interface RenderCertificateInput {
 	width: number;
@@ -101,32 +100,7 @@ async function withOffscreenCertificateStage<T>(
 			if (!el.visible) continue;
 
 			if (el.type === 'placeholder' || el.type === 'text' || el.type === 'title') {
-				if (hasElementRichText(el)) {
-					layer.add(createRichTextKonvaNode(Konva, el, input.data, 'export', false));
-				} else {
-					const textNode = new Konva.Text({
-						x: el.x,
-						y: el.y,
-						width: el.width,
-						height: el.height,
-						rotation: el.rotation,
-						opacity: el.opacity,
-						text: resolveElementText(el, input.data, 'export'),
-						fontFamily: el.fontFamily,
-						fontSize: el.fontSize,
-						fontStyle: buildKonvaFontStyle(el.fontWeight, el.fontStyle),
-						textDecoration: el.textDecoration,
-						fill: el.fill,
-						align: el.align,
-						verticalAlign: el.verticalAlign,
-						lineHeight: el.lineHeight,
-						letterSpacing: el.letterSpacing,
-						wrap: el.wrap,
-						ellipsis: el.ellipsis
-					});
-					applyAutoFit(textNode, el);
-					layer.add(textNode);
-				}
+				layer.add(createRichTextKonvaNode(Konva, el, input.data, 'export', false));
 			} else if (el.type === 'shape') {
 				if (el.shapeKind === 'rect') {
 					layer.add(
