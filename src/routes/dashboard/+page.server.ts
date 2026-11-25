@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { DEFAULT_CANVAS_PRESET } from '#lib/config/canvas.ts';
 import { DEFAULT_CRITERIA } from '#lib/config/criteria.ts';
 import { createDefaultEmailSettings } from '#lib/config/email.ts';
+import { MAX_PROJECTS_PER_USER } from '#lib/config/limits.ts';
 import { db } from '#lib/server/db/index.ts';
 import { certificates, projects, recipients, templates } from '#lib/server/db/schema.ts';
 import { createStarterTemplateState } from '#lib/templates/starter.ts';
@@ -71,7 +72,10 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 	return {
 		user: locals.user,
-		projects: userProjects
+		projects: userProjects,
+		limits: {
+			maxProjects: MAX_PROJECTS_PER_USER
+		}
 	};
 };
 
@@ -79,6 +83,17 @@ export const actions: Actions = {
 	createProject: async ({ request, locals }) => {
 		if (!locals.user) {
 			throw redirect(302, '/login');
+		}
+
+		const [existingCountRow] = await db
+			.select({ total: count() })
+			.from(projects)
+			.where(eq(projects.userId, locals.user.id));
+
+		if (Number(existingCountRow?.total ?? 0) >= MAX_PROJECTS_PER_USER) {
+			return fail(400, {
+				error: `You have reached the limit of ${MAX_PROJECTS_PER_USER} projects per account. Delete an older project to create a new one.`
+			});
 		}
 
 		const formData = await request.formData();

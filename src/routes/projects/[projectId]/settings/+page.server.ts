@@ -1,6 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
+import { deleteProjectAssetsFromStorage } from '#lib/server/asset-cleanup.ts';
 import { db } from '#lib/server/db/index.ts';
 import { projects } from '#lib/server/db/schema.ts';
 import { requireOwnedProject } from '#lib/server/projects.ts';
@@ -44,6 +45,7 @@ export const actions: Actions = {
 	deleteProject: async ({ params, locals }) => {
 		if (!locals.user) throw redirect(302, '/login');
 		const project = await requireOwnedProject(params.projectId, locals.user.id);
+		await deleteProjectAssetsFromStorage(project.id);
 		await db.delete(projects).where(eq(projects.id, project.id));
 		throw redirect(302, '/dashboard');
 	}

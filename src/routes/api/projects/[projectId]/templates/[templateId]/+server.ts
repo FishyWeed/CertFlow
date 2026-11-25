@@ -1,6 +1,7 @@
 import { error, json } from '@sveltejs/kit';
 import { and, asc, eq } from 'drizzle-orm';
 import { z } from 'zod';
+import { pruneUnusedProjectAssets } from '#lib/server/asset-cleanup.ts';
 import { db } from '#lib/server/db/index.ts';
 import { certificates, templates } from '#lib/server/db/schema.ts';
 import { requireOwnedProject } from '#lib/server/projects.ts';
@@ -53,6 +54,10 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 	if (!updated) throw error(404, 'Template not found');
 
+	if (parsed.data.canvasState !== undefined) {
+		void pruneUnusedProjectAssets(project.id).catch(() => {});
+	}
+
 	return json({ template: updated });
 };
 
@@ -98,6 +103,8 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 			.delete(templates)
 			.where(and(eq(templates.id, target.id), eq(templates.projectId, project.id)));
 	});
+
+	void pruneUnusedProjectAssets(project.id).catch(() => {});
 
 	return json({ deleted: true, nextTemplateId: fallback.id });
 };

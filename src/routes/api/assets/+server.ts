@@ -1,5 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { error, json } from '@sveltejs/kit';
+import {
+	formatBytes,
+	MAX_STORAGE_BYTES_PER_USER,
+	MAX_UPLOAD_BYTES
+} from '#lib/config/limits.ts';
+import { getUserAccountUsage } from '#lib/server/asset-cleanup.ts';
 import { db } from '#lib/server/db/index.ts';
 import { assets } from '#lib/server/db/schema.ts';
 import { requireOwnedProject } from '#lib/server/projects.ts';
@@ -12,7 +18,6 @@ const ALLOWED_IMAGE_TYPES = new Set([
 	'image/webp',
 	'image/svg+xml'
 ]);
-const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 MB
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	if (!locals.user) throw error(401, 'Unauthorized');
@@ -38,6 +43,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 	if (projectId) {
 		await requireOwnedProject(projectId, locals.user.id);
+	}
+
+	const usage = await getUserAccountUsage(locals.user.id);
+	if (usage.storageUsedBytes + file.size > MAX_STORAGE_BYTES_PER_USER) {
+		throw error(
+			413,
+			`Storage limit reached (${formatBytes(usage.storageUsedBytes)} of ${formatBytes(MAX_STORAGE_BYTES_PER_USER)} used). Clean up unused files in Account Settings or delete an older project.`
+		);
 	}
 
 	const ext = file.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'bin';

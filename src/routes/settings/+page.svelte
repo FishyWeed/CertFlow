@@ -7,6 +7,7 @@
 		ChevronDown,
 		ChevronUp,
 		ExternalLink,
+		HardDrive,
 		KeyRound,
 		Mail,
 		Pencil,
@@ -20,6 +21,7 @@
 	import AppHeader from '#lib/components/layout/AppHeader.svelte';
 	import Badge from '#lib/components/ui/Badge.svelte';
 	import Button from '#lib/components/ui/Button.svelte';
+	import { formatBytes } from '#lib/config/limits.ts';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -41,6 +43,45 @@
 	let changingPassword = $state(false);
 	let passwordStatus = $state('');
 	let passwordStatusTone = $state<'success' | 'error'>('success');
+
+	// Storage cleanup state
+	let cleaningStorage = $state(false);
+	let cleanupStatus = $state('');
+	let cleanupStatusTone = $state<'success' | 'error'>('success');
+
+	const projectPercent = $derived(
+		Math.min(100, Math.round((data.usage.projectCount / Math.max(1, data.usage.maxProjects)) * 100))
+	);
+	const storagePercent = $derived(
+		Math.min(
+			100,
+			Math.round((data.usage.storageUsedBytes / Math.max(1, data.usage.maxStorageBytes)) * 100)
+		)
+	);
+
+	async function handleCleanUpStorage() {
+		cleaningStorage = true;
+		cleanupStatus = '';
+		try {
+			const res = await fetch('/api/account/storage/cleanup', { method: 'POST' });
+			if (!res.ok) {
+				const err = await res.json().catch(() => ({}));
+				throw new Error(err.message ?? 'Could not clean up unused files.');
+			}
+			const result = (await res.json()) as { deletedCount: number; freedBytes: number };
+			await invalidateAll();
+			cleanupStatusTone = 'success';
+			cleanupStatus =
+				result.deletedCount > 0
+					? `Removed ${result.deletedCount} unused ${result.deletedCount === 1 ? 'file' : 'files'} and freed ${formatBytes(result.freedBytes)}.`
+					: 'No unused files found. All uploaded images are in use.';
+		} catch (err) {
+			cleanupStatusTone = 'error';
+			cleanupStatus = err instanceof Error ? err.message : 'Storage cleanup failed.';
+		} finally {
+			cleaningStorage = false;
+		}
+	}
 
 	$effect(() => {
 		if (!accountName && data.user.name) {
@@ -470,6 +511,89 @@
 						</Button>
 					</div>
 				</form>
+			</section>
+
+			<!-- Account Usage & Storage -->
+			<section class="rounded-xl border border-border-default bg-surface-card p-5">
+				<div class="flex flex-wrap items-center justify-between gap-3">
+					<div class="flex items-center gap-2">
+						<HardDrive class="h-4 w-4 text-accent" />
+						<h2 class="text-sm font-semibold text-ink-primary">Account Usage &amp; Storage</h2>
+					</div>
+					<Button
+						type="button"
+						size="sm"
+						variant="secondary"
+						disabled={cleaningStorage || data.usage.assetCount === 0}
+						onclick={handleCleanUpStorage}
+					>
+						<Trash2 class="h-3.5 w-3.5" />
+						{cleaningStorage ? 'Cleaning...' : 'Clean Up Unused Files'}
+					</Button>
+				</div>
+				<p class="mt-1 text-xs text-ink-secondary">
+					Uploaded backgrounds, logos and signatures are automatically optimised to WebP and cleaned
+					up when you delete a project.
+				</p>
+
+				{#if cleanupStatus}
+					<div
+						class="mt-3 rounded-lg border px-3.5 py-2.5 text-xs {cleanupStatusTone === 'error'
+							? 'border-red-200 bg-red-50 text-red-900'
+							: 'border-emerald-200 bg-emerald-50 text-emerald-800'}"
+					>
+						{cleanupStatus}
+					</div>
+				{/if}
+
+				<div class="mt-4 grid gap-4 sm:grid-cols-2">
+					<div class="rounded-lg border border-border-default bg-surface-page p-3.5">
+						<div class="flex items-center justify-between text-xs">
+							<span class="font-medium text-ink-secondary">Projects</span>
+							<span class="font-semibold text-ink-primary">
+								{data.usage.projectCount} / {data.usage.maxProjects}
+							</span>
+						</div>
+						<div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-surface-subtle">
+							<div
+								class="h-full rounded-full transition-all {projectPercent >= 100
+									? 'bg-red-500'
+									: projectPercent >= 80
+										? 'bg-amber-500'
+										: 'bg-accent'}"
+								style="width: {projectPercent}%;"
+							></div>
+						</div>
+						<p class="mt-1.5 text-[11px] text-ink-muted">
+							Each account can keep up to {data.usage.maxProjects} active projects.
+						</p>
+					</div>
+
+					<div class="rounded-lg border border-border-default bg-surface-page p-3.5">
+						<div class="flex items-center justify-between text-xs">
+							<span class="font-medium text-ink-secondary">
+								Image Storage ({data.usage.assetCount}
+								{data.usage.assetCount === 1 ? 'file' : 'files'})
+							</span>
+							<span class="font-semibold text-ink-primary">
+								{formatBytes(data.usage.storageUsedBytes)} / {formatBytes(data.usage.maxStorageBytes)}
+							</span>
+						</div>
+						<div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-surface-subtle">
+							<div
+								class="h-full rounded-full transition-all {storagePercent >= 95
+									? 'bg-red-500'
+									: storagePercent >= 80
+										? 'bg-amber-500'
+										: 'bg-emerald-500'}"
+								style="width: {storagePercent}%;"
+							></div>
+						</div>
+						<p class="mt-1.5 text-[11px] text-ink-muted">
+							Generated certificates render in your browser and do not count towards storage.
+						</p>
+					</div>
+				</div>
 			</section>
 		{:else}
 			<!-- Email Sender Profiles Tab -->

@@ -30,6 +30,7 @@
 			width: number;
 			height: number;
 			editState: ImageEditState;
+			isUnchangedFullFrame?: boolean;
 		}) => Promise<void> | void;
 		onCancel?: () => void;
 	}
@@ -252,7 +253,21 @@
 				outputHeight,
 				aspectPreset
 			};
-			await onApply({ file: croppedFile, width: outputWidth, height: outputHeight, editState });
+			const isUnchangedFullFrame =
+				rotation === 0 &&
+				crop.x === 0 &&
+				crop.y === 0 &&
+				crop.width === naturalW &&
+				crop.height === naturalH &&
+				outputWidth >= naturalW &&
+				outputHeight >= naturalH;
+			await onApply({
+				file: croppedFile,
+				width: outputWidth,
+				height: outputHeight,
+				editState,
+				isUnchangedFullFrame
+			});
 			open = false;
 		} catch (err) {
 			errorMessage = err instanceof Error ? err.message : 'Could not apply crop and resize.';

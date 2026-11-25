@@ -17,6 +17,7 @@
 		Unlock
 	} from '@lucide/svelte';
 	import ImageCropResizeModal from '#lib/components/ui/ImageCropResizeModal.svelte';
+	import { optimiseOriginalImageFile } from '#lib/components/ui/image-crop.ts';
 	import type { CriterionDefinition, ImageEditState } from '#lib/types/certflow.ts';
 	import type { EditorState } from './editor-state.svelte.ts';
 
@@ -90,8 +91,10 @@
 		width: number;
 		height: number;
 		editState: ImageEditState;
+		isUnchangedFullFrame?: boolean;
 	}) {
-		const origFile = pendingOriginalFile;
+		const rawOrigFile = result.isUnchangedFullFrame ? null : pendingOriginalFile;
+		const origFile = rawOrigFile ? await optimiseOriginalImageFile(rawOrigFile) : null;
 		const [croppedAsset, origAsset] = await Promise.all([
 			uploadAsset(result.file, 'image'),
 			origFile ? uploadAsset(origFile, 'image') : Promise.resolve(null)

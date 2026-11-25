@@ -1,5 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import { desc, eq } from 'drizzle-orm';
+import { getUserAccountUsage } from '#lib/server/asset-cleanup.ts';
 import { db } from '#lib/server/db/index.ts';
 import { senderProfiles } from '#lib/server/db/schema.ts';
 import { getMailCapabilities } from '#lib/server/mail.ts';
@@ -8,22 +9,25 @@ import type { PageServerLoad } from './$types';
 export const load: PageServerLoad = async ({ locals }) => {
 	if (!locals.user) throw redirect(302, '/login');
 
-	const rows = await db
-		.select({
-			id: senderProfiles.id,
-			label: senderProfiles.label,
-			mode: senderProfiles.mode,
-			senderName: senderProfiles.senderName,
-			senderEmail: senderProfiles.senderEmail,
-			smtpHost: senderProfiles.smtpHost,
-			smtpPort: senderProfiles.smtpPort,
-			smtpSecure: senderProfiles.smtpSecure,
-			smtpUser: senderProfiles.smtpUser,
-			smtpPassEncrypted: senderProfiles.smtpPassEncrypted
-		})
-		.from(senderProfiles)
-		.where(eq(senderProfiles.userId, locals.user.id))
-		.orderBy(desc(senderProfiles.createdAt));
+	const [rows, usage] = await Promise.all([
+		db
+			.select({
+				id: senderProfiles.id,
+				label: senderProfiles.label,
+				mode: senderProfiles.mode,
+				senderName: senderProfiles.senderName,
+				senderEmail: senderProfiles.senderEmail,
+				smtpHost: senderProfiles.smtpHost,
+				smtpPort: senderProfiles.smtpPort,
+				smtpSecure: senderProfiles.smtpSecure,
+				smtpUser: senderProfiles.smtpUser,
+				smtpPassEncrypted: senderProfiles.smtpPassEncrypted
+			})
+			.from(senderProfiles)
+			.where(eq(senderProfiles.userId, locals.user.id))
+			.orderBy(desc(senderProfiles.createdAt)),
+		getUserAccountUsage(locals.user.id)
+	]);
 
 	const profiles = rows.map(({ smtpPassEncrypted, ...rest }) => ({
 		...rest,
@@ -33,6 +37,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	return {
 		user: locals.user,
 		profiles,
+		usage,
 		mailCapabilities: getMailCapabilities()
 	};
 };

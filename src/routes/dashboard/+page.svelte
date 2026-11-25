@@ -11,6 +11,8 @@
 	let showCreateModal = $state(false);
 	let signingOut = $state(false);
 
+	const atProjectLimit = $derived(data.projects.length >= data.limits.maxProjects);
+
 	async function handleSignOut() {
 		signingOut = true;
 		try {
@@ -51,20 +53,40 @@
 	<main class="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
 		<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 			<div class="min-w-0">
-				<h1 class="text-xl font-bold tracking-tight text-ink-primary sm:text-2xl">Your Projects</h1>
+				<div class="flex flex-wrap items-center gap-2.5">
+					<h1 class="text-xl font-bold tracking-tight text-ink-primary sm:text-2xl">Your Projects</h1>
+					<span
+						class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium {atProjectLimit
+							? 'border-amber-300 bg-amber-50 text-amber-800'
+							: 'border-border-default bg-surface-card text-ink-secondary'}"
+					>
+						{data.projects.length} / {data.limits.maxProjects}
+					</span>
+				</div>
 				<p class="mt-1 text-sm text-ink-secondary">
 					Each project holds its own role templates, imported dataset and generated certificates.
 				</p>
 			</div>
 			<button
 				type="button"
+				disabled={atProjectLimit}
+				title={atProjectLimit
+					? `Maximum of ${data.limits.maxProjects} projects reached. Delete a project to add a new one.`
+					: 'Create a new project'}
 				onclick={() => (showCreateModal = true)}
-				class="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition hover:bg-accent-hover sm:w-auto"
+				class="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
 			>
 				<FolderPlus class="h-4 w-4" />
 				New Project
 			</button>
 		</div>
+
+		{#if atProjectLimit}
+			<div class="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900 sm:text-sm">
+				You have reached the limit of {data.limits.maxProjects} projects per account. Open an older
+				project's Settings to delete it before creating a new one.
+			</div>
+		{/if}
 
 		{#if form?.error}
 			<div class="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">

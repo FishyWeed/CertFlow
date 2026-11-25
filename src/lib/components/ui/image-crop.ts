@@ -255,15 +255,23 @@ export function computeResizedDimensions(
 	};
 }
 
+function canvasToBlob(canvas: HTMLCanvasElement, mimeType: string, quality?: number): Promise<Blob | null> {
+	return new Promise((resolve) => {
+		canvas.toBlob((b) => resolve(b), mimeType, quality);
+	});
+}
+
 /**
- * Renders the cropped and resized image onto an offscreen canvas and exports a Blob.
+ * Renders the cropped and resized image onto an offscreen canvas and exports a high-quality WebP Blob
+ * (preserving full alpha transparency while cutting file size dramatically), falling back to PNG/JPEG
+ * only if the browser does not support WebP encoding.
  */
 export async function renderCroppedImageBlob(
 	source: CanvasImageSource,
 	crop: CropRect,
 	outputWidth: number,
 	outputHeight: number,
-	preferredMimeType = 'image/png'
+	preferredMimeType = 'image/webp'
 ): Promise<{ blob: Blob; mimeType: string; ext: string }> {
 	const outW = Math.max(16, Math.min(4096, Math.round(outputWidth)));
 	const outH = Math.max(16, Math.min(4096, Math.round(outputHeight)));
@@ -278,28 +286,76 @@ export async function renderCroppedImageBlob(
 
 	ctx.imageSmoothingEnabled = true;
 	ctx.imageSmoothingQuality = 'high';
+	ctx.drawImage(source, crop.x, crop.y, crop.width, crop.height, 0, 0, outW, outH);
+
+	// Prefer high-quality WebP (supports full transparency + 5-10x smaller than PNG).
+	const webpBlob = await canvasToBlob(canvas, 'image/webp', 0.92);
+	if (webpBlob && webpBlob.type === 'image/webp') {
+		return { blob: webpBlob, mimeType: 'image/webp', ext: 'webp' };
+	}
 
 	const useJpeg = preferredMimeType === 'image/jpeg';
 	const mimeType = useJpeg ? 'image/jpeg' : 'image/png';
 	const ext = useJpeg ? 'jpg' : 'png';
 
 	if (useJpeg) {
+		ctx.globalCompositeOperation = 'destination-over';
 		ctx.fillStyle = '#ffffff';
 		ctx.fillRect(0, 0, outW, outH);
+		ctx.globalCompositeOperation = 'source-over';
 	}
 
-	ctx.drawImage(source, crop.x, crop.y, crop.width, crop.height, 0, 0, outW, outH);
+	const fallbackBlob = await canvasToBlob(canvas, mimeType, useJpeg ? 0.92 : undefined);
+	if (!fallbackBlob) {
+		throw new Error('Could not export cropped image.');
+	}
 
-	const blob = await new Promise<Blob>((resolve, reject) => {
-		canvas.toBlob(
-			(b) => {
-				if (b) resolve(b);
-				else reject(new Error('Could not export cropped image.'));
-			},
-			mimeType,
-			useJpeg ? 0.92 : undefined
-		);
-	});
+	return { blob: fallbackBlob, mimeType, ext };
+}
 
-	return { blob, mimeType, ext };
+/**
+ * Optimises a raw uploaded original image file to high-quality WebP (capped at `maxDimension` px on
+ * the longest edge) so re-cropping stays crisp without wasting storage quota on multi-MB PNGs.
+ * Keeps SVGs and already-compact files unchanged; never returns a file larger than the input.
+ */
+export async function optimiseOriginalImageFile(file: File, maxDimension = 3200): Promise<File> {
+	if (typeof document === 'undefined' || file.type === 'image/svg+xml') return file;
+	if (file.size <= 350 * 1024 && (file.type === 'image/webp' || file.type === 'image/jpeg')) {
+		return file;
+	}
+
+	const objectUrl = URL.createObjectURL(file);
+	try {
+		const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+			const el = new Image();
+			el.onload = () => resolve(el);
+			el.onerror = () => reject(new Error('Could not decode image.'));
+			el.src = objectUrl;
+		});
+
+		const scale = Math.min(1, maxDimension / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+		const outW = Math.max(16, Math.round(img.naturalWidth * scale));
+		const outH = Math.max(16, Math.round(img.naturalHeight * scale));
+
+		const canvas = document.createElement('canvas');
+		canvas.width = outW;
+		canvas.height = outH;
+		const ctx = canvas.getContext('2d');
+		if (!ctx) return file;
+
+		ctx.imageSmoothingEnabled = true;
+		ctx.imageSmoothingQuality = 'high';
+		ctx.drawImage(img, 0, 0, outW, outH);
+
+		const blob = await canvasToBlob(canvas, 'image/webp', 0.92);
+		if (!blob || blob.type !== 'image/webp') return file;
+		if (blob.size >= file.size && scale === 1) return file;
+
+		const baseName = file.name.replace(/\.[^.]+$/, '') || 'image';
+		return new File([blob], `${baseName}.webp`, { type: 'image/webp' });
+	} catch {
+		return file;
+	} finally {
+		URL.revokeObjectURL(objectUrl);
+	}
 }

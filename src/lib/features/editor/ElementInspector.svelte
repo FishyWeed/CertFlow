@@ -21,6 +21,7 @@
 		X
 	} from '@lucide/svelte';
 	import ImageCropResizeModal from '#lib/components/ui/ImageCropResizeModal.svelte';
+	import { optimiseOriginalImageFile } from '#lib/components/ui/image-crop.ts';
 	import ScrubNumberInput from '#lib/components/ui/ScrubNumberInput.svelte';
 	import SignaturePad from '#lib/components/ui/SignaturePad.svelte';
 	import { CANVAS_PRESETS, FONT_CATALOG, FONT_CATEGORIES } from '#lib/config/canvas.ts';
@@ -421,8 +422,10 @@
 		width: number;
 		height: number;
 		editState: ImageEditState;
+		isUnchangedFullFrame?: boolean;
 	}) {
-		const origFile = cropOriginalFile;
+		const rawOrigFile = result.isUnchangedFullFrame ? null : cropOriginalFile;
+		const origFile = rawOrigFile ? await optimiseOriginalImageFile(rawOrigFile) : null;
 		if (cropMode === 'background') {
 			uploadingBg = true;
 			bgUploadError = '';
@@ -436,8 +439,15 @@
 					imageUrl: asset.publicUrl,
 					assetId: asset.id,
 					originalImageUrl:
-						origAsset?.publicUrl ?? currentBg.originalImageUrl ?? currentBg.imageUrl ?? asset.publicUrl,
-					originalAssetId: origAsset?.id ?? currentBg.originalAssetId ?? currentBg.assetId ?? asset.id,
+						origAsset?.publicUrl ??
+						(result.isUnchangedFullFrame
+							? asset.publicUrl
+							: currentBg.originalImageUrl ?? currentBg.imageUrl ?? asset.publicUrl),
+					originalAssetId:
+						origAsset?.id ??
+						(result.isUnchangedFullFrame
+							? asset.id
+							: currentBg.originalAssetId ?? currentBg.assetId ?? asset.id),
 					editState: result.editState
 				});
 			} catch (err) {
@@ -452,7 +462,8 @@
 		if (cropTargetElementId) {
 			await uploadElementAsset(cropTargetElementId, result.file, result.width, result.height, {
 				originalFile: origFile,
-				editState: result.editState
+				editState: result.editState,
+				resetOriginal: Boolean(result.isUnchangedFullFrame)
 			});
 		}
 		clearCropSource();
