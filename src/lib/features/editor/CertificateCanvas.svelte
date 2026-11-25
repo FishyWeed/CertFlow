@@ -92,6 +92,227 @@
 		guideLayer?.batchDraw();
 	}
 
+	let marqueeActiveState = false;
+	let isElementDragging = false;
+
+	function getLineEndpoints(el: { x: number; y: number; width: number; rotation: number }) {
+		const rad = ((el.rotation || 0) * Math.PI) / 180;
+		return {
+			x1: el.x,
+			y1: el.y,
+			x2: el.x + el.width * Math.cos(rad),
+			y2: el.y + el.width * Math.sin(rad)
+		};
+	}
+
+	function snapLineAngleDeg(rawDeg: number, shiftKey: boolean): number {
+		if (shiftKey) {
+			return Math.round(rawDeg / 15) * 15;
+		}
+		const nearestCardinal = Math.round(rawDeg / 90) * 90;
+		if (Math.abs(rawDeg - nearestCardinal) <= 2.5) {
+			return nearestCardinal;
+		}
+		return rawDeg;
+	}
+
+	function normaliseAngleDeg(deg: number): number {
+		let d = Math.round(deg) % 360;
+		if (d > 180) d -= 360;
+		if (d <= -180) d += 360;
+		return d === -0 ? 0 : d;
+	}
+
+	function getMarqueeElementBounds(el: CanvasElement) {
+		if (el.type === 'shape' && el.shapeKind === 'line') {
+			const { x1, y1, x2, y2 } = getLineEndpoints(el);
+			const pad = Math.max(6, (el.strokeWidth || 2) / 2);
+			const minX = Math.min(x1, x2) - pad;
+			const minY = Math.min(y1, y2) - pad;
+			const maxX = Math.max(x1, x2) + pad;
+			const maxY = Math.max(y1, y2) + pad;
+			return { x: minX, y: minY, width: Math.max(1, maxX - minX), height: Math.max(1, maxY - minY) };
+		}
+		return { x: el.x, y: el.y, width: el.width, height: el.height };
+	}
+
+	function findMarqueeHitIds(rx: number, ry: number, rw: number, rh: number): string[] {
+		const directIds = editor.canvasState.elements
+			.filter((el) => {
+				if (!el.visible || el.locked) return false;
+				const isFrame =
+					el.type === 'shape' &&
+					el.shapeKind !== 'line' &&
+					el.width > editor.width * 0.7 &&
+					el.height > editor.height * 0.7;
+				if (isFrame) return false;
+				const b = getMarqueeElementBounds(el);
+				return b.x < rx + rw && b.x + b.width > rx && b.y < ry + rh && b.y + b.height > ry;
+			})
+			.map((el) => el.id);
+
+		if (directIds.length === 0) return [];
+		const groupIds = new Set<string>();
+		for (const id of directIds) {
+			const found = editor.canvasState.elements.find((el) => el.id === id);
+			if (found?.groupId) groupIds.add(found.groupId);
+		}
+		if (groupIds.size === 0) return directIds;
+
+		const expanded = new Set(directIds);
+		for (const el of editor.canvasState.elements) {
+			if (el.visible && !el.locked && el.groupId && groupIds.has(el.groupId)) {
+				expanded.add(el.id);
+			}
+		}
+		return Array.from(expanded);
+	}
+
+	function clearMarqueePreviewBorders() {
+		if (!guideLayer) return;
+		for (const node of guideLayer.find('.marquee-hit-outline')) {
+			node.destroy();
+		}
+	}
+
+	function renderMarqueePreviewBorders(ids: string[]) {
+		if (!guideLayer || !Konva) return;
+		clearMarqueePreviewBorders();
+		const zoom = Math.max(0.2, editor.zoom);
+		const strokeW = 2 / zoom;
+		const idSet = new Set(ids);
+
+		for (const el of editor.canvasState.elements) {
+			if (!idSet.has(el.id) || !el.visible) continue;
+
+			if (el.type === 'shape' && el.shapeKind === 'line') {
+				const { x1, y1, x2, y2 } = getLineEndpoints(el);
+				const glowW = Math.max(6, (el.strokeWidth || 2) + 4) / zoom;
+				guideLayer.add(
+					new Konva.Line({
+						name: 'marquee-hit-outline',
+						points: [x1, y1, x2, y2],
+						stroke: 'rgba(79, 70, 229, 0.3)',
+						strokeWidth: glowW,
+						lineCap: 'round'
+					}),
+					new Konva.Line({
+						name: 'marquee-hit-outline',
+						points: [x1, y1, x2, y2],
+						stroke: '#4f46e5',
+						strokeWidth: strokeW,
+						lineCap: 'round'
+					}),
+					new Konva.Circle({
+						name: 'marquee-hit-outline',
+						x: x1,
+						y: y1,
+						radius: 4 / zoom,
+						fill: '#ffffff',
+						stroke: '#4f46e5',
+						strokeWidth: 1.5 / zoom
+					}),
+					new Konva.Circle({
+						name: 'marquee-hit-outline',
+						x: x2,
+						y: y2,
+						radius: 4 / zoom,
+						fill: '#ffffff',
+						stroke: '#4f46e5',
+						strokeWidth: 1.5 / zoom
+					})
+				);
+			} else if (el.type === 'shape' && el.shapeKind === 'circle') {
+				guideLayer.add(
+					new Konva.Ellipse({
+						name: 'marquee-hit-outline',
+						x: el.x + el.width / 2,
+						y: el.y + el.height / 2,
+						radiusX: el.width / 2,
+						radiusY: el.height / 2,
+						rotation: el.rotation,
+						fill: 'rgba(79, 70, 229, 0.08)',
+						stroke: '#4f46e5',
+						strokeWidth: strokeW
+					})
+				);
+			} else {
+				guideLayer.add(
+					new Konva.Rect({
+						name: 'marquee-hit-outline',
+						x: el.x,
+						y: el.y,
+						width: el.width,
+						height: el.height,
+						rotation: el.rotation,
+						fill: 'rgba(79, 70, 229, 0.08)',
+						stroke: '#4f46e5',
+						strokeWidth: strokeW,
+						cornerRadius: 2 / zoom
+					})
+				);
+			}
+		}
+	}
+
+	function clearHoverOutline() {
+		if (!guideLayer) return;
+		const existing = guideLayer.find('.hover-outline');
+		if (existing.length > 0) {
+			for (const node of existing) node.destroy();
+			guideLayer.batchDraw();
+		}
+	}
+
+	function renderHoverOutline(el: CanvasElement) {
+		if (!guideLayer || !Konva || marqueeActiveState || isElementDragging) return;
+		if (editor.isSelected(el.id) || el.locked) return;
+		clearHoverOutline();
+		const zoom = Math.max(0.2, editor.zoom);
+		const strokeW = 1.5 / zoom;
+
+		if (el.type === 'shape' && el.shapeKind === 'line') {
+			const { x1, y1, x2, y2 } = getLineEndpoints(el);
+			guideLayer.add(
+				new Konva.Line({
+					name: 'hover-outline',
+					points: [x1, y1, x2, y2],
+					stroke: 'rgba(79, 70, 229, 0.5)',
+					strokeWidth: Math.max(4, (el.strokeWidth || 2) + 3) / zoom,
+					lineCap: 'round'
+				})
+			);
+		} else if (el.type === 'shape' && el.shapeKind === 'circle') {
+			guideLayer.add(
+				new Konva.Ellipse({
+					name: 'hover-outline',
+					x: el.x + el.width / 2,
+					y: el.y + el.height / 2,
+					radiusX: el.width / 2,
+					radiusY: el.height / 2,
+					rotation: el.rotation,
+					stroke: 'rgba(79, 70, 229, 0.65)',
+					strokeWidth: strokeW
+				})
+			);
+		} else {
+			guideLayer.add(
+				new Konva.Rect({
+					name: 'hover-outline',
+					x: el.x,
+					y: el.y,
+					width: el.width,
+					height: el.height,
+					rotation: el.rotation,
+					stroke: 'rgba(79, 70, 229, 0.65)',
+					strokeWidth: strokeW,
+					cornerRadius: 2 / zoom
+				})
+			);
+		}
+		guideLayer.batchDraw();
+	}
+
 	function buildSiblingBoxes(excludeIds: Set<string>): RectBox[] {
 		return editor.canvasState.elements
 			.filter((item) => item.visible && !excludeIds.has(item.id))
@@ -317,6 +538,7 @@
 		}
 
 		const selectedNodes: KonvaType.Node[] = [];
+		let syncSelectedLineHandles: ((lineNode: KonvaType.Line) => void) | null = null;
 		// Shared lockstep multi-drag state so dragging any selected element moves and snaps the whole selection smoothly.
 		let groupDragAnchor: {
 			leadId: string;
@@ -407,7 +629,7 @@
 						rotation: el.rotation,
 						opacity: el.opacity,
 						draggable: !el.locked,
-						stroke: el.stroke || el.fill || '#1e3a8a',
+						stroke: el.stroke || el.fill || '#000000',
 						strokeWidth: thickness,
 						lineCap: 'round',
 						hitStrokeWidth: Math.max(16, thickness + 12)
@@ -498,6 +720,14 @@
 				}
 			});
 
+			node.on('mouseenter', () => {
+				renderHoverOutline(el);
+			});
+
+			node.on('mouseleave', () => {
+				clearHoverOutline();
+			});
+
 			node.on('dblclick dbltap', (evt) => {
 				evt.cancelBubble = true;
 				if (el.groupId) {
@@ -506,6 +736,8 @@
 			});
 
 			node.on('dragstart', () => {
+				isElementDragging = true;
+				clearHoverOutline();
 				const attached = transformer?.nodes() ?? [];
 				if (attached.length > 1 && attached.includes(node!)) {
 					const selectedIdSet = new Set(attached.map((n) => n.id()));
@@ -571,10 +803,14 @@
 				}
 				if (editor.selectedIds.length <= 1) {
 					applySmartSnap(node!, el, evt);
+					if (el.type === 'shape' && el.shapeKind === 'line' && syncSelectedLineHandles) {
+						syncSelectedLineHandles(node as KonvaType.Line);
+					}
 				}
 			});
 
 			node.on('dragend', () => {
+				isElementDragging = false;
 				clearGuides();
 				const attached = transformer?.nodes() ?? [];
 				if (groupDragAnchor && groupDragAnchor.leadId === el.id && attached.length > 1) {
@@ -632,24 +868,180 @@
 				selectedNodes.length === 1 &&
 				(editor.selectedElement?.type === 'image' ||
 					(editor.selectedElement?.type === 'signature' && Boolean(editor.selectedElement.src)));
-			transformer.enabledAnchors(
-				isSingleLine
-					? ['middle-left', 'middle-right']
-					: [
-							'top-left',
-							'top-center',
-							'top-right',
-							'middle-right',
-							'middle-left',
-							'bottom-left',
-							'bottom-center',
-							'bottom-right'
-						]
-			);
-			transformer.keepRatio(isSingleRaster);
-			transformer.borderEnabled(!isSingleLine);
-			transformer.padding(isSingleLine ? 4 : 0);
-			transformer.nodes(selectedNodes);
+
+			if (isSingleLine && editor.selectedElement && editor.selectedElement.type === 'shape') {
+				// Use dedicated draggable endpoint handles for single line elements so pulling either point
+				// cleanly resizes and rotates the line in any direction without zero-height Transformer failures.
+				transformer.nodes([]);
+				const lineEl = editor.selectedElement;
+				const lineNode = selectedNodes[0] as KonvaType.Line;
+				const zoom = Math.max(0.2, editor.zoom);
+				const isSmall = typeof window !== 'undefined' && window.innerWidth < LAYOUT_BREAKPOINTS.tabletMin;
+				const handleRadius = (isSmall ? 8 : 6) / zoom;
+
+				const initial = getLineEndpoints(lineEl);
+				const guideLine = new Konva.Line({
+					name: 'line-handle-ui',
+					points: [initial.x1, initial.y1, initial.x2, initial.y2],
+					stroke: '#4f46e5',
+					strokeWidth: 1.5 / zoom,
+					dash: [4 / zoom, 3 / zoom],
+					listening: false
+				});
+
+				const startHandle = new Konva.Circle({
+					name: 'line-handle-start',
+					x: initial.x1,
+					y: initial.y1,
+					radius: handleRadius,
+					fill: '#ffffff',
+					stroke: '#4f46e5',
+					strokeWidth: 2 / zoom,
+					hitStrokeWidth: 10 / zoom,
+					draggable: true
+				});
+
+				const endHandle = new Konva.Circle({
+					name: 'line-handle-end',
+					x: initial.x2,
+					y: initial.y2,
+					radius: handleRadius,
+					fill: '#ffffff',
+					stroke: '#4f46e5',
+					strokeWidth: 2 / zoom,
+					hitStrokeWidth: 10 / zoom,
+					draggable: true
+				});
+
+				syncSelectedLineHandles = (activeLine: KonvaType.Line) => {
+					const len = activeLine.points()[2] ?? lineEl.width;
+					const pts = getLineEndpoints({
+						x: activeLine.x(),
+						y: activeLine.y(),
+						width: len,
+						rotation: activeLine.rotation()
+					});
+					startHandle.position({ x: pts.x1, y: pts.y1 });
+					endHandle.position({ x: pts.x2, y: pts.y2 });
+					guideLine.points([pts.x1, pts.y1, pts.x2, pts.y2]);
+				};
+
+				let fixedAnchor = { x: initial.x1, y: initial.y1 };
+				let liveLinePatch: { x: number; y: number; width: number; rotation: number } | null = null;
+
+				const setHandleCursor = (cursor: string) => {
+					if (stage) stage.container().style.cursor = cursor;
+				};
+
+				for (const handle of [startHandle, endHandle]) {
+					handle.on('mouseenter', () => setHandleCursor('grab'));
+					handle.on('mouseleave', () => setHandleCursor('default'));
+				}
+
+				startHandle.on('mousedown touchstart', (evt) => {
+					evt.cancelBubble = true;
+				});
+				endHandle.on('mousedown touchstart', (evt) => {
+					evt.cancelBubble = true;
+				});
+
+				startHandle.on('dragstart', () => {
+					isElementDragging = true;
+					setHandleCursor('grabbing');
+					fixedAnchor = { x: endHandle.x(), y: endHandle.y() };
+					liveLinePatch = null;
+				});
+
+				startHandle.on('dragmove', (evt) => {
+					const rawDx = fixedAnchor.x - startHandle.x();
+					const rawDy = fixedAnchor.y - startHandle.y();
+					const len = Math.max(16, Math.hypot(rawDx, rawDy));
+					const shiftKey = Boolean((evt.evt as MouseEvent | undefined)?.shiftKey);
+					const snappedDeg = snapLineAngleDeg((Math.atan2(rawDy, rawDx) * 180) / Math.PI, shiftKey);
+					const rad = (snappedDeg * Math.PI) / 180;
+					const sx = fixedAnchor.x - len * Math.cos(rad);
+					const sy = fixedAnchor.y - len * Math.sin(rad);
+
+					startHandle.position({ x: sx, y: sy });
+					lineNode.position({ x: sx, y: sy });
+					lineNode.points([0, 0, len, 0]);
+					lineNode.rotation(snappedDeg);
+					guideLine.points([sx, sy, fixedAnchor.x, fixedAnchor.y]);
+					liveLinePatch = {
+						x: Math.round(sx),
+						y: Math.round(sy),
+						width: Math.round(len),
+						rotation: normaliseAngleDeg(snappedDeg)
+					};
+					contentLayer?.batchDraw();
+				});
+
+				startHandle.on('dragend', () => {
+					isElementDragging = false;
+					setHandleCursor('default');
+					if (liveLinePatch) {
+						editor.updateElement(lineEl.id, liveLinePatch);
+						liveLinePatch = null;
+					}
+				});
+
+				endHandle.on('dragstart', () => {
+					isElementDragging = true;
+					setHandleCursor('grabbing');
+					fixedAnchor = { x: startHandle.x(), y: startHandle.y() };
+					liveLinePatch = null;
+				});
+
+				endHandle.on('dragmove', (evt) => {
+					const rawDx = endHandle.x() - fixedAnchor.x;
+					const rawDy = endHandle.y() - fixedAnchor.y;
+					const len = Math.max(16, Math.hypot(rawDx, rawDy));
+					const shiftKey = Boolean((evt.evt as MouseEvent | undefined)?.shiftKey);
+					const snappedDeg = snapLineAngleDeg((Math.atan2(rawDy, rawDx) * 180) / Math.PI, shiftKey);
+					const rad = (snappedDeg * Math.PI) / 180;
+					const ex = fixedAnchor.x + len * Math.cos(rad);
+					const ey = fixedAnchor.y + len * Math.sin(rad);
+
+					endHandle.position({ x: ex, y: ey });
+					lineNode.position({ x: fixedAnchor.x, y: fixedAnchor.y });
+					lineNode.points([0, 0, len, 0]);
+					lineNode.rotation(snappedDeg);
+					guideLine.points([fixedAnchor.x, fixedAnchor.y, ex, ey]);
+					liveLinePatch = {
+						x: Math.round(fixedAnchor.x),
+						y: Math.round(fixedAnchor.y),
+						width: Math.round(len),
+						rotation: normaliseAngleDeg(snappedDeg)
+					};
+					contentLayer?.batchDraw();
+				});
+
+				endHandle.on('dragend', () => {
+					isElementDragging = false;
+					setHandleCursor('default');
+					if (liveLinePatch) {
+						editor.updateElement(lineEl.id, liveLinePatch);
+						liveLinePatch = null;
+					}
+				});
+
+				contentLayer.add(guideLine, startHandle, endHandle);
+			} else {
+				transformer.enabledAnchors([
+					'top-left',
+					'top-center',
+					'top-right',
+					'middle-right',
+					'middle-left',
+					'bottom-left',
+					'bottom-center',
+					'bottom-right'
+				]);
+				transformer.keepRatio(isSingleRaster);
+				transformer.borderEnabled(true);
+				transformer.padding(0);
+				transformer.nodes(selectedNodes);
+			}
 		}
 		contentLayer.batchDraw();
 	}
@@ -1024,6 +1416,8 @@
 			marqueeAdditive = Boolean(mouseEvt?.shiftKey || mouseEvt?.ctrlKey || mouseEvt?.metaKey);
 			marqueeStart = { x: pos.x / editor.zoom, y: pos.y / editor.zoom };
 			marqueeActive = false;
+			marqueeActiveState = false;
+			clearHoverOutline();
 		});
 
 		stage.on('mousemove', () => {
@@ -1035,10 +1429,17 @@
 			if (!marqueeActive && Math.hypot(cx - marqueeStart.x, cy - marqueeStart.y) < 4) return;
 
 			marqueeActive = true;
+			marqueeActiveState = true;
 			const rx = Math.min(marqueeStart.x, cx);
 			const ry = Math.min(marqueeStart.y, cy);
 			const rw = Math.abs(cx - marqueeStart.x);
 			const rh = Math.abs(cy - marqueeStart.y);
+
+			const hitIds = findMarqueeHitIds(rx, ry, rw, rh);
+			const previewIds = marqueeAdditive
+				? Array.from(new Set([...editor.selectedIds, ...hitIds]))
+				: hitIds;
+			renderMarqueePreviewBorders(previewIds);
 
 			if (!marqueeRect) {
 				marqueeRect = new Konva.Rect({
@@ -1048,12 +1449,13 @@
 					height: rh,
 					fill: 'rgba(79, 70, 229, 0.12)',
 					stroke: '#4f46e5',
-					strokeWidth: 1,
-					dash: [4, 3]
+					strokeWidth: 1 / Math.max(0.2, editor.zoom),
+					dash: [4 / Math.max(0.2, editor.zoom), 3 / Math.max(0.2, editor.zoom)]
 				});
 				guideLayer.add(marqueeRect);
 			} else {
 				marqueeRect.setAttrs({ x: rx, y: ry, width: rw, height: rh });
+				marqueeRect.moveToTop();
 			}
 			guideLayer.batchDraw();
 		});
@@ -1065,22 +1467,7 @@
 				const ry = marqueeRect.y();
 				const rw = marqueeRect.width();
 				const rh = marqueeRect.height();
-
-				const hitIds = editor.canvasState.elements
-					.filter((el) => {
-						if (!el.visible || el.locked) return false;
-						const isFrame =
-							el.type === 'shape' &&
-							el.shapeKind !== 'line' &&
-							el.width > editor.width * 0.7 &&
-							el.height > editor.height * 0.7;
-						if (isFrame) return false;
-						const isLine = el.type === 'shape' && el.shapeKind === 'line';
-						const elH = isLine ? Math.max(4, el.strokeWidth || 2) : el.height;
-						const elY = isLine ? el.y - elH / 2 : el.y;
-						return el.x < rx + rw && el.x + el.width > rx && elY < ry + rh && elY + elH > ry;
-					})
-					.map((el) => el.id);
+				const hitIds = findMarqueeHitIds(rx, ry, rw, rh);
 
 				if (marqueeAdditive) {
 					editor.selectMultiple([...editor.selectedIds, ...hitIds]);
@@ -1093,6 +1480,8 @@
 
 			marqueeStart = null;
 			marqueeActive = false;
+			marqueeActiveState = false;
+			clearMarqueePreviewBorders();
 			marqueeRect?.destroy();
 			marqueeRect = null;
 			guideLayer?.batchDraw();

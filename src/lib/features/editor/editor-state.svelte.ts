@@ -305,7 +305,7 @@ export class EditorState {
 			fontStyle: 'normal',
 			textDecoration: '',
 			textTransform: 'none',
-			fill: '#0f172a',
+			fill: '#000000',
 			align: 'center',
 			verticalAlign: 'middle',
 			lineHeight: 1.2,
@@ -351,7 +351,7 @@ export class EditorState {
 			fontStyle: 'normal',
 			textDecoration: '',
 			textTransform: 'none',
-			fill: '#334155',
+			fill: '#000000',
 			align: 'center',
 			verticalAlign: 'middle',
 			lineHeight: 1.3,
@@ -393,7 +393,7 @@ export class EditorState {
 			visible: true,
 			locked: false,
 			fill: 'transparent',
-			stroke: '#1e3a8a',
+			stroke: '#000000',
 			strokeWidth: 2,
 			cornerRadius: shapeKind === 'rect' ? 4 : 0
 		};

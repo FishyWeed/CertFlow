@@ -13,7 +13,7 @@
 	const PAD_H = 200;
 
 	let canvasEl = $state<HTMLCanvasElement | null>(null);
-	let penColor = $state('#0f172a');
+	let penColor = $state('#000000');
 	let penWidth = $state(4);
 	let hasStrokes = $state(false);
 	let drawing = false;

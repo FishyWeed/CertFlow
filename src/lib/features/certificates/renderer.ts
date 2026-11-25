@@ -165,7 +165,7 @@ async function withOffscreenCertificateStage<T>(
 							points: [0, 0, el.width, 0],
 							rotation: el.rotation,
 							opacity: el.opacity,
-							stroke: el.stroke || el.fill || '#1e3a8a',
+							stroke: el.stroke || el.fill || '#000000',
 							strokeWidth: Math.max(1, el.strokeWidth || 2),
 							lineCap: 'round'
 						})

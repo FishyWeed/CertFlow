@@ -68,7 +68,7 @@
 
 	let fontSizeScrubStart = $state<(TextBoxGeometry & { fontSize: number }) | null>(null);
 	let textAreaEl = $state<HTMLTextAreaElement | null>(null);
-	let inlineWordColor = $state('#b45309');
+	let inlineWordColor = $state('#000000');
 	let customConditionMode = $state<Record<string, boolean>>({});
 	const CUSTOM_VALUE_SENTINEL = '__custom_value__';
 
