@@ -29,7 +29,13 @@ function loadPersistedSetupConfig() {
 	if (!existsSync(configPath)) return null;
 	try {
 		const saved = JSON.parse(readFileSync(configPath, 'utf8'));
-		if (saved.databaseUrl) process.env.DATABASE_URL = saved.databaseUrl;
+		const isPortable = process.env.CERTFLOW_PORTABLE === 'true' && Boolean(process.env.CERTFLOW_DATA_DIR?.trim());
+		const isRemoteDb =
+			typeof saved.databaseUrl === 'string' &&
+			(saved.databaseUrl.startsWith('postgres://') || saved.databaseUrl.startsWith('postgresql://'));
+		if (saved.databaseUrl && (!isPortable || isRemoteDb)) {
+			process.env.DATABASE_URL = saved.databaseUrl;
+		}
 		if (saved.betterAuthUrl) {
 			process.env.BETTER_AUTH_URL = saved.betterAuthUrl;
 			process.env.PUBLIC_APP_URL = saved.betterAuthUrl;
@@ -37,7 +43,7 @@ function loadPersistedSetupConfig() {
 		if (saved.betterAuthSecret) process.env.BETTER_AUTH_SECRET = saved.betterAuthSecret;
 		if (saved.encryptionKey) process.env.ENCRYPTION_KEY = saved.encryptionKey;
 		if (saved.storageDriver) process.env.STORAGE_DRIVER = saved.storageDriver;
-		if (saved.localUploadDir) process.env.LOCAL_UPLOAD_DIR = saved.localUploadDir;
+		if (saved.localUploadDir && !isPortable) process.env.LOCAL_UPLOAD_DIR = saved.localUploadDir;
 		if (saved.brevoApiKey) process.env.BREVO_API_KEY = saved.brevoApiKey;
 		if (saved.resendApiKey) process.env.RESEND_API_KEY = saved.resendApiKey;
 		if (saved.smtpHost) process.env.SMTP_HOST = saved.smtpHost;

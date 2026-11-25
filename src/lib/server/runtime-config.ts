@@ -190,8 +190,22 @@ export function getRuntimeConfig(): EffectiveRuntimeConfig {
 	const smtpPortRaw = saved?.smtpPort ?? (process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 1025);
 	const smtpPort = Number.isFinite(smtpPortRaw) && smtpPortRaw > 0 ? smtpPortRaw : 1025;
 
+	// In Portable Edition, always follow the active data/ folder for local PGlite and uploads
+	// so moving the folder or copying data/ to a new install works without editing config.json.
+	const isPortableWithDataDir = process.env.CERTFLOW_PORTABLE === 'true' && Boolean(dataDir);
+	const savedDbUrl = saved?.databaseUrl?.trim() || '';
+	const savedDbIsRemote =
+		savedDbUrl.startsWith('postgres://') || savedDbUrl.startsWith('postgresql://');
+	const resolvedDatabaseUrl =
+		isPortableWithDataDir && !savedDbIsRemote
+			? defaultDbPath
+			: savedDbUrl || process.env.DATABASE_URL?.trim() || defaultDbPath;
+	const resolvedUploadDir = isPortableWithDataDir
+		? defaultUploadsDir
+		: saved?.localUploadDir?.trim() || process.env.LOCAL_UPLOAD_DIR?.trim() || defaultUploadsDir;
+
 	return {
-		databaseUrl: saved?.databaseUrl?.trim() || process.env.DATABASE_URL?.trim() || defaultDbPath,
+		databaseUrl: resolvedDatabaseUrl,
 		betterAuthUrl,
 		betterAuthSecret:
 			saved?.betterAuthSecret?.trim() ||
@@ -202,8 +216,7 @@ export function getRuntimeConfig(): EffectiveRuntimeConfig {
 			process.env.ENCRYPTION_KEY?.trim() ||
 			INSECURE_DEFAULT_ENCRYPTION_KEY,
 		storageDriver: saved?.storageDriver?.trim() || process.env.STORAGE_DRIVER?.trim() || 'local',
-		localUploadDir:
-			saved?.localUploadDir?.trim() || process.env.LOCAL_UPLOAD_DIR?.trim() || defaultUploadsDir,
+		localUploadDir: resolvedUploadDir,
 		brevoApiKey: saved?.brevoApiKey?.trim() || process.env.BREVO_API_KEY?.trim() || '',
 		resendApiKey: saved?.resendApiKey?.trim() || process.env.RESEND_API_KEY?.trim() || '',
 		smtpHost: saved?.smtpHost?.trim() || process.env.SMTP_HOST?.trim() || 'local-outbox',

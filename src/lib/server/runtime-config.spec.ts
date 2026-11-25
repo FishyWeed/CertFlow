@@ -129,4 +129,35 @@ describe('runtime configuration and self-hosted setup detection', () => {
 		process.env.RENDER = 'true';
 		expect(isLocalAppRuntime()).toBe(false);
 	});
+
+	it('auto-relocates local pgdata and uploads paths when a Portable data folder is moved', () => {
+		process.env.CERTFLOW_PORTABLE = 'true';
+		saveRuntimeConfig({
+			setupCompleted: true,
+			betterAuthUrl: 'http://localhost:3000',
+			betterAuthSecret: generateAuthSecret(),
+			encryptionKey: generateEncryptionKey(),
+			databaseUrl: 'C:\\Old\\Downloads\\CertFlow\\data\\pgdata',
+			localUploadDir: 'C:\\Old\\Downloads\\CertFlow\\data\\uploads'
+		});
+		clearRuntimeConfigCache();
+
+		const cfg = getRuntimeConfig();
+		expect(cfg.databaseUrl).toBe(join(tempDir, 'pgdata'));
+		expect(cfg.localUploadDir).toBe(join(tempDir, 'uploads'));
+
+		// Remote PostgreSQL URLs remain untouched even in Portable Edition.
+		saveRuntimeConfig({
+			setupCompleted: true,
+			betterAuthUrl: 'http://localhost:3000',
+			betterAuthSecret: generateAuthSecret(),
+			encryptionKey: generateEncryptionKey(),
+			databaseUrl: 'postgresql://user:pass@db.example.com:5432/certflow',
+			localUploadDir: 'C:\\Old\\Downloads\\CertFlow\\data\\uploads'
+		});
+		clearRuntimeConfigCache();
+		const remoteCfg = getRuntimeConfig();
+		expect(remoteCfg.databaseUrl).toBe('postgresql://user:pass@db.example.com:5432/certflow');
+		expect(remoteCfg.localUploadDir).toBe(join(tempDir, 'uploads'));
+	});
 });

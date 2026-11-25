@@ -35,7 +35,6 @@ UsePreviousAppDir=yes
 DefaultGroupName=CertFlow
 AllowNoIcons=yes
 PrivilegesRequired=lowest
-PrivilegesRequiredOverridesAllowed=dialog
 OutputDir={#MyOutputDir}
 OutputBaseFilename={#MyOutputBaseFilename}
 SetupIconFile=certflow.ico
@@ -45,8 +44,8 @@ Compression=lzma2/fast
 SolidCompression=yes
 WizardStyle=modern
 DisableProgramGroupPage=yes
-ArchitecturesAllowed=x64compatible
-ArchitecturesInstallIn64BitMode=x64compatible
+ArchitecturesAllowed=x64
+ArchitecturesInstallIn64BitMode=x64
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
