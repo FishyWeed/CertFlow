@@ -23,7 +23,7 @@
 	import ImageCropResizeModal from '#lib/components/ui/ImageCropResizeModal.svelte';
 	import ScrubNumberInput from '#lib/components/ui/ScrubNumberInput.svelte';
 	import SignaturePad from '#lib/components/ui/SignaturePad.svelte';
-	import { CANVAS_PRESETS, DEFAULT_FONT_FAMILIES } from '#lib/config/canvas.ts';
+	import { CANVAS_PRESETS, FONT_CATALOG, FONT_CATEGORIES } from '#lib/config/canvas.ts';
 	import type {
 		CriterionDefinition,
 		ImageEditState,
@@ -36,6 +36,8 @@
 		VerticalAlign
 	} from '#lib/types/certflow.ts';
 	import type { EditorState } from './editor-state.svelte.ts';
+	import FontPicker from './FontPicker.svelte';
+	import { ensureFontLoaded } from './fonts.ts';
 	import {
 		applyInlineFormatToSelection,
 		stripRichTextMarkup,
@@ -894,14 +896,21 @@
 							value=""
 							onchange={(e) => {
 								const chosenFont = e.currentTarget.value;
-								if (chosenFont) applyWordFormat({ kind: 'font', value: chosenFont });
+								if (chosenFont) {
+									ensureFontLoaded(chosenFont);
+									applyWordFormat({ kind: 'font', value: chosenFont });
+								}
 								e.currentTarget.value = '';
 							}}
-							class="h-7 max-w-24 rounded border border-border-default bg-white px-1 text-[11px] text-ink-secondary"
+							class="h-7 max-w-28 rounded border border-border-default bg-white px-1 text-[11px] text-ink-secondary"
 						>
 							<option value="">Font...</option>
-							{#each DEFAULT_FONT_FAMILIES as font (font)}
-								<option value={font}>{font}</option>
+							{#each FONT_CATEGORIES as category (category.id)}
+								<optgroup label={category.label}>
+									{#each FONT_CATALOG.filter((f) => f.category === category.id) as font (font.family)}
+										<option value={font.family}>{font.family}</option>
+									{/each}
+								</optgroup>
 							{/each}
 						</select>
 
@@ -1178,11 +1187,10 @@
 
 				<div>
 					<label for="el-font" class="block text-xs font-medium text-ink-secondary">Font</label>
-					<select
+					<FontPicker
 						id="el-font"
 						value={selected.fontFamily}
-						onchange={(e) => {
-							const nextFont = e.currentTarget.value;
+						onSelect={(nextFont) => {
 							const previewText = stripRichTextMarkup(
 								resolveElementText(selected, sampleData, editor.previewMode)
 							);
@@ -1204,12 +1212,7 @@
 							);
 							editor.updateElement(selected.id, { fontFamily: nextFont, ...nextBox });
 						}}
-						class="mt-1 block w-full rounded-lg border border-border-strong bg-white px-2.5 py-1.5 text-xs"
-					>
-						{#each DEFAULT_FONT_FAMILIES as font (font)}
-							<option value={font}>{font}</option>
-						{/each}
-					</select>
+					/>
 				</div>
 
 				<div class="grid grid-cols-2 gap-2">

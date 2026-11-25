@@ -4,7 +4,7 @@
 	import { LAYOUT_BREAKPOINTS } from '#lib/config/layout.ts';
 	import type { CanvasElement, CriterionDefinition } from '#lib/types/certflow.ts';
 	import type { EditorState } from './editor-state.svelte.ts';
-	import { ensureFontLoaded, preloadEditorFonts } from './fonts.ts';
+	import { ensureFontLoaded, extractInlineFontFamilies, preloadEditorFonts } from './fonts.ts';
 	import { createRichTextKonvaNode, hasElementRichText } from './rich-text.ts';
 	import { computeSnapResult, type RectBox } from './snapping.ts';
 	import {
@@ -334,6 +334,11 @@
 
 			if (el.type === 'placeholder' || el.type === 'text' || el.type === 'title') {
 				ensureFontLoaded(el.fontFamily, el.fontWeight, el.fontStyle, () => syncKonva());
+				for (const inlineFont of extractInlineFontFamilies(el)) {
+					ensureFontLoaded(inlineFont, 400, 'normal', () => syncKonva());
+					ensureFontLoaded(inlineFont, 700, 'normal', () => syncKonva());
+					ensureFontLoaded(inlineFont, 400, 'italic', () => syncKonva());
+				}
 				if (hasElementRichText(el)) {
 					node = createRichTextKonvaNode(Konva, el, sampleData, editor.previewMode, !el.locked);
 				} else {

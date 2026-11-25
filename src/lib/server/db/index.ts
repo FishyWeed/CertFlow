@@ -33,4 +33,15 @@ function createDatabase(): Database {
 	return drizzlePglite(pgliteClient, { schema }) as unknown as Database;
 }
 
-export const db: Database = globalForDb.__certflowDb ?? (globalForDb.__certflowDb = createDatabase());
+function getDatabase(): Database {
+	return (globalForDb.__certflowDb ??= createDatabase());
+}
+
+// Lazily initialise the database handle on first query so `vite build` route analysis never opens PGlite or a network pool.
+export const db: Database = new Proxy({} as Database, {
+	get(_target, prop, receiver) {
+		const instance = getDatabase();
+		const value = Reflect.get(instance as object, prop, receiver);
+		return typeof value === 'function' ? value.bind(instance) : value;
+	}
+});

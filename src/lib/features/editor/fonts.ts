@@ -1,14 +1,91 @@
-import { DEFAULT_FONT_FAMILIES } from '#lib/config/canvas.ts';
+import { CORE_PRELOAD_FONTS, FONT_CATALOG_MAP } from '#lib/config/canvas.ts';
 import type { CanvasElement } from '#lib/types/certflow.ts';
 
 const SAMPLE_TEXT = 'BESbswy0123456789';
 const PIN_CONTAINER_ID = 'certflow-font-pin';
 const loadedFontKeys = new Set<string>();
 const pendingFontPromises = new Map<string, Promise<void>>();
+const stylesheetPromises = new Map<string, Promise<void>>();
+
+const INLINE_FONT_TAG_RE = /<font=([^>]+)>/gi;
 
 export function quoteFontFamily(family: string): string {
 	const trimmed = family.trim().replace(/^['"]|['"]$/g, '');
 	return /\s/.test(trimmed) ? `"${trimmed}"` : trimmed;
+}
+
+function normalizeFamilyName(family: string): string {
+	return family.trim().replace(/^['"]|['"]$/g, '');
+}
+
+/**
+ * Builds the Google Fonts CSS2 stylesheet URL for a catalog font family,
+ * or returns `null` for built-in OS system fonts.
+ */
+export function getGoogleFontStylesheetUrl(family: string): string | null {
+	const clean = normalizeFamilyName(family);
+	if (!clean) return null;
+
+	const entry = FONT_CATALOG_MAP.get(clean.toLowerCase());
+	if (entry?.system) return null;
+
+	const encodedName = (entry?.family ?? clean).replace(/\s+/g, '+');
+	const spec = entry?.googleSpec;
+	const query = spec ? `family=${encodedName}:${spec}` : `family=${encodedName}`;
+	return `https://fonts.googleapis.com/css2?${query}&display=swap`;
+}
+
+/**
+ * Injects a Google Fonts <link rel="stylesheet"> on demand for any font family not already loaded
+ * in <head>, and resolves once the stylesheet has registered its @font-face rules.
+ */
+export function ensureFontStylesheet(family: string): Promise<void> {
+	if (typeof document === 'undefined' || !document.head) return Promise.resolve();
+
+	const clean = normalizeFamilyName(family);
+	if (!clean) return Promise.resolve();
+
+	const key = clean.toLowerCase();
+	const existingPromise = stylesheetPromises.get(key);
+	if (existingPromise) return existingPromise;
+
+	// Core starter fonts are already linked in src/app.html.
+	if (CORE_PRELOAD_FONTS.some((f) => f.toLowerCase() === key)) {
+		const resolved = Promise.resolve();
+		stylesheetPromises.set(key, resolved);
+		return resolved;
+	}
+
+	const url = getGoogleFontStylesheetUrl(clean);
+	if (!url) {
+		const resolved = Promise.resolve();
+		stylesheetPromises.set(key, resolved);
+		return resolved;
+	}
+
+	const existingLink = document.head.querySelector<HTMLLinkElement>(
+		`link[data-certflow-font="${CSS.escape(key)}"]`
+	);
+	if (existingLink) {
+		const resolved = Promise.resolve();
+		stylesheetPromises.set(key, resolved);
+		return resolved;
+	}
+
+	const promise = new Promise<void>((resolve) => {
+		const link = document.createElement('link');
+		link.rel = 'stylesheet';
+		link.href = url;
+		link.dataset.certflowFont = key;
+		const finish = () => resolve();
+		link.addEventListener('load', finish, { once: true });
+		link.addEventListener('error', finish, { once: true });
+		setTimeout(finish, 4000);
+		document.head.appendChild(link);
+	});
+
+	stylesheetPromises.set(key, promise);
+	return promise;
 }
 
 function buildFontSpec(
@@ -22,10 +99,10 @@ function buildFontSpec(
 }
 
 /**
- * Keeps all built-in editor fonts referenced by an invisible rendered DOM container so
+ * Keeps requested editor fonts referenced by an invisible rendered DOM container so
  * Chromium never evicts unreferenced Google Font faces between canvas redraws.
  */
-function ensureFontPinElement(extraFamilies: string[] = []): void {
+function ensureFontPinElement(familiesToPin: string[]): void {
 	if (typeof document === 'undefined' || !document.body) return;
 
 	let container = document.getElementById(PIN_CONTAINER_ID);
@@ -38,7 +115,7 @@ function ensureFontPinElement(extraFamilies: string[] = []): void {
 		document.body.appendChild(container);
 	}
 
-	const families = Array.from(new Set<string>([...DEFAULT_FONT_FAMILIES, ...extraFamilies]));
+	const families = Array.from(new Set(familiesToPin.map(normalizeFamilyName).filter(Boolean)));
 	for (const family of families) {
 		const quoted = quoteFontFamily(family);
 		const variants: Array<[number, 'normal' | 'italic']> = [
@@ -62,8 +139,7 @@ function ensureFontPinElement(extraFamilies: string[] = []): void {
 }
 
 /**
- * Waits until external font stylesheets (such as Google Fonts <link>) have finished
- * loading and registering their @font-face rules in document.fonts.
+ * Waits until external font stylesheets have finished registering their @font-face rules.
  */
 async function waitForFontStylesheets(): Promise<void> {
 	if (typeof document === 'undefined' || typeof window === 'undefined') return;
@@ -80,7 +156,40 @@ async function waitForFontStylesheets(): Promise<void> {
 }
 
 /**
- * Ensures a font face is downloaded and pinned in the DOM for HTML5 Canvas / Konva rendering.
+ * Extracts every inline `<font=Font Name>` family referenced in an element's rich text or rules.
+ */
+export function extractInlineFontFamilies(el: CanvasElement): string[] {
+	if (el.type !== 'text' && el.type !== 'placeholder' && el.type !== 'title') return [];
+
+	const sources: string[] = [];
+	if (el.type === 'text') {
+		sources.push(el.text);
+		if (el.fallbackText) sources.push(el.fallbackText);
+		if (el.rules) {
+			for (const rule of el.rules) sources.push(rule.output);
+		}
+	} else if (el.type === 'placeholder') {
+		sources.push(el.fallbackText);
+	} else if (el.type === 'title') {
+		sources.push(el.defaultTitle);
+		for (const rule of el.rules) sources.push(rule.output);
+	}
+
+	const found = new Set<string>();
+	for (const src of sources) {
+		if (!src || !src.includes('<font=')) continue;
+		INLINE_FONT_TAG_RE.lastIndex = 0;
+		let match: RegExpExecArray | null;
+		while ((match = INLINE_FONT_TAG_RE.exec(src)) !== null) {
+			const name = normalizeFamilyName(match[1] ?? '');
+			if (name) found.add(name);
+		}
+	}
+	return Array.from(found);
+}
+
+/**
+ * Ensures a font face stylesheet is injected, downloaded and pinned in the DOM for HTML5 Canvas / Konva rendering.
  * Returns `true` when already available synchronously, or triggers an async load and
  * invokes `onLoaded` as soon as the font finishes downloading so the canvas redraws immediately.
  */
@@ -92,21 +201,17 @@ export function ensureFontLoaded(
 ): boolean {
 	if (typeof document === 'undefined' || !('fonts' in document)) return true;
 
-	ensureFontPinElement([fontFamily]);
+	const clean = normalizeFamilyName(fontFamily);
+	if (!clean) return true;
 
-	const requestedSpec = buildFontSpec(fontFamily, fontWeight, fontStyle);
-	const baseSpec = buildFontSpec(fontFamily, 400, 'normal');
+	const entry = FONT_CATALOG_MAP.get(clean.toLowerCase());
+	if (entry?.system) return true;
+
+	const requestedSpec = buildFontSpec(clean, fontWeight, fontStyle);
+	const baseSpec = buildFontSpec(clean, 400, 'normal');
 	const cacheKey = `${requestedSpec}|${baseSpec}`;
 
 	if (loadedFontKeys.has(cacheKey) && document.fonts.check(baseSpec, SAMPLE_TEXT)) {
-		return true;
-	}
-
-	if (
-		document.fonts.check(requestedSpec, SAMPLE_TEXT) &&
-		document.fonts.check(baseSpec, SAMPLE_TEXT)
-	) {
-		loadedFontKeys.add(cacheKey);
 		return true;
 	}
 
@@ -114,6 +219,8 @@ export function ensureFontLoaded(
 	if (!promise) {
 		promise = (async () => {
 			try {
+				await ensureFontStylesheet(clean);
+				ensureFontPinElement([clean]);
 				await waitForFontStylesheets();
 				const loads = [document.fonts.load(baseSpec, SAMPLE_TEXT).catch(() => [])];
 				if (requestedSpec !== baseSpec) {
@@ -139,17 +246,17 @@ export function ensureFontLoaded(
 }
 
 /**
- * Preloads and pins all built-in editor Google Fonts so switching typefaces in the inspector
- * renders the real font immediately and never flips back when clicking out.
+ * Preloads and pins the core starter fonts so initial editor interactions are instant.
+ * All other catalog fonts load on demand when previewed, selected or exported.
  */
 export function preloadEditorFonts(onAnyLoaded?: () => void): void {
 	if (typeof document === 'undefined' || !('fonts' in document)) return;
 
-	ensureFontPinElement();
+	ensureFontPinElement([...CORE_PRELOAD_FONTS]);
 
 	void (async () => {
 		await waitForFontStylesheets();
-		const specs = DEFAULT_FONT_FAMILIES.flatMap((family) => [
+		const specs = CORE_PRELOAD_FONTS.flatMap((family) => [
 			buildFontSpec(family, 400, 'normal'),
 			buildFontSpec(family, 700, 'normal'),
 			buildFontSpec(family, 400, 'italic'),
@@ -161,27 +268,37 @@ export function preloadEditorFonts(onAnyLoaded?: () => void): void {
 }
 
 /**
- * Awaits and pins every font face referenced by a template before offscreen Konva preview or export.
+ * Awaits and pins every font face referenced by a template (including inline `<font=...>` tags)
+ * before offscreen Konva preview or PNG/JPG/PDF export.
  */
 export async function ensureTemplateFontsLoaded(elements: CanvasElement[]): Promise<void> {
 	if (typeof document === 'undefined' || !('fonts' in document)) return;
 
-	const extraFamilies: string[] = [];
-	for (const el of elements) {
-		if (el.type === 'text' || el.type === 'placeholder' || el.type === 'title') {
-			extraFamilies.push(el.fontFamily);
-		}
-	}
-	ensureFontPinElement(extraFamilies);
-
-	await waitForFontStylesheets();
+	const usedFamilies = new Set<string>();
 	const specs = new Set<string>();
+
 	for (const el of elements) {
 		if (el.type === 'text' || el.type === 'placeholder' || el.type === 'title') {
-			specs.add(buildFontSpec(el.fontFamily, 400, 'normal'));
-			specs.add(buildFontSpec(el.fontFamily, el.fontWeight, el.fontStyle));
+			const baseFamily = normalizeFamilyName(el.fontFamily);
+			if (baseFamily) {
+				usedFamilies.add(baseFamily);
+				specs.add(buildFontSpec(baseFamily, 400, 'normal'));
+				specs.add(buildFontSpec(baseFamily, el.fontWeight, el.fontStyle));
+			}
+			for (const inlineFamily of extractInlineFontFamilies(el)) {
+				usedFamilies.add(inlineFamily);
+				specs.add(buildFontSpec(inlineFamily, 400, 'normal'));
+				specs.add(buildFontSpec(inlineFamily, 700, 'normal'));
+				specs.add(buildFontSpec(inlineFamily, 400, 'italic'));
+			}
 		}
 	}
+
+	if (usedFamilies.size === 0) return;
+
+	await Promise.all(Array.from(usedFamilies).map((family) => ensureFontStylesheet(family)));
+	ensureFontPinElement(Array.from(usedFamilies));
+	await waitForFontStylesheets();
 
 	if (specs.size > 0) {
 		await Promise.all(
