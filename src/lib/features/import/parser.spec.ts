@@ -43,28 +43,37 @@ describe('spreadsheet header mapping', () => {
 		expect(unranked.rank).toBe('');
 	});
 
-	it('derives properties directly from column headers with standard keys and custom slugs', () => {
+	it('derives tag keys directly from every column name without alias remapping', () => {
 		const { properties, mapping } = derivePropertiesFromHeaders([
-			'Student Name',
-			'School',
-			'FIDE ID',
+			'Name',
 			'Role',
-			'Email'
+			'Rank',
+			'Award',
+			'Student Name',
+			'FIDE ID',
+			'Email',
+			'Category'
 		]);
 
 		expect(properties.map((p) => ({ key: p.key, label: p.label }))).toEqual([
-			{ key: 'name', label: 'Student Name' },
-			{ key: 'school', label: 'School' },
-			{ key: 'fide_id', label: 'FIDE ID' },
+			{ key: 'name', label: 'Name' },
 			{ key: 'role', label: 'Role' },
-			{ key: 'email', label: 'Email' }
+			{ key: 'rank', label: 'Rank' },
+			{ key: 'award', label: 'Award' },
+			{ key: 'student_name', label: 'Student Name' },
+			{ key: 'fide_id', label: 'FIDE ID' },
+			{ key: 'email', label: 'Email' },
+			{ key: 'category', label: 'Category' }
 		]);
 		expect(mapping).toEqual({
-			name: 'Student Name',
-			school: 'School',
-			fide_id: 'FIDE ID',
+			name: 'Name',
 			role: 'Role',
-			email: 'Email'
+			rank: 'Rank',
+			award: 'Award',
+			student_name: 'Student Name',
+			fide_id: 'FIDE ID',
+			email: 'Email',
+			category: 'Category'
 		});
 	});
 

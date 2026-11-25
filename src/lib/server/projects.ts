@@ -48,7 +48,22 @@ export async function loadProjectWorkspace(projectId: string, userId: string) {
 	const syncedProject =
 		derived && derived.properties.length > 0
 			? { ...project, criteriaConfig: derived.properties, columnMapping: derived.mapping }
-			: project;
+			: {
+					...project,
+					criteriaConfig: project.criteriaConfig.map((prop) => {
+						if (
+							prop.builtIn &&
+							prop.key === 'rank' &&
+							(prop.label === 'Award' || prop.label === 'Ranking / Award')
+						) {
+							return { ...prop, label: 'Rank' };
+						}
+						if (prop.builtIn && prop.key === 'email' && prop.label === 'Email Address') {
+							return { ...prop, label: 'Email' };
+						}
+						return prop;
+					})
+				};
 
 	return {
 		project: syncedProject,

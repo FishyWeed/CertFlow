@@ -17,6 +17,12 @@ function makeId(prefix: string): string {
 	return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+interface EditorHistoryEntry {
+	width: number;
+	height: number;
+	canvasState: TemplateCanvasState;
+}
+
 /**
  * Reactive Svelte 5 document store for the interactive Konva certificate editor.
  * Keeps undo/redo history, active selection and canvas state decoupled from Konva DOM nodes.
@@ -35,8 +41,8 @@ export class EditorState {
 	previewMode = $state<'placeholders' | 'sample'>('sample');
 	dirty = $state(false);
 
-	private past: TemplateCanvasState[] = $state([]);
-	private future: TemplateCanvasState[] = $state([]);
+	private past: EditorHistoryEntry[] = $state([]);
+	private future: EditorHistoryEntry[] = $state([]);
 	private clipboard: CanvasElement[] = $state([]);
 	private pasteOffsetStep = $state(0);
 
@@ -221,8 +227,16 @@ export class EditorState {
 		this.dirty = false;
 	}
 
+	private snapshotEntry(): EditorHistoryEntry {
+		return {
+			width: this.width,
+			height: this.height,
+			canvasState: cloneState(this.canvasState)
+		};
+	}
+
 	private commit(mutator: (draft: TemplateCanvasState) => void) {
-		this.past = [...this.past.slice(-39), cloneState(this.canvasState)];
+		this.past = [...this.past.slice(-39), this.snapshotEntry()];
 		this.future = [];
 		const next = cloneState(this.canvasState);
 		mutator(next);
@@ -230,21 +244,42 @@ export class EditorState {
 		this.dirty = true;
 	}
 
+	applyStarterTemplate(
+		input: { width: number; height: number; canvasState: TemplateCanvasState },
+		options?: { preserveBackgroundImage?: boolean }
+	) {
+		this.past = [...this.past.slice(-39), this.snapshotEntry()];
+		this.future = [];
+		const next = cloneState(input.canvasState);
+		if (options?.preserveBackgroundImage && this.canvasState.background.imageUrl) {
+			next.background = structuredClone($state.snapshot(this.canvasState.background));
+		}
+		this.width = input.width;
+		this.height = input.height;
+		this.canvasState = next;
+		this.selectedIds = [];
+		this.dirty = true;
+	}
+
 	undo() {
 		const previous = this.past.at(-1);
 		if (!previous) return;
-		this.future = [cloneState(this.canvasState), ...this.future];
+		this.future = [this.snapshotEntry(), ...this.future];
 		this.past = this.past.slice(0, -1);
-		this.canvasState = previous;
+		this.width = previous.width;
+		this.height = previous.height;
+		this.canvasState = previous.canvasState;
 		this.dirty = true;
 	}
 
 	redo() {
 		const next = this.future[0];
 		if (!next) return;
-		this.past = [...this.past, cloneState(this.canvasState)];
+		this.past = [...this.past, this.snapshotEntry()];
 		this.future = this.future.slice(1);
-		this.canvasState = next;
+		this.width = next.width;
+		this.height = next.height;
+		this.canvasState = next.canvasState;
 		this.dirty = true;
 	}
 
@@ -469,7 +504,7 @@ export class EditorState {
 	}
 
 	pushHistorySnapshot() {
-		this.past = [...this.past.slice(-39), cloneState(this.canvasState)];
+		this.past = [...this.past.slice(-39), this.snapshotEntry()];
 		this.future = [];
 	}
 

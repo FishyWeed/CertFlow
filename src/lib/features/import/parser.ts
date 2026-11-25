@@ -13,7 +13,7 @@ function normalizeHeader(header: string): string {
 	return header.trim().toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
 }
 
-function slugifyHeaderToKey(header: string): string {
+export function slugifyHeaderToKey(header: string): string {
 	return (
 		header
 			.trim()
@@ -23,10 +23,11 @@ function slugifyHeaderToKey(header: string): string {
 	);
 }
 
+const BUILT_IN_KEYS = new Set(['name', 'title', 'role', 'rank', 'email']);
+
 /**
  * Turns table column headers directly into project Properties and a 1:1 column mapping.
- * Recognised built-in aliases keep standard keys (name, title, role, ranking, email) so
- * starter templates and email sending work automatically; all other headers become {{slug}} keys.
+ * Every column's {{tag}} key is always derived directly from the column name itself.
  */
 export function derivePropertiesFromHeaders(headers: string[]): {
 	properties: CriterionDefinition[];
@@ -36,25 +37,11 @@ export function derivePropertiesFromHeaders(headers: string[]): {
 	const mapping: ColumnMapping = {};
 	const usedKeys = new Set<string>();
 
-	const builtInAliasLookup = new Map<string, string>();
-	for (const [key, aliases] of Object.entries(CRITERION_HEADER_ALIASES)) {
-		builtInAliasLookup.set(key, key);
-		for (const alias of aliases) {
-			builtInAliasLookup.set(normalizeHeader(alias), key);
-		}
-	}
-
 	for (const rawHeader of headers) {
 		const label = rawHeader.trim();
 		if (!label) continue;
 
-		const norm = normalizeHeader(label);
-		const matchedBuiltIn = builtInAliasLookup.get(norm);
-
-		const baseKey =
-			matchedBuiltIn && !usedKeys.has(matchedBuiltIn)
-				? matchedBuiltIn
-				: slugifyHeaderToKey(label);
+		const baseKey = slugifyHeaderToKey(label);
 
 		let key = baseKey;
 		let suffix = 2;
@@ -63,7 +50,7 @@ export function derivePropertiesFromHeaders(headers: string[]): {
 		}
 
 		usedKeys.add(key);
-		const isBuiltIn = Boolean(matchedBuiltIn && key === matchedBuiltIn);
+		const isBuiltIn = BUILT_IN_KEYS.has(key);
 		properties.push({
 			key,
 			label,

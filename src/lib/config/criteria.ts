@@ -4,8 +4,8 @@ import type { CriterionDefinition } from '#lib/types/certflow.ts';
 export const DEFAULT_CRITERIA: CriterionDefinition[] = [
 	{ key: 'name', label: 'Name', builtIn: true, required: true },
 	{ key: 'role', label: 'Role', builtIn: true, defaultValue: 'Participant' },
-	{ key: 'rank', label: 'Ranking / Award', builtIn: true },
-	{ key: 'email', label: 'Email Address', builtIn: true }
+	{ key: 'rank', label: 'Rank', builtIn: true },
+	{ key: 'email', label: 'Email', builtIn: true }
 ];
 
 // Normalised header aliases used to detect spreadsheet columns during CSV or Excel import.

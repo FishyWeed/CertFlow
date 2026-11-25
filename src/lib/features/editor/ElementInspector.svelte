@@ -24,9 +24,15 @@
 	import ScrubNumberInput from '#lib/components/ui/ScrubNumberInput.svelte';
 	import SignaturePad from '#lib/components/ui/SignaturePad.svelte';
 	import { CANVAS_PRESETS, FONT_CATALOG, FONT_CATEGORIES } from '#lib/config/canvas.ts';
+	import {
+		STARTER_TEMPLATE_PRESETS,
+		type StarterTemplatePreset
+	} from '#lib/templates/starter.ts';
 	import type {
+		CanvasElement,
 		CriterionDefinition,
 		ImageEditState,
+		StaticTextCanvasElement,
 		TextAlign,
 		TextTransformMode,
 		TextWrapMode,
@@ -37,7 +43,7 @@
 	} from '#lib/types/certflow.ts';
 	import type { EditorState } from './editor-state.svelte.ts';
 	import FontPicker from './FontPicker.svelte';
-	import { ensureFontLoaded } from './fonts.ts';
+	import { ensureFontLoaded, ensureTemplateFontsLoaded } from './fonts.ts';
 	import {
 		applyInlineFormatToSelection,
 		stripRichTextMarkup,
@@ -184,6 +190,62 @@
 	let signatureTab = $state<'draw' | 'upload'>('draw');
 	let uploadingBg = $state(false);
 	let bgUploadError = $state('');
+	let keepBackgroundImage = $state(false);
+	let lastAppliedStarterId = $state<string | null>(null);
+
+	const starterPreviews = STARTER_TEMPLATE_PRESETS.map((preset) => ({
+		preset,
+		state: preset.createState()
+	}));
+
+	function getThumbnailTextBar(el: StaticTextCanvasElement): {
+		x: number;
+		y: number;
+		width: number;
+		height: number;
+		opacity: number;
+	} {
+		const barH = Math.max(14, Math.min(el.height * 0.65, el.fontSize * 0.72));
+		const ratio =
+			el.text.includes('{{name}}')
+				? 0.62
+				: el.text.includes('{{rank}}')
+					? 0.72
+					: el.text.includes('{{title}}')
+						? 0.56
+						: el.text.includes('{{role}}')
+							? 0.36
+							: 0.44;
+		const barW = Math.max(64, Math.min(el.width, Math.round(el.width * ratio)));
+		const x =
+			el.align === 'left'
+				? el.x
+				: el.align === 'right'
+					? el.x + el.width - barW
+					: el.x + (el.width - barW) / 2;
+		const y = el.y + (el.height - barH) / 2;
+		return {
+			x,
+			y,
+			width: barW,
+			height: barH,
+			opacity: el.fontSize >= 36 ? 0.92 : 0.68
+		};
+	}
+
+	function handleApplyStarterTemplate(preset: StarterTemplatePreset) {
+		const nextState = preset.createState(sampleData.title || 'Event Name Here');
+		editor.applyStarterTemplate(
+			{
+				width: preset.width,
+				height: preset.height,
+				canvasState: nextState
+			},
+			{ preserveBackgroundImage: keepBackgroundImage }
+		);
+		lastAppliedStarterId = preset.id;
+		void ensureTemplateFontsLoaded(nextState.elements);
+	}
 
 	let cropModalOpen = $state(false);
 	let cropMode = $state<'background' | 'image'>('background');
@@ -766,6 +828,126 @@
 						Remove Background Image
 					</button>
 				{/if}
+			</div>
+		</section>
+
+		<section class="space-y-3 border-t border-border-default pt-4">
+			<div class="flex items-center justify-between gap-2">
+				<h2 class="text-xs font-semibold tracking-wide text-ink-secondary uppercase">
+					Starter Templates
+				</h2>
+				{#if lastAppliedStarterId && editor.canUndo}
+					<button
+						type="button"
+						onclick={() => {
+							editor.undo();
+							lastAppliedStarterId = null;
+						}}
+						class="text-[11px] font-medium text-accent hover:underline"
+					>
+						Undo
+					</button>
+				{/if}
+			</div>
+
+			<p class="text-[11px] leading-relaxed text-ink-muted">
+				Select a layout to replace the canvas. Press Ctrl+Z to undo.
+			</p>
+
+			{#if editor.canvasState.background.imageUrl}
+				<label class="flex cursor-pointer items-center gap-2 text-[11px] text-ink-secondary">
+					<input
+						type="checkbox"
+						bind:checked={keepBackgroundImage}
+						class="h-3.5 w-3.5 rounded border-border-strong text-accent focus:ring-accent"
+					/>
+					<span>Keep current background image</span>
+				</label>
+			{/if}
+
+			<div class="grid grid-cols-2 gap-2">
+				{#each starterPreviews as { preset, state } (preset.id)}
+					<button
+						type="button"
+						onclick={() => handleApplyStarterTemplate(preset)}
+						title="Apply {preset.name} ({preset.width}×{preset.height})"
+						class="group flex flex-col overflow-hidden rounded-lg border bg-white text-left transition hover:border-indigo-400 hover:shadow-xs {lastAppliedStarterId ===
+						preset.id
+							? 'border-indigo-500 ring-1 ring-indigo-200'
+							: 'border-border-default'}"
+					>
+						<div class="flex h-20 w-full items-center justify-center bg-surface-subtle/80 p-1.5">
+							<svg
+								viewBox="0 0 {preset.width} {preset.height}"
+								aria-hidden="true"
+								class="max-h-full max-w-full rounded-[2px] shadow-xs ring-1 ring-black/10"
+							>
+								<rect
+									x="0"
+									y="0"
+									width={preset.width}
+									height={preset.height}
+									fill={state.background.color}
+								/>
+								{#each state.elements as el (el.id)}
+									{#if el.type === 'shape'}
+										{#if el.shapeKind === 'rect'}
+											<rect
+												x={el.x}
+												y={el.y}
+												width={el.width}
+												height={el.height}
+												rx={el.cornerRadius ?? 0}
+												fill={el.fill === 'transparent' ? 'none' : el.fill}
+												stroke={el.stroke === 'transparent' ? 'none' : el.stroke}
+												stroke-width={el.strokeWidth > 0 ? Math.max(8, el.strokeWidth * 2.5) : 0}
+											/>
+										{:else if el.shapeKind === 'circle'}
+											<ellipse
+												cx={el.x + el.width / 2}
+												cy={el.y + el.height / 2}
+												rx={el.width / 2}
+												ry={el.height / 2}
+												fill={el.fill === 'transparent' ? 'none' : el.fill}
+												stroke={el.stroke === 'transparent' ? 'none' : el.stroke}
+												stroke-width={el.strokeWidth > 0 ? Math.max(8, el.strokeWidth * 2.5) : 0}
+											/>
+										{:else if el.shapeKind === 'line'}
+											<line
+												x1={el.x}
+												y1={el.y}
+												x2={el.x + el.width}
+												y2={el.y}
+												stroke={el.stroke}
+												stroke-width={Math.max(8, el.strokeWidth * 3)}
+												stroke-linecap="round"
+											/>
+										{/if}
+									{:else if el.type === 'text'}
+										{@const bar = getThumbnailTextBar(el)}
+										<rect
+											x={bar.x}
+											y={bar.y}
+											width={bar.width}
+											height={bar.height}
+											rx={bar.height / 2}
+											fill={el.fill}
+											opacity={bar.opacity}
+										/>
+									{/if}
+								{/each}
+							</svg>
+						</div>
+						<div class="border-t border-border-default px-2 py-1.5">
+							<p class="truncate text-[11px] font-semibold text-ink-primary group-hover:text-indigo-700">
+								{preset.name}
+							</p>
+							<p class="truncate text-[10px] text-ink-muted">
+								{preset.styleTag}
+							</p>
+						</div>
+					</button>
+				{/each}
 			</div>
 		</section>
 	{:else}

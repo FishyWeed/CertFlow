@@ -4,12 +4,25 @@ import { asc, eq } from 'drizzle-orm';
 import { db } from '#lib/server/db/index.ts';
 import { certificates, recipients, templates } from '#lib/server/db/schema.ts';
 import { requireOwnedProject } from '#lib/server/projects.ts';
+import { CRITERION_HEADER_ALIASES } from '#lib/config/criteria.ts';
+import { slugifyHeaderToKey } from '#lib/features/import/parser.ts';
 import { matchTemplateForRow } from '#lib/features/import/routing.ts';
 import type { RequestHandler } from './$types';
 
 function makeCertCode(index: number): string {
 	const rand = randomBytes(2).toString('hex').toUpperCase();
 	return `CF-${String(index + 1).padStart(4, '0')}-${rand}`;
+}
+
+function findAliasValue(data: Record<string, string>, builtInKey: string): string {
+	const direct = (data[builtInKey] ?? '').trim();
+	if (direct) return direct;
+	for (const alias of CRITERION_HEADER_ALIASES[builtInKey] ?? []) {
+		const slug = slugifyHeaderToKey(alias);
+		const candidate = (data[slug] ?? '').trim();
+		if (candidate) return candidate;
+	}
+	return '';
 }
 
 export const POST: RequestHandler = async ({ params, locals }) => {
@@ -42,16 +55,16 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 		.map((recipient, idx) => {
 			const data = recipient.mappedData ?? {};
 			const recipientName = (
-				data.name ??
-				Object.values(data).find((v) => v.trim()) ??
+				findAliasValue(data, 'name') ||
+				Object.values(data).find((v) => v.trim()) ||
 				''
 			).trim();
 			if (!recipientName) return null;
 
-			const role = (data.role ?? '').trim() || 'Participant';
-			const rank = (data.rank ?? data.ranking ?? '').trim();
-			const certTitle = (data.title ?? '').trim() || project.defaultCertTitle || project.name;
-			const email = (data.email ?? '').trim() || null;
+			const role = findAliasValue(data, 'role') || 'Participant';
+			const rank = findAliasValue(data, 'rank');
+			const certTitle = findAliasValue(data, 'title') || project.defaultCertTitle || project.name;
+			const email = findAliasValue(data, 'email') || null;
 
 			const matched = matchTemplateForRow(projectTemplates, role, rank, data);
 			if (!matched) return null;
