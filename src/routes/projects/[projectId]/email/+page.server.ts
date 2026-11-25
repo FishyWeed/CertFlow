@@ -5,9 +5,11 @@ import { getMailCapabilities } from '#lib/server/mail.ts';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ parent }) => {
-	const { user, project } = await parent();
+	const { user, project, certificates } = await parent();
 
-	const [profiles, jobs] = await Promise.all([
+	const certIds = certificates.map((c) => c.id);
+
+	const [profiles, jobs, certLogs] = await Promise.all([
 		db
 			.select({
 				id: senderProfiles.id,
@@ -25,8 +27,34 @@ export const load: PageServerLoad = async ({ parent }) => {
 			.from(emailJobs)
 			.where(eq(emailJobs.projectId, project.id))
 			.orderBy(desc(emailJobs.createdAt))
-			.limit(10)
+			.limit(10),
+		certIds.length > 0
+			? db
+					.select({
+						certificateId: emailLogs.certificateId,
+						status: emailLogs.status,
+						errorMessage: emailLogs.errorMessage,
+						sentAt: emailLogs.sentAt
+					})
+					.from(emailLogs)
+					.where(inArray(emailLogs.certificateId, certIds))
+					.orderBy(desc(emailLogs.sentAt))
+			: Promise.resolve([])
 	]);
+
+	const latestLogByCertId: Record<
+		string,
+		{ status: string; errorMessage: string | null; sentAt: string }
+	> = {};
+	for (const log of certLogs) {
+		if (!latestLogByCertId[log.certificateId]) {
+			latestLogByCertId[log.certificateId] = {
+				status: log.status,
+				errorMessage: log.errorMessage,
+				sentAt: log.sentAt.toISOString()
+			};
+		}
+	}
 
 	const jobIds = jobs.map((j) => j.id);
 	const failedLogs =
@@ -66,6 +94,7 @@ export const load: PageServerLoad = async ({ parent }) => {
 			...job,
 			failedErrors: errorsByJobId.get(job.id) ?? []
 		})),
+		latestLogByCertId,
 		mailCapabilities
 	};
 };
