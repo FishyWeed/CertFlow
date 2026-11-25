@@ -2,6 +2,9 @@
 	import { invalidateAll } from '$app/navigation';
 	import {
 		AlertCircle,
+		ArrowDown,
+		ArrowUp,
+		ArrowUpDown,
 		Check,
 		CheckCircle2,
 		Clock,
@@ -44,9 +47,21 @@
 	let progressText = $state('');
 	let progressTone = $state<'info' | 'success' | 'error'>('info');
 
-	// Recipient tracker filter & search
+	// Recipient tracker filter, search & click-to-sort cycle (asc -> desc -> default)
+	type TrackerSortColumn = 'index' | 'recipient' | 'email' | 'status' | 'details';
 	let statusFilter = $state<'all' | 'remaining' | 'sent' | 'failed' | 'no_email'>('all');
 	let trackerSearch = $state('');
+	let trackerSort = $state<{ column: TrackerSortColumn; direction: 'asc' | 'desc' } | null>(null);
+
+	function cycleTrackerSort(column: TrackerSortColumn) {
+		if (!trackerSort || trackerSort.column !== column) {
+			trackerSort = { column, direction: 'asc' };
+		} else if (trackerSort.direction === 'asc') {
+			trackerSort = { column, direction: 'desc' };
+		} else {
+			trackerSort = null;
+		}
+	}
 
 	function buildDraftSnapshot(draft: {
 		senderMode: EmailSenderMode;
@@ -135,17 +150,68 @@
 
 	const filteredTrackerCerts = $derived.by(() => {
 		const q = trackerSearch.trim().toLowerCase();
-		return data.certificates.filter((cert) => {
-			if (statusFilter === 'remaining' && (!cert.email || cert.emailStatus === 'sent')) return false;
-			if (statusFilter === 'sent' && cert.emailStatus !== 'sent') return false;
-			if (statusFilter === 'failed' && cert.emailStatus !== 'failed') return false;
-			if (statusFilter === 'no_email' && Boolean(cert.email)) return false;
-			if (!q) return true;
-			return (
-				cert.recipientName.toLowerCase().includes(q) ||
-				(cert.email ?? '').toLowerCase().includes(q) ||
-				cert.role.toLowerCase().includes(q)
-			);
+		const rows = data.certificates
+			.map((cert, index) => ({ cert, rowNumber: index + 1 }))
+			.filter(({ cert }) => {
+				if (statusFilter === 'remaining' && (!cert.email || cert.emailStatus === 'sent')) return false;
+				if (statusFilter === 'sent' && cert.emailStatus !== 'sent') return false;
+				if (statusFilter === 'failed' && cert.emailStatus !== 'failed') return false;
+				if (statusFilter === 'no_email' && Boolean(cert.email)) return false;
+				if (!q) return true;
+				return (
+					cert.recipientName.toLowerCase().includes(q) ||
+					(cert.email ?? '').toLowerCase().includes(q) ||
+					cert.role.toLowerCase().includes(q)
+				);
+			});
+
+		if (!trackerSort) return rows;
+
+		const { column, direction } = trackerSort;
+		const mult = direction === 'asc' ? 1 : -1;
+
+		const statusRank = (cert: (typeof data.certificates)[number]) => {
+			if (!cert.email) return 3;
+			if (cert.emailStatus === 'failed') return 0;
+			if (cert.emailStatus === 'sent') return 2;
+			return 1;
+		};
+
+		const detailsText = (cert: (typeof data.certificates)[number]) => {
+			if (!cert.email) return 'Skipped';
+			const log = data.latestLogByCertId[cert.id];
+			if (cert.emailStatus === 'failed') return log?.errorMessage ?? 'Delivery failed';
+			if (cert.emailStatus === 'sent') {
+				const raw = cert.lastSentAt ?? log?.sentAt;
+				return raw ? new Date(raw).toISOString() : 'Sent';
+			}
+			return 'Pending send';
+		};
+
+		return [...rows].sort((a, b) => {
+			let cmp = 0;
+			if (column === 'index') {
+				cmp = a.rowNumber - b.rowNumber;
+			} else if (column === 'recipient') {
+				cmp = a.cert.recipientName.localeCompare(b.cert.recipientName, undefined, {
+					numeric: true,
+					sensitivity: 'base'
+				});
+			} else if (column === 'email') {
+				const ea = (a.cert.email ?? '').trim();
+				const eb = (b.cert.email ?? '').trim();
+				if (!ea && eb) return 1;
+				if (ea && !eb) return -1;
+				cmp = ea.localeCompare(eb, undefined, { numeric: true, sensitivity: 'base' });
+			} else if (column === 'status') {
+				cmp = statusRank(a.cert) - statusRank(b.cert);
+			} else if (column === 'details') {
+				cmp = detailsText(a.cert).localeCompare(detailsText(b.cert), undefined, {
+					numeric: true,
+					sensitivity: 'base'
+				});
+			}
+			return cmp !== 0 ? cmp * mult : a.rowNumber - b.rowNumber;
 		});
 	});
 
@@ -764,11 +830,40 @@
 				<table class="min-w-full divide-y divide-border-default text-left text-xs">
 					<thead class="sticky top-0 z-20 bg-surface-page text-[11px] font-semibold tracking-wide text-ink-secondary uppercase shadow-[inset_0_-1px_0_0_var(--color-border-default)]">
 						<tr>
-							<th class="sticky top-0 z-20 bg-surface-page px-3 py-2.5">#</th>
-							<th class="sticky top-0 z-20 bg-surface-page px-3 py-2.5">Recipient</th>
-							<th class="sticky top-0 z-20 bg-surface-page px-3 py-2.5">Email</th>
-							<th class="sticky top-0 z-20 bg-surface-page px-3 py-2.5">Status</th>
-							<th class="sticky top-0 z-20 bg-surface-page px-3 py-2.5">Details</th>
+							{#each [
+								{ id: 'index' as const, label: '#' },
+								{ id: 'recipient' as const, label: 'Recipient' },
+								{ id: 'email' as const, label: 'Email' },
+								{ id: 'status' as const, label: 'Status' },
+								{ id: 'details' as const, label: 'Details' }
+							] as col (col.id)}
+								{@const activeDir = trackerSort?.column === col.id ? trackerSort.direction : null}
+								<th
+									aria-sort={activeDir === 'asc'
+										? 'ascending'
+										: activeDir === 'desc'
+											? 'descending'
+											: 'none'}
+									class="sticky top-0 z-20 bg-surface-page px-3 py-2.5"
+								>
+									<button
+										type="button"
+										onclick={() => cycleTrackerSort(col.id)}
+										class="group inline-flex items-center gap-1 uppercase transition hover:text-ink-primary {activeDir
+											? 'text-accent'
+											: ''}"
+									>
+										<span>{col.label}</span>
+										{#if activeDir === 'asc'}
+											<ArrowUp class="h-3 w-3 shrink-0" />
+										{:else if activeDir === 'desc'}
+											<ArrowDown class="h-3 w-3 shrink-0" />
+										{:else}
+											<ArrowUpDown class="h-3 w-3 shrink-0 opacity-40 transition group-hover:opacity-85" />
+										{/if}
+									</button>
+								</th>
+							{/each}
 							<th class="sticky top-0 z-20 bg-surface-page px-3 py-2.5 text-right">Action</th>
 						</tr>
 					</thead>
@@ -780,7 +875,7 @@
 								</td>
 							</tr>
 						{:else}
-							{#each filteredTrackerCerts as cert, idx (cert.id)}
+							{#each filteredTrackerCerts as { cert, rowNumber } (cert.id)}
 								{@const log = data.latestLogByCertId[cert.id]}
 								{@const hasAddr = Boolean(cert.email)}
 								{@const statusTone =
@@ -800,7 +895,7 @@
 												? 'Failed'
 												: 'Not Sent'}
 								<tr class="hover:bg-surface-subtle/50">
-									<td class="px-3 py-2.5 font-mono text-ink-muted">{idx + 1}</td>
+									<td class="px-3 py-2.5 font-mono text-ink-muted">{rowNumber}</td>
 									<td class="px-3 py-2.5">
 										<p class="font-medium text-ink-primary">{cert.recipientName}</p>
 										<p class="text-[11px] text-ink-muted">{cert.role}</p>
