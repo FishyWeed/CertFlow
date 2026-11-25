@@ -1,18 +1,8 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import nodemailer from 'nodemailer';
-import {
-	BREVO_API_KEY,
-	DEFAULT_FROM_EMAIL,
-	DEFAULT_FROM_NAME,
-	RESEND_API_KEY,
-	SMTP_HOST,
-	SMTP_PASS,
-	SMTP_PORT,
-	SMTP_SECURE,
-	SMTP_USER
-} from '$app/env/private';
 import { decryptSecret } from './crypto.ts';
+import { getRuntimeConfig } from './runtime-config.ts';
 
 export interface SenderConfig {
 	mode: 'account' | 'custom_reply_to' | 'smtp';
@@ -49,11 +39,12 @@ export interface MailCapabilities {
  * Production deployments without a server-wide relay expose only HTTPS API sender profiles (Brevo/Resend).
  */
 export function getMailCapabilities(): MailCapabilities {
+	const cfg = getRuntimeConfig();
 	const isProduction = process.env.NODE_ENV === 'production';
 	const hasServerRelay = Boolean(
-		BREVO_API_KEY.trim() || RESEND_API_KEY.trim() || (SMTP_HOST && SMTP_HOST !== 'local-outbox')
+		cfg.brevoApiKey || cfg.resendApiKey || (cfg.smtpHost && cfg.smtpHost !== 'local-outbox')
 	);
-	const allowRawSmtp = !isProduction || process.env.ALLOW_CUSTOM_SMTP === 'true';
+	const allowRawSmtp = !isProduction || cfg.allowCustomSmtp;
 	const isLocalOutbox = !isProduction && !hasServerRelay;
 	return { isProduction, hasServerRelay, allowRawSmtp, isLocalOutbox };
 }
@@ -80,12 +71,13 @@ async function sendViaBrevoApi(
 	apiKey: string,
 	explicitFromEmail?: string
 ): Promise<{ messageId: string }> {
+	const cfg = getRuntimeConfig();
 	const fromEmail =
 		explicitFromEmail ||
-		(DEFAULT_FROM_EMAIL && DEFAULT_FROM_EMAIL !== 'certificates@certflow.local'
-			? DEFAULT_FROM_EMAIL
+		(cfg.defaultFromEmail && cfg.defaultFromEmail !== 'certificates@certflow.local'
+			? cfg.defaultFromEmail
 			: input.sender.senderEmail);
-	const fromName = input.sender.senderName || DEFAULT_FROM_NAME || 'CertFlow';
+	const fromName = input.sender.senderName || cfg.defaultFromName || 'CertFlow';
 
 	const res = await fetch('https://api.brevo.com/v3/smtp/email', {
 		method: 'POST',
@@ -121,12 +113,13 @@ async function sendViaResendApi(
 	apiKey: string,
 	explicitFromEmail?: string
 ): Promise<{ messageId: string }> {
+	const cfg = getRuntimeConfig();
 	const fromEmail =
 		explicitFromEmail ||
-		(DEFAULT_FROM_EMAIL && DEFAULT_FROM_EMAIL !== 'certificates@certflow.local'
-			? DEFAULT_FROM_EMAIL
+		(cfg.defaultFromEmail && cfg.defaultFromEmail !== 'certificates@certflow.local'
+			? cfg.defaultFromEmail
 			: input.sender.senderEmail);
-	const fromName = input.sender.senderName || DEFAULT_FROM_NAME || 'CertFlow';
+	const fromName = input.sender.senderName || cfg.defaultFromName || 'CertFlow';
 
 	const res = await fetch('https://api.resend.com/emails', {
 		method: 'POST',
@@ -186,24 +179,25 @@ export async function sendCertificateEmail(
 		return { messageId: res.messageId, deliveryMode: 'api' };
 	}
 
+	const cfg = getRuntimeConfig();
 	const useCustomSmtp =
 		input.sender.mode === 'smtp' && input.sender.smtpHost && input.sender.smtpPort;
 
-	if (!useCustomSmtp && BREVO_API_KEY.trim()) {
-		const res = await sendViaBrevoApi(input, BREVO_API_KEY);
+	if (!useCustomSmtp && cfg.brevoApiKey) {
+		const res = await sendViaBrevoApi(input, cfg.brevoApiKey);
 		return { messageId: res.messageId, deliveryMode: 'api' };
 	}
 
-	if (!useCustomSmtp && RESEND_API_KEY.trim()) {
-		const res = await sendViaResendApi(input, RESEND_API_KEY);
+	if (!useCustomSmtp && cfg.resendApiKey) {
+		const res = await sendViaResendApi(input, cfg.resendApiKey);
 		return { messageId: res.messageId, deliveryMode: 'api' };
 	}
 
 	const fromHeader = useCustomSmtp
 		? `"${input.sender.senderName}" <${input.sender.senderEmail}>`
-		: `"${input.sender.senderName || DEFAULT_FROM_NAME}" <${DEFAULT_FROM_EMAIL}>`;
+		: `"${input.sender.senderName || cfg.defaultFromName}" <${cfg.defaultFromEmail}>`;
 
-	if (!useCustomSmtp && SMTP_HOST === 'local-outbox') {
+	if (!useCustomSmtp && cfg.smtpHost === 'local-outbox') {
 		const outboxDir = resolve('./.local/outbox');
 		await mkdir(outboxDir, { recursive: true });
 		const messageId = `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@certflow.local`;
@@ -251,13 +245,13 @@ export async function sendCertificateEmail(
 						: undefined
 			})
 		: nodemailer.createTransport({
-				host: SMTP_HOST,
-				port: SMTP_PORT,
-				secure: SMTP_SECURE,
+				host: cfg.smtpHost,
+				port: cfg.smtpPort,
+				secure: cfg.smtpSecure,
 				connectionTimeout: 15_000,
 				greetingTimeout: 15_000,
 				socketTimeout: 30_000,
-				auth: SMTP_USER && SMTP_PASS ? { user: SMTP_USER, pass: SMTP_PASS } : undefined
+				auth: cfg.smtpUser && cfg.smtpPass ? { user: cfg.smtpUser, pass: cfg.smtpPass } : undefined
 			});
 
 	try {

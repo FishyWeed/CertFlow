@@ -2,9 +2,9 @@ import { readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { error } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
-import { LOCAL_UPLOAD_DIR } from '$app/env/private';
 import { db } from '#lib/server/db/index.ts';
 import { assets } from '#lib/server/db/schema.ts';
+import { getRuntimeConfig } from '#lib/server/runtime-config.ts';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -22,7 +22,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 	}
 
 	const safeKey = record.storageKey.replace(/^\/+/, '').replace(/\.\./g, '');
-	const baseDir = resolve(LOCAL_UPLOAD_DIR);
+	const baseDir = resolve(getRuntimeConfig().localUploadDir);
 	const fullPath = resolve(join(baseDir, safeKey));
 
 	// Prevent path traversal outside LOCAL_UPLOAD_DIR.

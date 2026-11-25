@@ -2,39 +2,66 @@ import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { getRequestEvent } from '$app/server';
-import { BETTER_AUTH_SECRET, BETTER_AUTH_URL } from '$app/env/private';
 import { db } from './db/index.ts';
 import * as schema from './db/schema.ts';
+import { getRuntimeConfig } from './runtime-config.ts';
 
-const railwayUrl = process.env.RAILWAY_PUBLIC_DOMAIN
-	? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-	: null;
+function createAuthInstance() {
+	const cfg = getRuntimeConfig();
+	const railwayUrl = process.env.RAILWAY_PUBLIC_DOMAIN
+		? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+		: null;
 
-const resolvedBaseUrl =
-	BETTER_AUTH_URL && BETTER_AUTH_URL !== 'http://localhost:5678'
-		? BETTER_AUTH_URL
-		: (railwayUrl ?? BETTER_AUTH_URL);
+	const trustedOrigins = Array.from(
+		new Set([cfg.betterAuthUrl, railwayUrl].filter((value): value is string => Boolean(value)))
+	);
 
-const trustedOrigins = Array.from(
-	new Set([resolvedBaseUrl, railwayUrl].filter((value): value is string => Boolean(value)))
-);
+	return betterAuth({
+		baseURL: cfg.betterAuthUrl,
+		secret: cfg.betterAuthSecret,
+		trustedOrigins,
+		database: drizzleAdapter(db, {
+			provider: 'pg',
+			schema
+		}),
+		emailAndPassword: {
+			enabled: true,
+			autoSignIn: true
+		},
+		advanced: {
+			ipAddress: {
+				ipAddressHeaders: ['x-forwarded-for', 'x-real-ip']
+			}
+		},
+		plugins: [sveltekitCookies(getRequestEvent)]
+	});
+}
 
-export const auth = betterAuth({
-	baseURL: resolvedBaseUrl,
-	secret: BETTER_AUTH_SECRET,
-	trustedOrigins,
-	database: drizzleAdapter(db, {
-		provider: 'pg',
-		schema
-	}),
-	emailAndPassword: {
-		enabled: true,
-		autoSignIn: true
-	},
-	advanced: {
-		ipAddress: {
-			ipAddressHeaders: ['x-forwarded-for', 'x-real-ip']
-		}
-	},
-	plugins: [sveltekitCookies(getRequestEvent)]
+type AuthInstance = ReturnType<typeof createAuthInstance>;
+
+let cachedKey = '';
+let cachedAuth: AuthInstance | null = null;
+
+export function getAuth(): AuthInstance {
+	const cfg = getRuntimeConfig();
+	const key = `${cfg.betterAuthUrl}|${cfg.betterAuthSecret}|${cfg.databaseUrl}`;
+	if (cachedAuth && cachedKey === key) {
+		return cachedAuth;
+	}
+	cachedAuth = createAuthInstance();
+	cachedKey = key;
+	return cachedAuth;
+}
+
+export function resetAuthInstance(): void {
+	cachedAuth = null;
+	cachedKey = '';
+}
+
+export const auth: AuthInstance = new Proxy({} as AuthInstance, {
+	get(_target, prop, receiver) {
+		const instance = getAuth();
+		const value = Reflect.get(instance as object, prop, receiver);
+		return typeof value === 'function' ? value.bind(instance) : value;
+	}
 });

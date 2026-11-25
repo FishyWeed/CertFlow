@@ -1,13 +1,14 @@
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
-import { ENCRYPTION_KEY } from '$app/env/private';
+import { getRuntimeConfig } from './runtime-config.ts';
 
 const ALGORITHM = 'aes-256-gcm';
 
 function getKey(): Buffer {
-	if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length !== 64) {
+	const keyHex = getRuntimeConfig().encryptionKey;
+	if (!keyHex || keyHex.length !== 64) {
 		throw new Error('ENCRYPTION_KEY must be a 64-character hex string (32 bytes)');
 	}
-	return Buffer.from(ENCRYPTION_KEY, 'hex');
+	return Buffer.from(keyHex, 'hex');
 }
 
 export function encryptSecret(plaintext: string): string {

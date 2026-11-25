@@ -2,39 +2,107 @@ import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { PGlite } from '@electric-sql/pglite';
 import { drizzle as drizzlePglite } from 'drizzle-orm/pglite';
+import { migrate as migratePglite } from 'drizzle-orm/pglite/migrator';
 import { drizzle as drizzlePostgres, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
+import { migrate as migratePostgres } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
-import { DATABASE_URL } from '$app/env/private';
+import { getRuntimeConfig } from '../runtime-config.ts';
 import * as schema from './schema.ts';
 
 // Expose a single concrete Drizzle PgDatabase type so method overloads (such as .returning(cols)) resolve cleanly.
 export type Database = PostgresJsDatabase<typeof schema>;
 
-function isRemotePostgresUrl(url: string): boolean {
+export function isRemotePostgresUrl(url: string): boolean {
 	return url.startsWith('postgres://') || url.startsWith('postgresql://');
 }
 
-// Reuse one database handle across Vite HMR reloads in dev so PGlite never double-locks the data folder.
-const globalForDb = globalThis as unknown as { __certflowDb?: Database };
+interface DbSlot {
+	url: string;
+	db: Database;
+	close: () => Promise<void>;
+}
 
-function createDatabase(): Database {
-	if (isRemotePostgresUrl(DATABASE_URL)) {
-		const client = postgres(DATABASE_URL, {
+// Reuse one database handle across Vite HMR reloads in dev so PGlite never double-locks the data folder.
+const globalForDb = globalThis as unknown as { __certflowDbSlot?: DbSlot };
+
+function createDatabaseSlot(databaseUrl: string): DbSlot {
+	if (isRemotePostgresUrl(databaseUrl)) {
+		const client = postgres(databaseUrl, {
 			max: 10,
 			idle_timeout: 20,
 			connect_timeout: 10
 		});
-		return drizzlePostgres(client, { schema });
+		return {
+			url: databaseUrl,
+			db: drizzlePostgres(client, { schema }),
+			close: async () => {
+				await client.end({ timeout: 5 }).catch(() => {});
+			}
+		};
 	}
 
-	const dataDir = resolve(DATABASE_URL.replace(/^pglite:\/\//, '') || './.local/pgdata');
+	const dataDir = resolve(databaseUrl.replace(/^pglite:\/\//, '') || './.local/pgdata');
 	mkdirSync(dataDir, { recursive: true });
 	const pgliteClient = new PGlite(dataDir);
-	return drizzlePglite(pgliteClient, { schema }) as unknown as Database;
+	return {
+		url: databaseUrl,
+		db: drizzlePglite(pgliteClient, { schema }) as unknown as Database,
+		close: async () => {
+			await pgliteClient.close().catch(() => {});
+		}
+	};
 }
 
 function getDatabase(): Database {
-	return (globalForDb.__certflowDb ??= createDatabase());
+	const desiredUrl = getRuntimeConfig().databaseUrl;
+	const existing = globalForDb.__certflowDbSlot;
+	if (existing && existing.url === desiredUrl) {
+		return existing.db;
+	}
+	if (existing) {
+		void existing.close();
+	}
+	const next = createDatabaseSlot(desiredUrl);
+	globalForDb.__certflowDbSlot = next;
+	return next.db;
+}
+
+/**
+ * Closes the current database pool/PGlite handle so the next query reconnects using updated runtime config.
+ */
+export async function resetDatabaseConnection(): Promise<void> {
+	const existing = globalForDb.__certflowDbSlot;
+	globalForDb.__certflowDbSlot = undefined;
+	if (existing) {
+		await existing.close();
+	}
+}
+
+/**
+ * Runs Drizzle SQL migrations against the configured database (remote PostgreSQL or embedded PGlite).
+ */
+export async function runDatabaseMigrations(databaseUrl: string): Promise<void> {
+	const migrationsFolder = resolve('./drizzle');
+	if (isRemotePostgresUrl(databaseUrl)) {
+		const client = postgres(databaseUrl, { max: 1, connect_timeout: 10 });
+		try {
+			await migratePostgres(drizzlePostgres(client), { migrationsFolder });
+		} finally {
+			await client.end({ timeout: 5 }).catch(() => {});
+		}
+		return;
+	}
+
+	// Ensure any existing PGlite handle releases the directory lock before migrating.
+	await resetDatabaseConnection();
+	const dataDir = resolve(databaseUrl.replace(/^pglite:\/\//, '') || './.local/pgdata');
+	mkdirSync(dataDir, { recursive: true });
+	const pgliteClient = new PGlite(dataDir);
+	try {
+		await migratePglite(drizzlePglite(pgliteClient), { migrationsFolder });
+	} finally {
+		await pgliteClient.close().catch(() => {});
+	}
 }
 
 // Lazily initialise the database handle on first query so `vite build` route analysis never opens PGlite or a network pool.

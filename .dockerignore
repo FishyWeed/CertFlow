@@ -1,0 +1,15 @@
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+.local
+.ctx
+.tmp
+.svelte-kit
+build
+uploads
+node_modules
+npm-debug.log*
+pnpm-debug.log*
+*.log

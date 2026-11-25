@@ -1,23 +1,50 @@
 services:
+  certflow:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: certflow
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - '${CERTFLOW_PORT:-3000}:3000'
+    environment:
+      CERTFLOW_SELF_HOSTED: 'true'
+      CERTFLOW_DATA_DIR: /data
+      LOCAL_UPLOAD_DIR: /data/uploads
+      STORAGE_DRIVER: local
+      CERTFLOW_DEFAULT_DATABASE_URL: postgresql://certflow:certflow_password@postgres:5432/certflow
+    volumes:
+      - certflow_data:/data
+
   postgres:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     container_name: certflow-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: certflow
-      POSTGRES_PASSWORD: certflow_dev_password
+      POSTGRES_PASSWORD: certflow_password
       POSTGRES_DB: certflow
-    ports:
-      - '5432:5432'
     volumes:
       - certflow_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U certflow -d certflow']
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
+  # Optional local test inbox (run: docker compose --profile dev-mail up -d)
   mailpit:
     image: axllent/mailpit:latest
     container_name: certflow-mailpit
+    profiles: ['dev-mail']
     restart: unless-stopped
     ports:
-      - '1025:1025' # SMTP server
-      - '8025:8025' # Web inbox UI at http://localhost:8025
+      - '1025:1025'
+      - '8025:8025'
+
 volumes:
+  certflow_data:
   certflow_pgdata:

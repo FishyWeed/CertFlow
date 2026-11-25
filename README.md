@@ -56,7 +56,30 @@ CertFlow is built for event organisers, clubs, schools and competitions that iss
 
 CertFlow runs on SvelteKit 3, Svelte 5, PostgreSQL (Drizzle ORM), Better Auth, Konva, `pdf-lib`, `jszip` and Nodemailer.
 
-## Local Setup (No Docker Required)
+## Self-Hosting with Docker (One-Click Setup Wizard)
+
+Anyone can launch CertFlow in Docker without editing `.env` files manually. On first launch, CertFlow opens a built-in `/setup` wizard to configure your URL, security secrets, database, optional email provider and first account.
+
+### Option A: Docker Compose with PostgreSQL (Recommended)
+
+1. Start CertFlow and PostgreSQL:
+   ```bash
+   docker compose up -d
+   ```
+2. Open `http://localhost:3000` in your browser.
+3. Complete the **Setup Wizard** (strong session and AES-256 keys are pre-generated, and the PostgreSQL URL is pre-filled).
+4. Configuration, uploaded images and database data persist in Docker volumes (`certflow_data` and `certflow_pgdata`). Once completed, `/setup` locks permanently.
+
+### Option B: Single Container (Embedded PostgreSQL)
+
+1. Build and run one standalone container with zero external services:
+   ```bash
+   docker build -t certflow .
+   docker run -d --name certflow -p 3000:3000 -v certflow_data:/data certflow
+   ```
+2. Open `http://localhost:3000`, choose **Embedded PostgreSQL** in `/setup` and finish creating your account.
+
+## Local Development (No Docker Required)
 
 Local development uses embedded PostgreSQL (`PGlite` in `./.local/pgdata`) and a local email outbox (`./.local/outbox/`). You do not need Docker or external accounts to run the app.
 
@@ -78,19 +101,13 @@ Local development uses embedded PostgreSQL (`PGlite` in `./.local/pgdata`) and a
    ```
 5. Open `http://localhost:5678` in your browser.
 
-## Optional: Local Docker Postgres and Mailpit
+## Optional: Local Mailpit Test Inbox
 
-If you prefer a separate PostgreSQL container and Mailpit inbox (`http://localhost:8025`), follow these steps:
+If you want a local catch-all SMTP inbox (`http://localhost:8025`) during development, run:
 
-1. Start the containers:
-   ```bash
-   docker compose up -d
-   ```
-2. Set `DATABASE_URL="postgresql://certflow:certflow_dev_password@localhost:5432/certflow"` and `SMTP_HOST="localhost"` in `.env`.
-3. Push the schema:
-   ```bash
-   pnpm db:push
-   ```
+```bash
+docker compose --profile dev-mail up -d mailpit
+```
 
 ## Common Commands
 

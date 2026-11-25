@@ -1,6 +1,6 @@
 import { mkdir, unlink, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
-import { LOCAL_UPLOAD_DIR, STORAGE_DRIVER } from '$app/env/private';
+import { getRuntimeConfig } from './runtime-config.ts';
 
 export interface StoredFileResult {
 	storageKey: string;
@@ -42,8 +42,11 @@ class LocalStorageProvider implements StorageProvider {
  * Local disk is used in development; S3 / Cloudflare R2 can be plugged in via STORAGE_DRIVER="s3".
  */
 export function getStorage(): StorageProvider {
-	if (STORAGE_DRIVER === 'local') {
-		return new LocalStorageProvider(LOCAL_UPLOAD_DIR);
+	const cfg = getRuntimeConfig();
+	if (cfg.storageDriver === 'local') {
+		return new LocalStorageProvider(cfg.localUploadDir);
 	}
-	throw new Error(`Storage driver "${STORAGE_DRIVER}" is not yet configured. Add S3/R2 credentials.`);
+	throw new Error(
+		`Storage driver "${cfg.storageDriver}" is not yet configured. Add S3/R2 credentials.`
+	);
 }
