@@ -18,6 +18,7 @@ const NODE_VERSION = getArg('--node-version') || '22.14.0';
 const RELEASE_VERSION = getArg('--version') || `v${pkg.version || '1.0.0'}`;
 const TARGET_ARG = getArg('--target') || 'all';
 const OUT_DIR = resolve(ROOT, getArg('--out-dir') || 'release');
+const NODE_MODULES_DIR = resolve(ROOT, getArg('--node-modules') || 'node_modules');
 const CACHE_DIR = resolve(ROOT, '.tmp', 'portable-node-cache');
 const STAGING_ROOT = resolve(ROOT, '.tmp', 'portable-staging');
 
@@ -263,9 +264,8 @@ async function buildTarget(targetKey) {
 	cpSync(join(ROOT, 'drizzle'), join(appDir, 'drizzle'), { recursive: true });
 	cpSync(join(ROOT, 'scripts', 'start.mjs'), join(appDir, 'scripts', 'start.mjs'));
 	cpSync(join(ROOT, 'package.json'), join(appDir, 'package.json'));
-	cpSync(join(ROOT, 'node_modules'), join(appDir, 'node_modules'), {
-		recursive: true,
-		dereference: true
+	cpSync(NODE_MODULES_DIR, join(appDir, 'node_modules'), {
+		recursive: true
 	});
 
 	// Download and bundle only the single portable Node.js binary for this OS/arch.

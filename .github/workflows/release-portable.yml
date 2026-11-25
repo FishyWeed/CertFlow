@@ -26,8 +26,8 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Enable pnpm
-        run: corepack enable && corepack prepare pnpm@12.10.1 --activate
+      - name: Install pnpm
+        run: npm install -g pnpm@12.10.1
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -35,8 +35,12 @@ jobs:
       - name: Build production bundle
         run: pnpm build
 
-      - name: Prune development dependencies
-        run: pnpm prune --prod
+      - name: Install flat production dependencies for portable bundles
+        run: |
+          mkdir -p .tmp/prod-stage
+          cp package.json pnpm-lock.yaml .tmp/prod-stage/
+          printf 'nodeLinker: hoisted\n' > .tmp/prod-stage/pnpm-workspace.yaml
+          pnpm --dir .tmp/prod-stage install --prod --frozen-lockfile --ignore-scripts
 
       - name: Determine release version
         id: meta
@@ -48,7 +52,7 @@ jobs:
           fi
 
       - name: Package portable ZIP bundles (Windows, macOS, Linux)
-        run: node scripts/package-portable.mjs --target all --version "${{ steps.meta.outputs.version }}"
+        run: node scripts/package-portable.mjs --target all --version "${{ steps.meta.outputs.version }}" --node-modules .tmp/prod-stage/node_modules
 
       - name: Upload portable bundles as workflow artefacts
         uses: actions/upload-artifact@v4

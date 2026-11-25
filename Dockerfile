@@ -3,13 +3,13 @@
 FROM node:22-alpine AS builder
 WORKDIR /app
 
-RUN corepack enable && corepack prepare pnpm@12.10.1 --activate
+RUN npm install -g pnpm@12.10.1
 
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
 COPY . .
-RUN pnpm build && pnpm prune --prod
+RUN pnpm build && pnpm prune --prod --ignore-scripts
 
 FROM node:22-alpine AS runner
 WORKDIR /app
@@ -32,7 +32,6 @@ COPY --from=builder /app/scripts/start.mjs ./scripts/start.mjs
 RUN mkdir -p /data/uploads /data/pgdata
 
 EXPOSE 3000
-VOLUME ["/data"]
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD wget -qO- "http://127.0.0.1:${PORT:-3000}/api/health" >/dev/null 2>&1 || exit 1
