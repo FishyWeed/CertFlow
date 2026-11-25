@@ -182,9 +182,11 @@
 		}
 	});
 
+	type ProfileFormMode = 'brevo_api' | 'resend_api' | 'smtp' | 'custom_reply_to';
+
 	// Sender profile guide state
 	let showSetupGuide = $state(true);
-	let guideProvider = $state<'brevo' | 'resend'>('brevo');
+	let guideMode = $state<ProfileFormMode>('brevo_api');
 
 	// Sender profile CRUD state
 	let editingId = $state<string | null>(null);
@@ -192,8 +194,6 @@
 	let confirmDeleteId = $state<string | null>(null);
 	let deletingId = $state<string | null>(null);
 	let formSectionEl = $state<HTMLElement | null>(null);
-
-	type ProfileFormMode = 'brevo_api' | 'resend_api' | 'smtp' | 'custom_reply_to';
 
 	let label = $state('');
 	let mode = $state<ProfileFormMode>('brevo_api');
@@ -831,7 +831,7 @@
 				<div class="flex items-center justify-between gap-2">
 					<div class="flex items-center gap-2">
 						<BookOpen class="h-4 w-4 text-accent" />
-						<h2 class="text-sm font-semibold text-ink-primary">Setup Guide (Brevo &amp; Resend)</h2>
+						<h2 class="text-sm font-semibold text-ink-primary">Sender Profile Setup Guide</h2>
 					</div>
 					<button
 						type="button"
@@ -852,34 +852,57 @@
 						<div class="flex flex-wrap gap-1.5">
 							<button
 								type="button"
-								onclick={() => (guideProvider = 'brevo')}
-								class="rounded-lg border px-3 py-1.5 text-xs font-semibold transition {guideProvider ===
-								'brevo'
+								onclick={() => (guideMode = 'brevo_api')}
+								class="rounded-lg border px-3 py-1.5 text-xs font-semibold transition {guideMode ===
+								'brevo_api'
 									? 'border-accent bg-indigo-50 text-accent'
 									: 'border-border-default bg-white text-ink-secondary hover:bg-surface-subtle'}"
 							>
-								Brevo (Gmail or custom domain · Free 300/day)
+								Brevo (Gmail or domain · Free 300/day)
 							</button>
 							<button
 								type="button"
-								onclick={() => (guideProvider = 'resend')}
-								class="rounded-lg border px-3 py-1.5 text-xs font-semibold transition {guideProvider ===
-								'resend'
+								onclick={() => (guideMode = 'resend_api')}
+								class="rounded-lg border px-3 py-1.5 text-xs font-semibold transition {guideMode ===
+								'resend_api'
 									? 'border-accent bg-indigo-50 text-accent'
 									: 'border-border-default bg-white text-ink-secondary hover:bg-surface-subtle'}"
 							>
 								Resend (Custom domain · Free 100/day)
 							</button>
+							<button
+								type="button"
+								onclick={() => (guideMode = 'smtp')}
+								class="rounded-lg border px-3 py-1.5 text-xs font-semibold transition {guideMode ===
+								'smtp'
+									? 'border-accent bg-indigo-50 text-accent'
+									: 'border-border-default bg-white text-ink-secondary hover:bg-surface-subtle'}"
+							>
+								Custom SMTP Server
+							</button>
+							<button
+								type="button"
+								onclick={() => (guideMode = 'custom_reply_to')}
+								class="rounded-lg border px-3 py-1.5 text-xs font-semibold transition {guideMode ===
+								'custom_reply_to'
+									? 'border-accent bg-indigo-50 text-accent'
+									: 'border-border-default bg-white text-ink-secondary hover:bg-surface-subtle'}"
+							>
+								Custom Reply-To
+							</button>
 						</div>
 
-						{#if guideProvider === 'brevo'}
-							<div class="space-y-2.5 rounded-lg border border-border-default bg-surface-page p-4 text-xs text-ink-secondary">
+						{#if guideMode === 'brevo_api'}
+							<div
+								class="space-y-2.5 rounded-lg border border-border-default bg-surface-page p-4 text-xs text-ink-secondary"
+							>
 								<p class="font-semibold text-ink-primary">
-									Brevo works with a normal Gmail address — no custom domain required.
+									Brevo sends over HTTPS (port 443) and works with a normal Gmail address — no
+									custom domain required. Works on both cloud hosts and local apps.
 								</p>
 								<ol class="list-decimal space-y-2 pl-4">
 									<li>
-										Create a free account at
+										<strong>Create an account</strong>: Sign up for free at
 										<a
 											href="https://www.brevo.com"
 											target="_blank"
@@ -888,21 +911,25 @@
 										>
 											brevo.com
 											<ExternalLink class="h-3 w-3" />
-										</a>.
+										</a>
+										and confirm your email address.
 									</li>
 									<li>
-										<strong>Verify your sender email</strong>: Open
-										<strong>Senders, Domains &amp; Dedicated IPs -&gt; Senders</strong> and add or
-										verify the email address you want to send from (such as your Gmail address).
+										<strong>Verify your sender address</strong>: Click your account menu (top-right)
+										-&gt; <strong>Senders, Domains &amp; Dedicated IPs</strong> -&gt;
+										<strong>Senders</strong> -&gt; <strong>Add a sender</strong>. Enter your From
+										Name and From Email (for example your Gmail address), click
+										<strong>Save</strong> and click the verification link Brevo emails you.
 									</li>
 									<li>
-										<strong>Create an API Key</strong>: Open
-										<strong>SMTP &amp; API -&gt; API Keys</strong> (do not use the SMTP tab). Click
-										<strong>Generate a new API key</strong> and copy the full key starting with
-										<code>xkeysib-</code>.
+										<strong>Create an API key</strong>: Open your account menu -&gt;
+										<strong>SMTP &amp; API</strong> -&gt; <strong>API Keys</strong> tab (do not use
+										the SMTP tab). Click <strong>Generate a new API key</strong>, name it
+										<code>CertFlow</code>, click <strong>Generate</strong> and copy the full key
+										starting with <code>xkeysib-</code>.
 									</li>
 									<li>
-										<strong>Deactivate Authorised IP blocking (important)</strong>: Open
+										<strong>Disable Authorised IP blocking (important)</strong>: Open
 										<a
 											href="https://app.brevo.com/security/authorised_ips"
 											target="_blank"
@@ -912,25 +939,34 @@
 											Brevo Authorised IPs
 											<ExternalLink class="h-3 w-3" />
 										</a>
-										and click <strong>Deactivate blocking</strong>. Brevo blocks unrecognised cloud
-										server IPs by default until you disable this restriction.
+										and click <strong>Deactivate blocking</strong>. Brevo blocks unrecognised IPs by
+										default until you disable this setting.
 									</li>
 									<li>
-										In <strong>Add Sender Profile</strong> below, choose
-										<strong>Brevo (Gmail or custom domain)</strong>, enter your verified email and
-										<code>xkeysib-...</code> API key, then click <strong>Save Sender Profile</strong>.
+										<strong>Fill in Add Sender Profile below</strong>: Choose
+										<strong>Mode</strong> = <code>Brevo (Gmail or custom domain)</code>, enter any
+										<strong>Label</strong>, your <strong>Sender Display Name</strong>, the exact
+										verified <strong>Sender Email</strong> from step 2 and paste your
+										<code>xkeysib-...</code> key, then click <strong>Save Sender Profile</strong>.
 									</li>
 								</ol>
+								<p class="pt-1 text-[11px] text-ink-muted">
+									Tip: Free Brevo accounts allow 300 emails per day. CertFlow encrypts your API key
+									with AES-256-GCM before saving it.
+								</p>
 							</div>
-						{:else}
-							<div class="space-y-2.5 rounded-lg border border-border-default bg-surface-page p-4 text-xs text-ink-secondary">
+						{:else if guideMode === 'resend_api'}
+							<div
+								class="space-y-2.5 rounded-lg border border-border-default bg-surface-page p-4 text-xs text-ink-secondary"
+							>
 								<p class="font-semibold text-ink-primary">
-									Resend requires your own domain name (such as <code>@yourclub.org</code>) to send
-									to recipients.
+									Resend sends over HTTPS (port 443) and requires a domain you own (such as
+									<code>@yourclub.org</code>). Personal Gmail addresses cannot be verified in
+									Resend.
 								</p>
 								<ol class="list-decimal space-y-2 pl-4">
 									<li>
-										Create a free account at
+										<strong>Create an account</strong>: Sign up for free at
 										<a
 											href="https://resend.com"
 											target="_blank"
@@ -942,23 +978,199 @@
 										</a>.
 									</li>
 									<li>
-										<strong>Verify your domain</strong>: Open <strong>Domains -&gt; Add Domain</strong>
-										and add the DKIM and SPF DNS records shown by Resend at your domain provider. Wait
-										until the status changes to <strong>Verified</strong>.
+										<strong>Add your domain</strong>: Open <strong>Domains</strong> -&gt;
+										<strong>Add Domain</strong>, enter your domain or subdomain (for example
+										<code>mail.yourclub.org</code>), choose the region closest to your recipients
+										and click <strong>Add</strong>.
 									</li>
 									<li>
-										<strong>Create an API Key</strong>: Open
-										<strong>API Keys -&gt; Create API Key</strong>, choose
-										<strong>Sending access</strong> for your verified domain and copy the key
-										starting with <code>re_</code>.
+										<strong>Verify DNS records</strong>: Copy the <strong>MX</strong>,
+										<strong>TXT (SPF)</strong> and <strong>TXT (DKIM)</strong> records shown by
+										Resend into your DNS provider (Cloudflare, Namecheap, GoDaddy or Route 53).
+										Click <strong>Verify DNS Records</strong> in Resend and wait until the status
+										changes to <strong>Verified</strong> (typically 1 to 10 minutes).
 									</li>
 									<li>
-										In <strong>Add Sender Profile</strong> below, choose
-										<strong>Resend (Custom domain)</strong>, enter a sender email on your verified
-										domain (for example <code>certificates@yourclub.org</code>) and your
-										<code>re_...</code> API key, then click <strong>Save Sender Profile</strong>.
+										<strong>Create a sending API key</strong>: Open <strong>API Keys</strong> -&gt;
+										<strong>Create API Key</strong>. Set <strong>Name</strong> to
+										<code>CertFlow</code>, <strong>Permission</strong> to
+										<strong>Sending access</strong> and <strong>Domain</strong> to your verified
+										domain. Click <strong>Add</strong> and copy the key starting with
+										<code>re_</code> right away (Resend shows it only once).
+									</li>
+									<li>
+										<strong>Fill in Add Sender Profile below</strong>: Choose
+										<strong>Mode</strong> = <code>Resend (Custom domain)</code>, enter any
+										<strong>Label</strong>, your <strong>Sender Display Name</strong>, a
+										<strong>Sender Email</strong> on your verified domain (for example
+										<code>certificates@yourclub.org</code>) and paste your <code>re_...</code> key,
+										then click <strong>Save Sender Profile</strong>.
 									</li>
 								</ol>
+								<p class="pt-1 text-[11px] text-ink-muted">
+									Tip: Free Resend accounts allow 100 emails per day (3,000 per month). CertFlow
+									encrypts your API key with AES-256-GCM before saving it.
+								</p>
+							</div>
+						{:else if guideMode === 'smtp'}
+							<div
+								class="space-y-3 rounded-lg border border-border-default bg-surface-page p-4 text-xs text-ink-secondary"
+							>
+								<p class="font-semibold text-ink-primary">
+									Custom SMTP connects directly to your own mailbox server (Gmail, Outlook, Zoho or
+									a private mail server) with zero third-party relay.
+								</p>
+								{#if !data.mailCapabilities.allowRawSmtp}
+									<div
+										class="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-900"
+									>
+										Raw SMTP is disabled on this cloud deployment because most free cloud hosts
+										block outbound SMTP ports (465 and 587). Use <strong>Brevo</strong> or
+										<strong>Resend</strong> here, or run CertFlow Portable / Docker locally (or set
+										<code>ALLOW_CUSTOM_SMTP=true</code> on a server with open SMTP ports).
+									</div>
+								{/if}
+
+								<div class="overflow-x-auto rounded-md border border-border-default bg-surface-card">
+									<table class="w-full text-left text-[11px]">
+										<thead class="border-b border-border-default bg-surface-subtle text-ink-primary">
+											<tr>
+												<th class="px-2.5 py-1.5 font-semibold">Provider</th>
+												<th class="px-2.5 py-1.5 font-semibold">SMTP Host</th>
+												<th class="px-2.5 py-1.5 font-semibold">Port</th>
+												<th class="px-2.5 py-1.5 font-semibold">Use direct TLS</th>
+											</tr>
+										</thead>
+										<tbody class="divide-y divide-border-default">
+											<tr>
+												<td class="px-2.5 py-1.5 font-medium text-ink-primary">Gmail / Workspace</td>
+												<td class="px-2.5 py-1.5"><code>smtp.gmail.com</code></td>
+												<td class="px-2.5 py-1.5"><code>465</code> (or <code>587</code>)</td>
+												<td class="px-2.5 py-1.5">Checked for 465 · Unchecked for 587</td>
+											</tr>
+											<tr>
+												<td class="px-2.5 py-1.5 font-medium text-ink-primary">Outlook / M365</td>
+												<td class="px-2.5 py-1.5"><code>smtp.office365.com</code></td>
+												<td class="px-2.5 py-1.5"><code>587</code></td>
+												<td class="px-2.5 py-1.5">Unchecked (STARTTLS)</td>
+											</tr>
+											<tr>
+												<td class="px-2.5 py-1.5 font-medium text-ink-primary">Zoho Mail</td>
+												<td class="px-2.5 py-1.5"><code>smtp.zoho.com</code></td>
+												<td class="px-2.5 py-1.5"><code>465</code></td>
+												<td class="px-2.5 py-1.5">Checked</td>
+											</tr>
+										</tbody>
+									</table>
+								</div>
+
+								<div>
+									<p class="font-semibold text-ink-primary">
+										Step-by-step for Gmail (App Password required — normal password will fail):
+									</p>
+									<ol class="mt-1.5 list-decimal space-y-2 pl-4">
+										<li>
+											<strong>Enable 2-Step Verification</strong>: Open
+											<a
+												href="https://myaccount.google.com/security"
+												target="_blank"
+												rel="noopener noreferrer"
+												class="inline-flex items-center gap-0.5 font-semibold text-accent underline"
+											>
+												Google Account Security
+												<ExternalLink class="h-3 w-3" />
+											</a>
+											and turn on <strong>2-Step Verification</strong> if it is not already on.
+										</li>
+										<li>
+											<strong>Generate a 16-character App Password</strong>: Open
+											<a
+												href="https://myaccount.google.com/apppasswords"
+												target="_blank"
+												rel="noopener noreferrer"
+												class="inline-flex items-center gap-0.5 font-semibold text-accent underline"
+											>
+												Google App Passwords
+												<ExternalLink class="h-3 w-3" />
+											</a>, enter <code>CertFlow</code> as the app name and click
+											<strong>Create</strong>.
+										</li>
+										<li>
+											<strong>Copy the App Password</strong>: Copy all 16 characters Google displays
+											(do not use your regular Google login password).
+										</li>
+										<li>
+											<strong>Fill in Add Sender Profile below</strong>: Choose
+											<strong>Mode</strong> = <code>Custom SMTP Server</code>, enter a
+											<strong>Label</strong>, your <strong>Sender Display Name</strong> and your
+											full Gmail address in both <strong>Sender Email</strong> and
+											<strong>SMTP Username</strong>.
+										</li>
+										<li>
+											<strong>Enter server fields</strong>: Set <strong>SMTP Host</strong> to
+											<code>smtp.gmail.com</code>, <strong>SMTP Port</strong> to <code>465</code>
+											(keep <strong>Use direct TLS</strong> checked), paste the 16-character App
+											Password into <strong>SMTP Password / App Password</strong> and click
+											<strong>Save Sender Profile</strong>.
+										</li>
+									</ol>
+								</div>
+								<p class="pt-1 text-[11px] text-ink-muted">
+									For Outlook, Zoho or private mail servers, use the host and port from the table
+									above (or from your IT administrator) with your mailbox username and app password.
+									Personal Gmail allows roughly 500 emails per 24 hours.
+								</p>
+							</div>
+						{:else}
+							<div
+								class="space-y-2.5 rounded-lg border border-border-default bg-surface-page p-4 text-xs text-ink-secondary"
+							>
+								<p class="font-semibold text-ink-primary">
+									Custom Reply-To sends through the CertFlow server's shared mail relay while
+									directing recipient replies to your chosen email address.
+								</p>
+								{#if !data.mailCapabilities.hasServerRelay}
+									<div
+										class="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-900"
+									>
+										No server-wide mail relay is configured on this instance yet, so Custom
+										Reply-To is hidden in the Mode list. Set <code>BREVO_API_KEY</code>,
+										<code>RESEND_API_KEY</code> or <code>SMTP_HOST</code> in the server settings or
+										environment variables to enable it — or use <strong>Brevo</strong>,
+										<strong>Resend</strong> or <strong>Custom SMTP Server</strong> directly.
+									</div>
+								{/if}
+								<ol class="list-decimal space-y-2 pl-4">
+									<li>
+										<strong>Check server relay prerequisite</strong>: The server administrator (or
+										your local <code>/setup</code> configuration) must have a server-wide
+										<code>BREVO_API_KEY</code>, <code>RESEND_API_KEY</code> or
+										<code>SMTP_HOST</code> and <code>DEFAULT_FROM_EMAIL</code> configured.
+									</li>
+									<li>
+										<strong>Choose when to use it</strong>: Use Custom Reply-To when one shared
+										organisation relay sends certificates for several events or committees and each
+										committee needs replies sent to its own inbox without sharing API keys.
+									</li>
+									<li>
+										<strong>Fill in Add Sender Profile below</strong>: Choose
+										<strong>Mode</strong> = <code>Custom Reply-To</code>, enter a
+										<strong>Label</strong> (for example <code>Chess Open Committee</code>), set
+										<strong>Sender Display Name</strong> to the organiser name recipients should see
+										and set <strong>Sender Email</strong> to the inbox that should receive replies.
+									</li>
+									<li>
+										<strong>Save and select in a project</strong>: Click
+										<strong>Save Sender Profile</strong> (no API key or SMTP password is needed).
+										Then open any project's <strong>Email</strong> tab, pick
+										<strong>Saved Sender Profile</strong> and select this profile.
+									</li>
+								</ol>
+								<p class="pt-1 text-[11px] text-ink-muted">
+									How recipients see it: the message arrives from the server's verified
+									<code>DEFAULT_FROM_EMAIL</code> with your chosen display name, and clicking Reply
+									addresses the reply straight to your <strong>Sender Email</strong>.
+								</p>
 							</div>
 						{/if}
 					</div>
@@ -1003,6 +1215,9 @@
 							<select
 								id="sp-mode"
 								bind:value={mode}
+								onchange={() => {
+									guideMode = mode;
+								}}
 								class="mt-1 block w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm"
 							>
 								<option value="brevo_api">Brevo (Gmail or custom domain)</option>
