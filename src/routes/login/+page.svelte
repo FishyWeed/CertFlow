@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { Award, Loader2 } from '@lucide/svelte';
 	import { authClient } from '#lib/auth-client.ts';
+	import ThemeToggle from '#lib/components/ui/ThemeToggle.svelte';
 
 	let mode = $state<'signin' | 'signup'>(
 		page.url.searchParams.get('mode') === 'signup' ? 'signup' : 'signin'
@@ -51,7 +52,10 @@
 	}
 </script>
 
-<div class="flex min-h-screen items-center justify-center bg-surface-page px-4 py-8 sm:py-12">
+<div class="relative flex min-h-screen items-center justify-center bg-surface-page px-4 py-8 sm:py-12">
+	<div class="fixed top-4 right-4 z-10">
+		<ThemeToggle />
+	</div>
 	<div
 		class="w-full max-w-md rounded-2xl border border-border-default bg-surface-card p-6 shadow-xs sm:p-8"
 	>

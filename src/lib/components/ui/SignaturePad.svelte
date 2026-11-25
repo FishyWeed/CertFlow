@@ -156,7 +156,7 @@
 	</div>
 
 	<!-- Rectangular drawing pad with visual baseline guide (not exported into PNG) -->
-	<div class="relative overflow-hidden rounded-lg border border-border-strong bg-white">
+	<div class="preserve-light relative overflow-hidden rounded-lg border border-border-strong bg-white">
 		<div
 			class="pointer-events-none absolute inset-x-4 bottom-5 border-b border-dashed border-slate-200"
 		></div>

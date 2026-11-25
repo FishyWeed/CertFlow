@@ -1612,7 +1612,7 @@
 	bind:this={viewportEl}
 	role="presentation"
 	onpointerdown={handleViewportPointerDown}
-	class="relative flex min-h-[260px] w-full min-w-0 flex-1 bg-surface-subtle p-3 sm:p-6 lg:min-h-0 {editor.autoFitZoom
+	class="relative flex min-h-[260px] w-full min-w-0 flex-1 bg-surface-subtle p-3 sm:p-6 lg:min-h-0 dark:bg-[#070b14] {editor.autoFitZoom
 		? 'overflow-hidden'
 		: 'overflow-auto'}"
 >
@@ -1624,7 +1624,7 @@
 		ondragleave={handleCanvasDragLeave}
 		ondrop={handleCanvasDrop}
 		style="touch-action: none;"
-		class="m-auto shrink-0 rounded-sm bg-white shadow-md ring-2 transition {isDragOver
+		class="preserve-light m-auto shrink-0 rounded-sm bg-white shadow-md ring-2 transition {isDragOver
 			? 'ring-accent'
 			: 'ring-border-strong'}"
 	></div>

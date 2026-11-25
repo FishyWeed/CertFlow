@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { Award } from '@lucide/svelte';
+	import ThemeToggle from '#lib/components/ui/ThemeToggle.svelte';
 
 	interface Props {
 		brandHref?: string;
@@ -25,10 +26,11 @@
 			<span class="truncate text-base sm:text-lg">{brandName}</span>
 		</a>
 
-		{#if actions}
-			<div class="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
+		<div class="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
+			<ThemeToggle />
+			{#if actions}
 				{@render actions()}
-			</div>
-		{/if}
+			{/if}
+		</div>
 	</div>
 </header>
