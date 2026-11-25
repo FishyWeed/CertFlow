@@ -324,6 +324,8 @@ async function buildTarget(targetKey) {
 	cpSync(NODE_MODULES_DIR, join(appDir, 'node_modules'), {
 		recursive: true
 	});
+	// Remove Unix CLI shims/symlinks in node_modules/.bin (unused at runtime; breaks Windows Inno Setup).
+	rmSync(join(appDir, 'node_modules', '.bin'), { recursive: true, force: true });
 
 	// Write portable metadata so Settings can check GitHub Releases and apply in-place updates safely.
 	writeFileSync(

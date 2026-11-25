@@ -61,7 +61,7 @@ Name: "{app}\data\pgdata"
 [Files]
 ; Install application, bundled Node runtime, launcher scripts and icon.
 ; Never overwrite user data inside data\.
-Source: "{#MySourceDir}\app\*"; DestDir: "{app}\app"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#MySourceDir}\app\*"; DestDir: "{app}\app"; Excludes: "node_modules\.bin\*"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#MySourceDir}\runtime\*"; DestDir: "{app}\runtime"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#MySourceDir}\Start-CertFlow.bat"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#MySourceDir}\Create-Desktop-Shortcut.bat"; DestDir: "{app}"; Flags: ignoreversion

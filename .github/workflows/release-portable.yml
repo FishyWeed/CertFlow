@@ -89,6 +89,7 @@ jobs:
           $zip = ".tmp/portable/CertFlow-$version-win-x64.zip"
           New-Item -ItemType Directory -Force -Path ".tmp/extracted" | Out-Null
           tar.exe -xf $zip -C ".tmp/extracted"
+          Remove-Item -Recurse -Force -ErrorAction SilentlyContinue ".tmp/extracted/CertFlow-$version-win-x64/app/node_modules/.bin"
 
       - name: Build Windows Setup.exe with Inno Setup
         shell: pwsh
