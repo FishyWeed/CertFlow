@@ -52,7 +52,7 @@ If you prefer a separate PostgreSQL container and Mailpit inbox (`http://localho
 
 ## Deployment (Railway)
 
-CertFlow includes `@sveltejs/adapter-node`, a `/api/health` endpoint and [railway.json](./railway.json).
+CertFlow includes `@sveltejs/adapter-node`, a `/api/health` endpoint and automatic PostgreSQL migrations on startup (`scripts/start.mjs` + `drizzle/`).
 
 1. Push the repository to GitHub (`.env`, `.local/`, `uploads/`, `.tmp/` and `.ctx/` are ignored).
 2. Create a new Railway project from your GitHub repository.
@@ -60,13 +60,14 @@ CertFlow includes `@sveltejs/adapter-node`, a `/api/health` endpoint and [railwa
 4. Attach a persistent **Volume** to the CertFlow service mounted at `/data/uploads`.
 5. Set these environment variables on the CertFlow service:
    - `DATABASE_URL`: `${{Postgres.DATABASE_URL}}`
-   - `BETTER_AUTH_URL` and `PUBLIC_APP_URL`: your Railway HTTPS URL (for example `https://your-app.up.railway.app`)
+   - `BETTER_AUTH_URL` and `PUBLIC_APP_URL`: your Railway HTTPS URL (for example `https://${{RAILWAY_PUBLIC_DOMAIN}}`)
    - `BETTER_AUTH_SECRET`: a fresh random 64-character hex secret
    - `ENCRYPTION_KEY`: a fresh random 64-character hex secret (keep this fixed after saving SMTP profiles)
    - `STORAGE_DRIVER`: `local`
    - `LOCAL_UPLOAD_DIR`: `/data/uploads`
-   - `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `DEFAULT_FROM_NAME`, `DEFAULT_FROM_EMAIL`: your production SMTP credentials (or leave `SMTP_HOST="local-outbox"` and use per-account SMTP profiles in **Account Settings**)
-6. Deploy — `railway.json` runs `pnpm build`, pushes the Drizzle schema (`pnpm db:push:ci`), starts the Node server (`pnpm start`) and verifies `/api/health`.
+   - `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `DEFAULT_FROM_NAME`, `DEFAULT_FROM_EMAIL`: optional server-wide SMTP credentials (or leave unset and use per-account SMTP profiles in **Account Settings**)
+6. Optionally set **Healthcheck Path** to `/api/health` in Railway service **Settings** -> **Deploy**.
+7. Deploy — Railway runs `pnpm build` and `pnpm start`, which applies `drizzle/` migrations automatically before starting the Node server.
 
 ## Architecture and Guides
 
