@@ -273,7 +273,8 @@
 									name="encryptionKey"
 									type="text"
 									required
-									pattern="[0-9a-fA-F]{64}"
+									pattern={'[0-9a-fA-F]{64}'}
+									title="Enter a 64-character hexadecimal key (0-9, a-f)"
 									bind:value={encryptionKey}
 									class="mt-1 block w-full rounded-lg border border-border-strong bg-white px-3 py-2 font-mono text-xs text-ink-primary outline-none focus:border-accent"
 								/>
