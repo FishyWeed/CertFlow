@@ -95,17 +95,22 @@ function isRealSecret(value: string | undefined, insecureDefault: string): boole
 	return trimmed.length >= 32 && trimmed !== insecureDefault && !trimmed.startsWith('replace-with-');
 }
 
-function isRailwayHosted(): boolean {
-	return Boolean(process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_PROJECT_ID);
+function isManagedCloudHosted(): boolean {
+	return Boolean(
+		process.env.RAILWAY_ENVIRONMENT ||
+			process.env.RAILWAY_PROJECT_ID ||
+			process.env.RENDER === 'true' ||
+			process.env.RENDER_EXTERNAL_URL
+	);
 }
 
 /**
  * Returns true only for fresh self-hosted Docker launches that have neither completed `/setup`
  * nor supplied production secrets via environment variables.
- * Railway deployments and standard local `pnpm dev` always return false.
+ * Managed cloud deployments (Railway, Render) and local `pnpm dev` always return false.
  */
 export function needsInitialSetup(): boolean {
-	if (isRailwayHosted() || process.env.CERTFLOW_SELF_HOSTED !== 'true') {
+	if (isManagedCloudHosted() || process.env.CERTFLOW_SELF_HOSTED !== 'true') {
 		return false;
 	}
 
@@ -130,12 +135,14 @@ export function getRuntimeConfig(): EffectiveRuntimeConfig {
 	const railwayUrl = process.env.RAILWAY_PUBLIC_DOMAIN
 		? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
 		: '';
+	const renderUrl = process.env.RENDER_EXTERNAL_URL?.trim() || '';
 
 	const envAuthUrl = process.env.BETTER_AUTH_URL?.trim();
 	const betterAuthUrl =
 		saved?.betterAuthUrl?.trim() ||
 		(envAuthUrl && envAuthUrl !== 'http://localhost:5678' ? envAuthUrl : '') ||
 		railwayUrl ||
+		renderUrl ||
 		envAuthUrl ||
 		'http://localhost:5678';
 
@@ -174,7 +181,7 @@ export function getRuntimeConfig(): EffectiveRuntimeConfig {
 			saved?.allowCustomSmtp !== undefined
 				? saved.allowCustomSmtp
 				: process.env.ALLOW_CUSTOM_SMTP === 'true' ||
-					(process.env.CERTFLOW_SELF_HOSTED === 'true' && !isRailwayHosted()),
+					(process.env.CERTFLOW_SELF_HOSTED === 'true' && !isManagedCloudHosted()),
 		setupCompleted: Boolean(saved?.setupCompleted)
 	};
 }

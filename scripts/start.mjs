@@ -60,10 +60,15 @@ function isRealSecret(value, insecureDefault) {
 
 const savedConfig = loadPersistedSetupConfig();
 
-const isRailway = Boolean(process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_PROJECT_ID);
+const isManagedCloud = Boolean(
+	process.env.RAILWAY_ENVIRONMENT ||
+		process.env.RAILWAY_PROJECT_ID ||
+		process.env.RENDER === 'true' ||
+		process.env.RENDER_EXTERNAL_URL
+);
 
 const isSelfHostedUnconfigured =
-	!isRailway &&
+	!isManagedCloud &&
 	process.env.CERTFLOW_SELF_HOSTED === 'true' &&
 	!savedConfig?.setupCompleted &&
 	!(
@@ -75,7 +80,8 @@ const port = process.env.PORT || '3000';
 const railwayUrl = process.env.RAILWAY_PUBLIC_DOMAIN
 	? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
 	: null;
-const authUrl = process.env.BETTER_AUTH_URL || railwayUrl || `http://localhost:${port}`;
+const renderUrl = process.env.RENDER_EXTERNAL_URL?.trim() || null;
+const authUrl = process.env.BETTER_AUTH_URL || railwayUrl || renderUrl || `http://localhost:${port}`;
 
 if (isSelfHostedUnconfigured) {
 	console.log(`[certflow] First-run setup required. Open http://localhost:${port}/setup to configure CertFlow.`);

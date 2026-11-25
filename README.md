@@ -4,6 +4,29 @@ Design certificate templates, import recipient spreadsheets, generate personalis
 
 CertFlow is built for event organisers, clubs, schools and competitions that issue certificates to participants, speakers, committees and prize winners.
 
+## One-Click Launch (No Coding Required)
+
+### Option 1: Launch Free in the Cloud (Zero Installation)
+
+Click the button below to deploy your own private copy of CertFlow with a PostgreSQL database and auto-generated security keys in one click:
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/FishyWeed/CertFlow)
+
+1. Click **Deploy to Render** and sign in with GitHub or Google.
+2. Click **Apply** and wait about 2 minutes for the build to finish.
+3. Open your new CertFlow link and create your account.
+
+> **Note on Render Free Tier**: Free Render web services reset local uploaded files when redeployed. For permanent uploaded backgrounds and logos, upgrade the web service to a persistent disk or deploy on Railway with a Volume mounted at `/data/uploads`.
+
+### Option 2: Double-Click on Your Own Computer (Windows or macOS)
+
+1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and open it.
+2. Download this repository (click **Code -> Download ZIP** on GitHub) and unzip the folder.
+3. Double-click **`Start-CertFlow.bat`** (Windows) or **`Start-CertFlow.command`** (macOS).
+4. Your browser opens `http://localhost:3000` automatically. Enter your name, email and password, then click **Start CertFlow**.
+
+Security keys and database settings are configured automatically behind the scenes. Technical users can expand **Advanced Settings** on the setup screen to customise keys, connect an external PostgreSQL database or set a server-wide email relay.
+
 ## What You Can Do
 
 ### Visual Certificate Editor

@@ -11,9 +11,12 @@ function createAuthInstance() {
 	const railwayUrl = process.env.RAILWAY_PUBLIC_DOMAIN
 		? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
 		: null;
+	const renderUrl = process.env.RENDER_EXTERNAL_URL?.trim() || null;
 
 	const trustedOrigins = Array.from(
-		new Set([cfg.betterAuthUrl, railwayUrl].filter((value): value is string => Boolean(value)))
+		new Set(
+			[cfg.betterAuthUrl, railwayUrl, renderUrl].filter((value): value is string => Boolean(value))
+		)
 	);
 
 	return betterAuth({

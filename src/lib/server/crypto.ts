@@ -1,14 +1,18 @@
-import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
 import { getRuntimeConfig } from './runtime-config.ts';
 
 const ALGORITHM = 'aes-256-gcm';
 
 function getKey(): Buffer {
-	const keyHex = getRuntimeConfig().encryptionKey;
-	if (!keyHex || keyHex.length !== 64) {
-		throw new Error('ENCRYPTION_KEY must be a 64-character hex string (32 bytes)');
+	const raw = getRuntimeConfig().encryptionKey.trim();
+	if (!raw || raw.length < 16) {
+		throw new Error('ENCRYPTION_KEY must be a 64-character hex string or a strong secret.');
 	}
-	return Buffer.from(keyHex, 'hex');
+	if (/^[0-9a-fA-F]{64}$/.test(raw)) {
+		return Buffer.from(raw, 'hex');
+	}
+	// Support auto-generated secrets from one-click cloud hosts (such as Render) by deriving 32 bytes.
+	return createHash('sha256').update(raw, 'utf8').digest();
 }
 
 export function encryptSecret(plaintext: string): string {
