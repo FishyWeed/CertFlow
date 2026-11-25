@@ -1,11 +1,15 @@
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { PGlite } from '@electric-sql/pglite';
 import { drizzle as drizzlePglite } from 'drizzle-orm/pglite';
 import { migrate as migratePglite } from 'drizzle-orm/pglite/migrator';
 import { drizzle as drizzlePostgres } from 'drizzle-orm/postgres-js';
 import { migrate as migratePostgres } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
+
+const APP_ROOT = fileURLToPath(new URL('..', import.meta.url));
+process.env.CERTFLOW_APP_DIR ??= APP_ROOT;
 
 // Set safe production defaults for @sveltejs/adapter-node before loading the built server.
 process.env.NODE_ENV ??= 'production';
@@ -88,7 +92,7 @@ if (isSelfHostedUnconfigured) {
 } else {
 	console.log(`[certflow] Auth base URL: ${authUrl}`);
 	const dbUrl = (process.env.DATABASE_URL ?? '').trim();
-	const migrationsFolder = resolve('./drizzle');
+	const migrationsFolder = join(APP_ROOT, 'drizzle');
 
 	if (dbUrl.startsWith('postgres://') || dbUrl.startsWith('postgresql://')) {
 		console.log('[certflow] Database mode: PostgreSQL. Running migrations...');

@@ -1,5 +1,5 @@
-import { mkdirSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { existsSync, mkdirSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { PGlite } from '@electric-sql/pglite';
 import { drizzle as drizzlePglite } from 'drizzle-orm/pglite';
 import { migrate as migratePglite } from 'drizzle-orm/pglite/migrator';
@@ -82,7 +82,10 @@ export async function resetDatabaseConnection(): Promise<void> {
  * Runs Drizzle SQL migrations against the configured database (remote PostgreSQL or embedded PGlite).
  */
 export async function runDatabaseMigrations(databaseUrl: string): Promise<void> {
-	const migrationsFolder = resolve('./drizzle');
+	const cwdDrizzle = resolve('./drizzle');
+	const migrationsFolder = existsSync(cwdDrizzle)
+		? cwdDrizzle
+		: resolve(join(process.env.CERTFLOW_APP_DIR || '.', 'drizzle'));
 	if (isRemotePostgresUrl(databaseUrl)) {
 		const client = postgres(databaseUrl, { max: 1, connect_timeout: 10 });
 		try {

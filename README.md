@@ -6,9 +6,9 @@ CertFlow is built for event organisers, clubs, schools and competitions that iss
 
 ## One-Click Launch (No Coding Required)
 
-### Option 1: Launch Free in the Cloud (Zero Installation)
+### Option 1: Launch in the Cloud (Zero Installation)
 
-Click the button below to deploy your own private copy of CertFlow with a PostgreSQL database and auto-generated security keys in one click:
+Deploy your own private copy of CertFlow with a PostgreSQL database and auto-generated security keys in one click:
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/FishyWeed/CertFlow)
 
@@ -16,16 +16,31 @@ Click the button below to deploy your own private copy of CertFlow with a Postgr
 2. Click **Apply** and wait about 2 minutes for the build to finish.
 3. Open your new CertFlow link and create your account.
 
-> **Note on Render Free Tier**: Free Render web services reset local uploaded files when redeployed. For permanent uploaded backgrounds and logos, upgrade the web service to a persistent disk or deploy on Railway with a Volume mounted at `/data/uploads`.
+> **Note on Render Free Tier**: Free Render web services reset local uploaded files when redeployed. For permanent uploaded backgrounds and logos, upgrade to a persistent disk or deploy on Railway with a Volume mounted at `/data/uploads`.
 
-### Option 2: Double-Click on Your Own Computer (Windows or macOS)
+*(Maintainer note for **Deploy on Railway** button: open your CertFlow Railway project -> **Project Settings -> General -> Create Template**, replace secret values with `${{secret(64)}}`, publish the template and place its `https://railway.com/deploy/<code-here>` button next to Render above.)*
 
-1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and open it.
-2. Download this repository (click **Code -> Download ZIP** on GitHub) and unzip the folder.
+### Option 2: Portable Desktop ZIP (No Docker, No Node.js Required)
+
+Run CertFlow offline on Windows, macOS or Linux with zero dependencies installed:
+
+1. Open [GitHub Releases](https://github.com/FishyWeed/CertFlow/releases) and download the ZIP for your computer:
+   - Windows: `CertFlow-vX.Y.Z-win-x64.zip`
+   - macOS (Apple Silicon): `CertFlow-vX.Y.Z-darwin-arm64.zip`
+   - macOS (Intel): `CertFlow-vX.Y.Z-darwin-x64.zip`
+   - Linux: `CertFlow-vX.Y.Z-linux-x64.zip`
+2. Unzip the folder anywhere (Desktop, Documents or a USB drive).
 3. Double-click **`Start-CertFlow.bat`** (Windows) or **`Start-CertFlow.command`** (macOS).
 4. Your browser opens `http://localhost:3000` automatically. Enter your name, email and password, then click **Start CertFlow**.
 
-Security keys and database settings are configured automatically behind the scenes. Technical users can expand **Advanced Settings** on the setup screen to customise keys, connect an external PostgreSQL database or set a server-wide email relay.
+All settings, projects, database files and uploaded images stay inside the `data/` folder next to the launcher.
+
+### Option 3: Docker on Desktop or Server
+
+If you already use Docker Desktop or host on a VPS/NAS:
+
+1. Download this repository and double-click **`Start-CertFlow.bat`** (Windows) or **`Start-CertFlow.command`** (macOS), or run `docker compose up -d`.
+2. Open `http://localhost:3000` and finish the setup screen. Technical users can expand **Advanced Settings** on `/setup` to customise keys, connect an external PostgreSQL database or set a server-wide email relay.
 
 ## What You Can Do
 
