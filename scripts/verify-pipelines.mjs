@@ -75,15 +75,22 @@ for (const wf of [
 }
 const releaseWf = readText('.github/workflows/release-portable.yml');
 assert(
+	releaseWf.includes('build-windows-launcher'),
+	'release-portable.yml must include the build-windows-launcher job.'
+);
+assert(
 	releaseWf.includes('build-windows-installer'),
 	'release-portable.yml must include the build-windows-installer job.'
 );
 
-// 7. Validate Windows Inno Setup installer definition and icon
+// 7. Validate Windows tray launcher, Inno Setup installer definition and icon
+const launcherCs = readText('installer/CertFlowLauncher.cs');
+assert(launcherCs.includes('CreateNoWindow = true'), 'installer/CertFlowLauncher.cs must launch Node without a console window.');
+assert(launcherCs.includes('UpdateRestartExitCode = 75'), 'installer/CertFlowLauncher.cs must handle in-app update exit code 75.');
 const iss = readText('installer/certflow.iss');
 assert(iss.includes('DefaultDirName={localappdata}\\CertFlow'), 'installer/certflow.iss must default to {localappdata}\\CertFlow.');
 assert(iss.includes('Name: "desktopicon"'), 'installer/certflow.iss must offer a Desktop shortcut task.');
-assert(iss.includes('Start-CertFlow.bat'), 'installer/certflow.iss must launch Start-CertFlow.bat.');
+assert(iss.includes('CertFlow.exe'), 'installer/certflow.iss must launch CertFlow.exe.');
 assert(!iss.includes('Source: "{#MySourceDir}\\data'), 'installer/certflow.iss must not overwrite user data\\ files.');
 const icoPath = join(ROOT, 'installer', 'certflow.ico');
 if (!existsSync(icoPath)) {

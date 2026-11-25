@@ -63,18 +63,19 @@ Name: "{app}\data\pgdata"
 ; Never overwrite user data inside data\.
 Source: "{#MySourceDir}\app\*"; DestDir: "{app}\app"; Excludes: "node_modules\.bin\*"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#MySourceDir}\runtime\*"; DestDir: "{app}\runtime"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#MySourceDir}\CertFlow.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#MySourceDir}\Start-CertFlow.bat"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#MySourceDir}\Create-Desktop-Shortcut.bat"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#MySourceDir}\README-FIRST.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#MySourceDir}\certflow.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{autoprograms}\CertFlow\CertFlow"; Filename: "{app}\Start-CertFlow.bat"; WorkingDir: "{app}"; IconFilename: "{app}\certflow.ico"; Comment: "Launch CertFlow Bulk Certificate Generator"
+Name: "{autoprograms}\CertFlow\CertFlow"; Filename: "{app}\CertFlow.exe"; WorkingDir: "{app}"; IconFilename: "{app}\certflow.ico"; Comment: "Launch CertFlow Bulk Certificate Generator"
 Name: "{autoprograms}\CertFlow\Uninstall CertFlow"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\CertFlow"; Filename: "{app}\Start-CertFlow.bat"; WorkingDir: "{app}"; IconFilename: "{app}\certflow.ico"; Comment: "Launch CertFlow Bulk Certificate Generator"; Tasks: desktopicon
+Name: "{autodesktop}\CertFlow"; Filename: "{app}\CertFlow.exe"; WorkingDir: "{app}"; IconFilename: "{app}\certflow.ico"; Comment: "Launch CertFlow Bulk Certificate Generator"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\Start-CertFlow.bat"; Description: "Launch CertFlow"; WorkingDir: "{app}"; Flags: postinstall nowait skipifsilent shellexec
+Filename: "{app}\CertFlow.exe"; Description: "Launch CertFlow"; WorkingDir: "{app}"; Flags: postinstall nowait skipifsilent shellexec
 
 [UninstallDelete]
 ; Clean up temporary update staging files if present; always keep user data\ intact.

@@ -15,13 +15,52 @@ permissions:
   contents: write
 
 jobs:
+  build-windows-launcher:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Compile silent Windows tray launcher (CertFlow.exe)
+        shell: pwsh
+        run: |
+          $csc = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
+          if (-not (Test-Path $csc)) {
+            throw "Windows .NET C# compiler (csc.exe) not found."
+          }
+          & $csc `
+            /nologo `
+            /target:winexe `
+            /optimize+ `
+            /warnaserror+ `
+            /win32icon:installer\certflow.ico `
+            /reference:System.dll `
+            /reference:System.Drawing.dll `
+            /reference:System.Windows.Forms.dll `
+            /out:installer\CertFlow.exe `
+            installer\CertFlowLauncher.cs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Upload compiled Windows launcher artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: certflow-windows-launcher
+          path: installer/CertFlow.exe
+
   package-portable:
+    needs: build-windows-launcher
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.meta.outputs.version }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Download compiled Windows launcher
+        uses: actions/download-artifact@v4
+        with:
+          name: certflow-windows-launcher
+          path: installer
 
       - name: Set up Node.js 22
         uses: actions/setup-node@v4

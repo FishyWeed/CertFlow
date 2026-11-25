@@ -127,6 +127,9 @@ describe('portable updater helpers', () => {
 		expect(script).toContain('Get-Process -Id $OldPid');
 		expect(script).toContain('Stop-Process -Id $OldPid -Force');
 		expect(script).toContain('Move-WithRetry');
+		expect(script).toContain('Copy-WithRetry');
+		expect(script).toContain('CertFlow.exe');
+		expect(script).toContain('--no-open');
 		expect(script).not.toContain('tasklist');
 		expect(script).not.toContain('find /I');
 		expect(script).not.toContain('timeout /t');
