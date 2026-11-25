@@ -2,6 +2,7 @@ import { redirect } from '@sveltejs/kit';
 import { desc, eq } from 'drizzle-orm';
 import { db } from '#lib/server/db/index.ts';
 import { senderProfiles } from '#lib/server/db/schema.ts';
+import { getMailCapabilities } from '#lib/server/mail.ts';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -31,6 +32,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 	return {
 		user: locals.user,
-		profiles
+		profiles,
+		mailCapabilities: getMailCapabilities()
 	};
 };

@@ -167,8 +167,8 @@
 		<section class="rounded-xl border border-border-default bg-surface-card p-5">
 			<h1 class="text-lg font-bold text-ink-primary">Account & Email Sender Profiles</h1>
 			<p class="mt-1 text-sm text-ink-secondary">
-				Signed in as <strong>{data.user.name}</strong> ({data.user.email}). Add an optional Reply-To
-				or custom SMTP sender profile below.
+				Signed in as <strong>{data.user.name}</strong> ({data.user.email}). Add a sender profile
+				below to send certificates from your own email address.
 			</p>
 		</section>
 
@@ -221,10 +221,14 @@
 							bind:value={mode}
 							class="mt-1 block w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm"
 						>
-							<option value="brevo_api">Brevo HTTPS API (Free, works on Railway &amp; Gmail)</option>
-							<option value="resend_api">Resend HTTPS API (Free, works on Railway with custom domain)</option>
-							<option value="smtp">Custom SMTP Server (ports 465/587 — local dev / Railway Pro)</option>
-							<option value="custom_reply_to">Custom Reply-To (uses server default relay)</option>
+							<option value="brevo_api">Brevo (Gmail or custom domain)</option>
+							<option value="resend_api">Resend (Custom domain)</option>
+							{#if data.mailCapabilities.allowRawSmtp || (editingId && mode === 'smtp')}
+								<option value="smtp">Custom SMTP Server</option>
+							{/if}
+							{#if data.mailCapabilities.hasServerRelay || (editingId && mode === 'custom_reply_to')}
+								<option value="custom_reply_to">Custom Reply-To</option>
+							{/if}
 						</select>
 					</div>
 				</div>
@@ -280,20 +284,16 @@
 						/>
 						<p class="text-[11px] text-ink-muted">
 							{#if mode === 'brevo_api'}
-								Sends over HTTPS (port 443), so it works on Railway Free and Hobby plans. Verify
-								your Sender Email in Brevo under Senders, then paste your API key from SMTP &amp; API.
+								Verify your Sender Email in Brevo under Senders, then paste your API key from SMTP
+								&amp; API -&gt; API Keys. Keys are encrypted before storage.
 							{:else}
-								Sends over HTTPS (port 443), so it works on Railway Free and Hobby plans. Verify
-								your sending domain in Resend, then paste your API key.
+								Verify your sending domain in Resend, then paste your API key. Keys are encrypted
+								before storage.
 							{/if}
 						</p>
 					</div>
 				{:else if mode === 'smtp'}
 					<div class="grid gap-3 rounded-lg border border-border-default bg-surface-page p-3 sm:grid-cols-2">
-						<p class="text-[11px] text-amber-800 sm:col-span-2">
-							Note: Railway Free, Trial and Hobby plans block outbound SMTP ports 465 and 587. Use
-							<strong>Brevo HTTPS API</strong> above on Railway Free/Hobby.
-						</p>
 						<div>
 							<label for="smtp-host" class="block text-xs font-medium text-ink-secondary">
 								SMTP Host

@@ -37,15 +37,22 @@
 		return JSON.stringify(draft);
 	}
 
+	const canUseServerRelay = $derived(
+		data.mailCapabilities.hasServerRelay || data.mailCapabilities.isLocalOutbox
+	);
+
 	function applyDefaults(defaults: ProjectEmailDefaults) {
 		const validProfileId =
 			defaults.senderProfileId &&
 			data.senderProfiles.some((p) => p.id === defaults.senderProfileId)
 				? defaults.senderProfileId
-				: '';
+				: !canUseServerRelay
+					? (data.senderProfiles[0]?.id ?? '')
+					: '';
 
-		const nextMode: EmailSenderMode =
-			defaults.senderMode ?? (validProfileId ? 'profile' : 'account');
+		const nextMode: EmailSenderMode = !canUseServerRelay
+			? 'profile'
+			: (defaults.senderMode ?? (validProfileId ? 'profile' : 'account'));
 		const nextCustomName = defaults.customSenderName || data.user.name;
 		const nextCustomEmail = defaults.customSenderEmail ?? '';
 
@@ -93,7 +100,7 @@
 		data.senderProfiles.find((p) => p.id === selectedProfileId) ?? null
 	);
 	const usingLocalOutbox = $derived(
-		data.isLocalOutbox && !(senderMode === 'profile' && selectedProfile?.mode === 'smtp')
+		data.mailCapabilities.isLocalOutbox && !(senderMode === 'profile' && selectedProfile?.mode === 'smtp')
 	);
 
 	const withEmail = $derived(data.certificates.filter((c) => Boolean(c.email)));
@@ -301,42 +308,44 @@
 			<!-- Sender Selection -->
 			<section class="space-y-3">
 				<h3 class="text-sm font-semibold text-ink-primary">1. Sender Address</h3>
-				<div class="grid gap-2 sm:grid-cols-3">
-					<button
-						type="button"
-						onclick={() => (senderMode = 'account')}
-						class="rounded-lg border p-3 text-left text-xs {senderMode === 'account'
-							? 'border-sky-500 bg-sky-50 text-sky-950'
-							: 'border-border-default bg-white text-ink-secondary'}"
-					>
-						<p class="font-semibold">My Account Email</p>
-						<p class="mt-0.5 truncate text-[11px]">{data.user.email}</p>
-					</button>
+				{#if canUseServerRelay}
+					<div class="grid gap-2 sm:grid-cols-3">
+						<button
+							type="button"
+							onclick={() => (senderMode = 'account')}
+							class="rounded-lg border p-3 text-left text-xs {senderMode === 'account'
+								? 'border-sky-500 bg-sky-50 text-sky-950'
+								: 'border-border-default bg-white text-ink-secondary'}"
+						>
+							<p class="font-semibold">My Account Email</p>
+							<p class="mt-0.5 truncate text-[11px]">{data.user.email}</p>
+						</button>
 
-					<button
-						type="button"
-						onclick={() => (senderMode = 'custom_reply_to')}
-						class="rounded-lg border p-3 text-left text-xs {senderMode === 'custom_reply_to'
-							? 'border-sky-500 bg-sky-50 text-sky-950'
-							: 'border-border-default bg-white text-ink-secondary'}"
-					>
-						<p class="font-semibold">Separate Sender Email</p>
-						<p class="mt-0.5 text-[11px]">Custom name and Reply-To</p>
-					</button>
+						<button
+							type="button"
+							onclick={() => (senderMode = 'custom_reply_to')}
+							class="rounded-lg border p-3 text-left text-xs {senderMode === 'custom_reply_to'
+								? 'border-sky-500 bg-sky-50 text-sky-950'
+								: 'border-border-default bg-white text-ink-secondary'}"
+						>
+							<p class="font-semibold">Separate Sender Email</p>
+							<p class="mt-0.5 text-[11px]">Custom name and Reply-To</p>
+						</button>
 
-					<button
-						type="button"
-						onclick={() => (senderMode = 'profile')}
-						class="rounded-lg border p-3 text-left text-xs {senderMode === 'profile'
-							? 'border-sky-500 bg-sky-50 text-sky-950'
-							: 'border-border-default bg-white text-ink-secondary'}"
-					>
-						<p class="font-semibold">Saved SMTP / API Profile</p>
-						<p class="mt-0.5 text-[11px]">{data.senderProfiles.length} saved in Account</p>
-					</button>
-				</div>
+						<button
+							type="button"
+							onclick={() => (senderMode = 'profile')}
+							class="rounded-lg border p-3 text-left text-xs {senderMode === 'profile'
+								? 'border-sky-500 bg-sky-50 text-sky-950'
+								: 'border-border-default bg-white text-ink-secondary'}"
+						>
+							<p class="font-semibold">Saved Sender Profile</p>
+							<p class="mt-0.5 text-[11px]">{data.senderProfiles.length} saved in Account</p>
+						</button>
+					</div>
+				{/if}
 
-				{#if senderMode === 'custom_reply_to'}
+				{#if canUseServerRelay && senderMode === 'custom_reply_to'}
 					<div class="grid gap-3 pt-2 sm:grid-cols-2">
 						<div>
 							<label for="custom-name" class="block text-xs font-medium text-ink-secondary">
@@ -363,46 +372,57 @@
 							/>
 						</div>
 					</div>
-				{:else if senderMode === 'profile'}
-					<div class="pt-2">
+				{:else if !canUseServerRelay || senderMode === 'profile'}
+					<div class={canUseServerRelay ? 'pt-2' : ''}>
 						{#if data.senderProfiles.length === 0}
-							<p class="text-xs text-ink-muted">
-								No saved SMTP profiles yet. Add one in
-								<a href="/settings" class="font-semibold text-sky-700 underline">Account Settings</a>.
-							</p>
+							<div class="rounded-lg border border-border-default bg-surface-page px-3.5 py-3 text-xs text-ink-secondary">
+								<p>
+									No sender profile connected yet. Add a Brevo or Resend sender profile in
+									<a href="/settings" class="font-semibold text-accent underline">Account Settings</a>
+									to send certificates by email.
+								</p>
+							</div>
 						{:else}
-							<select
-								bind:value={selectedProfileId}
-								class="block w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm"
-							>
-								<option value="">Select a saved profile</option>
-								{#each data.senderProfiles as profile (profile.id)}
-									{@const host = profile.smtpHost?.toLowerCase() ?? ''}
-									{@const modeLabel =
-										profile.mode === 'smtp' && host === 'api.brevo.com'
-											? 'Brevo API'
-											: profile.mode === 'smtp' && host === 'api.resend.com'
-												? 'Resend API'
-												: profile.mode === 'smtp'
-													? 'SMTP'
-													: 'Reply-To'}
-									<option value={profile.id}>
-										{profile.label} — {profile.senderEmail} ({modeLabel})
-									</option>
-								{/each}
-							</select>
+							<div class="flex flex-wrap items-center gap-2">
+								<select
+									aria-label="Saved sender profile"
+									bind:value={selectedProfileId}
+									class="min-w-0 flex-1 rounded-lg border border-border-strong bg-white px-3 py-2 text-sm"
+								>
+									<option value="">Select a saved profile</option>
+									{#each data.senderProfiles as profile (profile.id)}
+										{@const host = profile.smtpHost?.toLowerCase() ?? ''}
+										{@const modeLabel =
+											profile.mode === 'smtp' && host === 'api.brevo.com'
+												? 'Brevo'
+												: profile.mode === 'smtp' && host === 'api.resend.com'
+													? 'Resend'
+													: profile.mode === 'smtp'
+														? 'SMTP'
+														: 'Reply-To'}
+										<option value={profile.id}>
+											{profile.label} — {profile.senderEmail} ({modeLabel})
+										</option>
+									{/each}
+								</select>
+								<a
+									href="/settings"
+									class="shrink-0 rounded-lg border border-border-default bg-white px-3 py-2 text-xs font-medium text-ink-secondary transition hover:bg-surface-subtle hover:text-ink-primary"
+								>
+									Manage Profiles
+								</a>
+							</div>
 						{/if}
 					</div>
 				{/if}
 				{#if usingLocalOutbox}
 					<div class="rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-xs text-amber-900">
-						<p class="font-semibold">Local test mode active — emails will not reach real inboxes</p>
+						<p class="font-semibold">Local development mode</p>
 						<p class="mt-1">
-							The server currently writes previews to <code>.local/outbox/</code>. To send real
-							emails on Railway Free or Hobby plans, set <code>BREVO_API_KEY</code> (or
-							<code>RESEND_API_KEY</code>) and <code>DEFAULT_FROM_EMAIL</code> in your environment
-							variables, or add a <strong>Custom SMTP Server</strong> in
-							<a href="/settings" class="font-semibold underline">Account Settings</a>.
+							Emails are written to <code>.local/outbox/</code> instead of real inboxes. Add a
+							sender profile in
+							<a href="/settings" class="font-semibold underline">Account Settings</a> to send real
+							emails.
 						</p>
 					</div>
 				{/if}

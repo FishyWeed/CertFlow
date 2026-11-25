@@ -1,7 +1,7 @@
 import { and, desc, eq, inArray } from 'drizzle-orm';
 import { db } from '#lib/server/db/index.ts';
 import { emailJobs, emailLogs, senderProfiles } from '#lib/server/db/schema.ts';
-import { isLocalOutboxMode } from '#lib/server/mail.ts';
+import { getMailCapabilities } from '#lib/server/mail.ts';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ parent }) => {
@@ -51,12 +51,21 @@ export const load: PageServerLoad = async ({ parent }) => {
 		errorsByJobId.set(log.jobId, list);
 	}
 
+	const mailCapabilities = getMailCapabilities();
+	const usableProfiles = profiles.filter((p) => {
+		const host = p.smtpHost?.trim().toLowerCase() ?? '';
+		const isApiProfile = p.mode === 'smtp' && (host === 'api.brevo.com' || host === 'api.resend.com');
+		if (isApiProfile) return true;
+		if (p.mode === 'smtp') return mailCapabilities.allowRawSmtp;
+		return mailCapabilities.hasServerRelay || mailCapabilities.isLocalOutbox;
+	});
+
 	return {
-		senderProfiles: profiles,
+		senderProfiles: usableProfiles,
 		emailJobs: jobs.map((job) => ({
 			...job,
 			failedErrors: errorsByJobId.get(job.id) ?? []
 		})),
-		isLocalOutbox: isLocalOutboxMode()
+		mailCapabilities
 	};
 };

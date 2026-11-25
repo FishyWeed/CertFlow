@@ -37,11 +37,32 @@ export interface SendCertificateEmailInput {
 
 export type MailDeliveryMode = 'local_outbox' | 'smtp' | 'api';
 
+export interface MailCapabilities {
+	isProduction: boolean;
+	hasServerRelay: boolean;
+	allowRawSmtp: boolean;
+	isLocalOutbox: boolean;
+}
+
+/**
+ * Reports which outbound mail transports are available in the current runtime environment.
+ * Production deployments without a server-wide relay expose only HTTPS API sender profiles (Brevo/Resend).
+ */
+export function getMailCapabilities(): MailCapabilities {
+	const isProduction = process.env.NODE_ENV === 'production';
+	const hasServerRelay = Boolean(
+		BREVO_API_KEY.trim() || RESEND_API_KEY.trim() || (SMTP_HOST && SMTP_HOST !== 'local-outbox')
+	);
+	const allowRawSmtp = !isProduction || process.env.ALLOW_CUSTOM_SMTP === 'true';
+	const isLocalOutbox = !isProduction && !hasServerRelay;
+	return { isProduction, hasServerRelay, allowRawSmtp, isLocalOutbox };
+}
+
 /**
  * Returns true only when no HTTPS API provider (Brevo/Resend) and no real SMTP host are configured.
  */
 export function isLocalOutboxMode(): boolean {
-	return !BREVO_API_KEY.trim() && !RESEND_API_KEY.trim() && SMTP_HOST === 'local-outbox';
+	return getMailCapabilities().isLocalOutbox;
 }
 
 /**
@@ -256,10 +277,10 @@ export async function sendCertificateEmail(
 		});
 		return { messageId: info.messageId, deliveryMode: 'smtp' };
 	} catch (err) {
-		const rawMessage = err instanceof Error ? err.message : 'SMTP delivery failed';
-		if (/timeout|ETIMEDOUT|ENETUNREACH/i.test(rawMessage) && process.env.RAILWAY_ENVIRONMENT) {
+		const rawMessage = err instanceof Error ? err.message : 'Email delivery failed';
+		if (/timeout|ETIMEDOUT|ENETUNREACH/i.test(rawMessage) && process.env.NODE_ENV === 'production') {
 			throw new Error(
-				`${rawMessage} (Railway Free/Hobby plans block outbound SMTP ports 465/587. Set BREVO_API_KEY or RESEND_API_KEY in Railway Variables and use My Account Email or Separate Sender Email.)`
+				'Could not connect to the mail server. Use a Brevo or Resend sender profile in Account Settings instead.'
 			);
 		}
 		throw err;
