@@ -31,5 +31,10 @@ export const auth = betterAuth({
 		enabled: true,
 		autoSignIn: true
 	},
+	advanced: {
+		ipAddress: {
+			ipAddressHeaders: ['x-forwarded-for', 'x-real-ip']
+		}
+	},
 	plugins: [sveltekitCookies(getRequestEvent)]
 });

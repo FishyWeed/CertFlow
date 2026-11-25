@@ -218,7 +218,10 @@
 						items
 					})
 				});
-				if (!res.ok) throw new Error('Batch send request failed.');
+				if (!res.ok) {
+					const err = await res.json().catch(() => ({}));
+					throw new Error(err.message ?? `Batch send request failed (${res.status}).`);
+				}
 				const result = await res.json();
 				totalSent += result.sentCount;
 				totalFailed += result.failedCount;
