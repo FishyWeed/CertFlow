@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import JSZip from 'jszip';
@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
 	buildWindowsUpdateScriptContent,
 	buildWindowsVbsLauncherContent,
+	clearStagedPortableUpdate,
 	compareSemver,
 	extractZipArchive,
 	findMatchingReleaseAsset,
@@ -189,5 +190,24 @@ describe('portable updater helpers', () => {
 		const staged = getStagedPortableUpdate();
 		expect(staged?.version).toBe('v1.2.3');
 		expect(staged?.bundleDir).toBe(bundleDir);
+
+		// Once running the same or newer version, stale downloaded staging files are removed automatically.
+		writeFileSync(
+			join(root, 'app', 'portable-meta.json'),
+			JSON.stringify({
+				portable: true,
+				version: 'v1.2.3',
+				target: 'win-x64',
+				repo: 'FishyWeed/CertFlow'
+			})
+		);
+		expect(getStagedPortableUpdate()).toBeNull();
+		expect(existsSync(join(root, '.update-staging'))).toBe(false);
+
+		// Explicit cleanup also removes leftover unmanifested archives when already on latest.
+		mkdirSync(join(root, '.update-staging'), { recursive: true });
+		writeFileSync(join(root, '.update-staging', 'update.zip'), 'stale');
+		clearStagedPortableUpdate();
+		expect(existsSync(join(root, '.update-staging'))).toBe(false);
 	});
 });

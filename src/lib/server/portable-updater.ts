@@ -92,12 +92,40 @@ let updateProgress: PortableUpdateProgress = {
 	error: null
 };
 
+export function clearStagedPortableUpdate(
+	info: PortableRuntimeInfo = getPortableRuntimeInfo()
+): void {
+	if (updateInProgress || !info.isPortable || !info.rootDir) return;
+	const stagingRoot = resolve(join(info.rootDir, '.update-staging'));
+	if (existsSync(stagingRoot)) {
+		try {
+			rmSync(stagingRoot, { recursive: true, force: true });
+		} catch {
+			// Ignore transient Windows file locks; next check will retry cleanup.
+		}
+	}
+	if (updateProgress.stagedVersion !== null || updateProgress.stage === 'downloaded') {
+		updateProgress = {
+			...updateProgress,
+			stage: updateProgress.stage === 'downloaded' ? 'idle' : updateProgress.stage,
+			stagedVersion: null
+		};
+	}
+}
+
 export function getStagedPortableUpdate(
 	info: PortableRuntimeInfo = getPortableRuntimeInfo()
 ): StagedPortableUpdate | null {
 	if (!info.isPortable || !info.rootDir) return null;
-	const manifestPath = join(info.rootDir, '.update-staging', 'staged-update.json');
-	if (!existsSync(manifestPath)) return null;
+	const stagingRoot = resolve(join(info.rootDir, '.update-staging'));
+	const manifestPath = join(stagingRoot, 'staged-update.json');
+	if (!existsSync(manifestPath)) {
+		// Remove leftover/incomplete local download folders when no active download is running.
+		if (!updateInProgress && existsSync(stagingRoot)) {
+			clearStagedPortableUpdate(info);
+		}
+		return null;
+	}
 	try {
 		const parsed = JSON.parse(readFileSync(manifestPath, 'utf8')) as Partial<StagedPortableUpdate>;
 		if (
@@ -106,18 +134,31 @@ export function getStagedPortableUpdate(
 			typeof parsed.bundleDir !== 'string' ||
 			!parsed.bundleDir.trim()
 		) {
+			clearStagedPortableUpdate(info);
 			return null;
 		}
+		const version = parsed.version.trim();
 		const resolvedBundle = resolve(parsed.bundleDir);
-		const stagingRoot = resolve(join(info.rootDir, '.update-staging'));
-		if (!resolvedBundle.startsWith(stagingRoot)) return null;
-		if (!existsSync(join(resolvedBundle, 'app', 'scripts', 'start.mjs'))) return null;
+		if (!resolvedBundle.startsWith(stagingRoot)) {
+			clearStagedPortableUpdate(info);
+			return null;
+		}
+		if (!existsSync(join(resolvedBundle, 'app', 'scripts', 'start.mjs'))) {
+			clearStagedPortableUpdate(info);
+			return null;
+		}
+		// Already running this version or newer -> remove stale local download immediately.
+		if (info.currentVersion && compareSemver(version, info.currentVersion) <= 0) {
+			clearStagedPortableUpdate(info);
+			return null;
+		}
 		return {
-			version: parsed.version.trim(),
+			version,
 			bundleDir: resolvedBundle,
 			downloadedAt: typeof parsed.downloadedAt === 'string' ? parsed.downloadedAt : ''
 		};
 	} catch {
+		clearStagedPortableUpdate(info);
 		return null;
 	}
 }
@@ -126,7 +167,7 @@ export function getPortableUpdateProgress(): PortableUpdateProgress {
 	const staged = getStagedPortableUpdate();
 	return {
 		...updateProgress,
-		stagedVersion: staged?.version ?? updateProgress.stagedVersion
+		stagedVersion: staged?.version ?? null
 	};
 }
 
@@ -303,7 +344,10 @@ export async function checkForPortableUpdate(options?: {
 
 	const asset = target ? findMatchingReleaseAsset(release.assets, target, repo) : null;
 	const updateAvailable = info.isPortable ? compareSemver(latestVersion, currentVersion) > 0 : true;
-	const staged = getStagedPortableUpdate(info);
+	if (info.isPortable && !updateAvailable) {
+		clearStagedPortableUpdate(info);
+	}
+	const staged = info.isPortable && updateAvailable ? getStagedPortableUpdate(info) : null;
 
 	return {
 		currentVersion,

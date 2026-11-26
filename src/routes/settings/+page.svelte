@@ -136,9 +136,7 @@
 			}
 			const result = (await res.json()) as PortableUpdateCheck;
 			updateCheckResult = result;
-			if (result.stagedVersion) {
-				stagedVersion = result.stagedVersion;
-			}
+			stagedVersion = result.stagedVersion;
 			if (!data.portableInfo?.isPortable) {
 				updateMessageTone = 'info';
 				updateMessage = `Latest GitHub release is ${result.latestVersion}.`;
