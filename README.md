@@ -10,6 +10,8 @@ CertFlow is built for event organisers, clubs, schools and competitions that iss
 [![Open Live App](https://img.shields.io/badge/Live%20App-Railway-0B0D0E?style=for-the-badge&logo=railway&logoColor=white)](https://cert-flow.up.railway.app)
 [![CI Quality Gate](https://img.shields.io/github/actions/workflow/status/FishyWeed/CertFlow/ci.yml?branch=main&style=for-the-badge&label=CI)](https://github.com/FishyWeed/CertFlow/actions/workflows/ci.yml)
 
+![CertFlow Design Editor](static/demo/editor-light.png)
+
 ---
 
 ## One-Click Launch (No Coding Required)

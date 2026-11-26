@@ -18,6 +18,15 @@
 		type CertificateDraft
 	} from '#lib/features/certificates/CertificatePropertiesPanel.svelte';
 	import {
+		buildCertificateFilterOptions,
+		buildCertificateRenderData,
+		computeFilterValuesForKey,
+		filterCertificatesByKeyValue,
+		pickDefaultFilterKey,
+		readCertificateFieldValue,
+		TEMPLATE_FILTER_KEY
+	} from '#lib/features/certificates/properties.ts';
+	import {
 		buildBulkCertificatesZip,
 		formatMimeType,
 		renderCertificateBytes,
@@ -31,7 +40,8 @@
 	let selectedCertId = $state<string | null>(null);
 	let liveDraft = $state<CertificateDraft | null>(null);
 	let showPreview = $state(true);
-	let roleFilter = $state('all');
+	let filterKey = $state<string | null>(null);
+	let filterValue = $state('all');
 	let generating = $state(false);
 	let saving = $state(false);
 	let exporting = $state(false);
@@ -41,13 +51,40 @@
 	let exportMenuPos = $state({ top: 0, left: 16 });
 	let message = $state('');
 
-	const roles = $derived(Array.from(new Set(data.certificates.map((c) => c.role))).sort());
+	const templateNameById = $derived(new Map(data.templates.map((t) => [t.id, t.name])));
+
+	const filterOptions = $derived(
+		buildCertificateFilterOptions(data.project.criteriaConfig ?? [], data.certificates)
+	);
+
+	const activeFilterKey = $derived.by(() => {
+		if (filterKey && filterOptions.some((o) => o.key === filterKey)) {
+			return filterKey;
+		}
+		return pickDefaultFilterKey(filterOptions, data.certificates);
+	});
+
+	const filterValues = $derived(
+		computeFilterValuesForKey(data.certificates, activeFilterKey, templateNameById)
+	);
+
+	// Reset value filter to 'all' if the active column no longer contains the selected value.
+	$effect(() => {
+		if (filterValue !== 'all' && !filterValues.some((v) => v.value === filterValue)) {
+			filterValue = 'all';
+		}
+	});
 
 	const filteredCertificates = $derived(
-		roleFilter === 'all'
-			? data.certificates
-			: data.certificates.filter((c) => c.role === roleFilter)
+		filterCertificatesByKeyValue(data.certificates, activeFilterKey, filterValue, templateNameById)
 	);
+
+	function getListRowBadge(cert: (typeof data.certificates)[number]): string {
+		if (activeFilterKey === TEMPLATE_FILTER_KEY) {
+			return templateNameById.get(cert.templateId) ?? cert.certName;
+		}
+		return readCertificateFieldValue(cert, activeFilterKey).trim() || cert.role;
+	}
 
 	// Keep the first certificate selected automatically so the preview pane opens immediately.
 	$effect(() => {
@@ -78,20 +115,14 @@
 
 	const previewData = $derived.by<Record<string, string>>(() => {
 		if (!selectedCertificate) return {};
-		const name = liveDraft?.recipientName ?? selectedCertificate.recipientName;
-		const title = liveDraft?.certTitle ?? selectedCertificate.certTitle;
-		const role = liveDraft?.role ?? selectedCertificate.role;
-		const rank = liveDraft?.ranking ?? selectedCertificate.ranking;
-		const email = liveDraft?.email ?? selectedCertificate.email ?? '';
-		return {
-			name,
-			title,
-			role,
-			rank,
-			ranking: rank,
-			email,
-			...(selectedCertificate.customProperties ?? {})
-		};
+		return buildCertificateRenderData({
+			recipientName: liveDraft?.recipientName ?? selectedCertificate.recipientName,
+			certTitle: liveDraft?.certTitle ?? selectedCertificate.certTitle,
+			role: liveDraft?.role ?? selectedCertificate.role,
+			ranking: liveDraft?.ranking ?? selectedCertificate.ranking,
+			email: liveDraft?.email ?? selectedCertificate.email,
+			customProperties: liveDraft?.customProperties ?? selectedCertificate.customProperties
+		});
 	});
 
 	async function handleGenerateAll() {
@@ -116,15 +147,7 @@
 		}
 	}
 
-	async function handleSaveProperties(patch: {
-		templateId: string;
-		certName: string;
-		recipientName: string;
-		certTitle: string;
-		role: string;
-		ranking: string;
-		email: string | null;
-	}) {
+	async function handleSaveProperties(patch: CertificateDraft) {
 		if (!selectedCertificate) return;
 		saving = true;
 		message = '';
@@ -148,15 +171,7 @@
 	}
 
 	function buildRenderData(cert: (typeof data.certificates)[number]): Record<string, string> {
-		return {
-			name: cert.recipientName,
-			title: cert.certTitle,
-			role: cert.role,
-			rank: cert.ranking,
-			ranking: cert.ranking,
-			email: cert.email ?? '',
-			...(cert.customProperties ?? {})
-		};
+		return buildCertificateRenderData(cert);
 	}
 
 	function toggleExportMenu() {
@@ -223,9 +238,16 @@
 					data: buildRenderData(cert),
 					format
 				});
+				const rawFolder =
+					activeFilterKey === TEMPLATE_FILTER_KEY
+						? (templateNameById.get(cert.templateId) ?? cert.certName)
+						: readCertificateFieldValue(cert, activeFilterKey).trim() ||
+							cert.role ||
+							'Certificates';
+				const folder = rawFolder.replace(/[\\/:*?"<>|]+/g, '-').trim() || 'Certificates';
 				const safe = cert.recipientName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 				files.push({
-					fileName: `${cert.role}/${safe}-${cert.certCode}.${format}`,
+					fileName: `${folder}/${safe}-${cert.certCode}.${format}`,
 					bytes
 				});
 			}
@@ -313,28 +335,50 @@
 			{/snippet}
 		</EmptyState>
 	{:else}
-		<!-- Role Filter Pills -->
-		<div class="flex flex-wrap items-center gap-1.5">
-			<button
-				type="button"
-				onclick={() => (roleFilter = 'all')}
-				class="rounded-full border px-3 py-1 text-xs font-medium {roleFilter === 'all'
-					? 'border-amber-500 bg-amber-50 text-amber-900'
-					: 'border-border-default bg-white text-ink-secondary'}"
-			>
-				All ({data.certificates.length})
-			</button>
-			{#each roles as role (role)}
+		<!-- Dynamic Table-Header Filter Bar -->
+		<div class="flex flex-wrap items-center gap-2">
+			<div class="flex items-center gap-1.5">
+				<label for="cert-filter-column" class="text-xs font-medium text-ink-secondary">
+					Filter by
+				</label>
+				<select
+					id="cert-filter-column"
+					value={activeFilterKey}
+					onchange={(e) => {
+						filterKey = e.currentTarget.value;
+						filterValue = 'all';
+					}}
+					class="rounded-lg border border-border-default bg-surface-card px-2.5 py-1 text-xs font-semibold text-ink-primary outline-none focus:border-amber-500"
+				>
+					{#each filterOptions as opt (opt.key)}
+						<option value={opt.key}>{opt.label}</option>
+					{/each}
+				</select>
+			</div>
+
+			<div class="flex flex-wrap items-center gap-1.5">
 				<button
 					type="button"
-					onclick={() => (roleFilter = role)}
-					class="rounded-full border px-3 py-1 text-xs font-medium {roleFilter === role
+					onclick={() => (filterValue = 'all')}
+					class="rounded-full border px-3 py-1 text-xs font-medium transition {filterValue === 'all'
 						? 'border-amber-500 bg-amber-50 text-amber-900'
-						: 'border-border-default bg-white text-ink-secondary'}"
+						: 'border-border-default bg-white text-ink-secondary hover:bg-surface-subtle'}"
 				>
-					{role}
+					All ({data.certificates.length})
 				</button>
-			{/each}
+				{#each filterValues as item (item.value)}
+					<button
+						type="button"
+						onclick={() => (filterValue = item.value)}
+						class="rounded-full border px-3 py-1 text-xs font-medium transition {filterValue ===
+						item.value
+							? 'border-amber-500 bg-amber-50 text-amber-900'
+							: 'border-border-default bg-white text-ink-secondary hover:bg-surface-subtle'}"
+					>
+						{item.label} ({item.count})
+					</button>
+				{/each}
+			</div>
 		</div>
 
 		<!-- Numbered List + Live Preview Pane + Selected Properties Inspector -->
@@ -360,6 +404,7 @@
 							: 'max-h-[420px] lg:max-h-none'}"
 					>
 						{#each filteredCertificates as cert, idx (cert.id)}
+							{@const rowBadge = getListRowBadge(cert)}
 							<li>
 								<button
 									type="button"
@@ -376,7 +421,9 @@
 										<span class="mr-2 font-mono text-xs text-ink-muted">{idx + 1}.</span>
 										{cert.recipientName}
 									</span>
-									<Badge tone={cert.email ? 'emerald' : 'neutral'}>{cert.role}</Badge>
+									{#if rowBadge}
+										<Badge tone={cert.email ? 'emerald' : 'neutral'}>{rowBadge}</Badge>
+									{/if}
 								</button>
 							</li>
 						{/each}
@@ -409,6 +456,7 @@
 				{#if selectedCertificate}
 					<CertificatePropertiesPanel
 						certificate={selectedCertificate}
+						properties={data.project.criteriaConfig ?? []}
 						templates={data.templates.map((t) => ({ id: t.id, name: t.name }))}
 						{saving}
 						onSave={handleSaveProperties}

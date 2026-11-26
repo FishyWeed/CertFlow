@@ -2,6 +2,12 @@
 	import { Mail, Save } from '@lucide/svelte';
 	import Badge from '#lib/components/ui/Badge.svelte';
 	import Button from '#lib/components/ui/Button.svelte';
+	import type { CriterionDefinition } from '#lib/types/certflow.ts';
+	import {
+		buildCertificateFieldDefs,
+		buildCertificateUpdateFromFields,
+		extractCertificateFieldValues
+	} from './properties.ts';
 
 	export interface CertificateRecord {
 		id: string;
@@ -25,6 +31,7 @@
 		role: string;
 		ranking: string;
 		email: string | null;
+		customProperties: Record<string, string>;
 	}
 
 	interface TemplateOption {
@@ -34,55 +41,48 @@
 
 	interface Props {
 		certificate: CertificateRecord;
+		properties: CriterionDefinition[];
 		templates: TemplateOption[];
 		saving: boolean;
 		onSave: (patch: CertificateDraft) => Promise<void>;
 		onDraftChange?: (draft: CertificateDraft) => void;
 	}
 
-	let { certificate, templates, saving, onSave, onDraftChange }: Props = $props();
+	let { certificate, properties, templates, saving, onSave, onDraftChange }: Props = $props();
 
 	let templateId = $state('');
 	let certName = $state('');
-	let recipientName = $state('');
-	let certTitle = $state('');
-	let role = $state('');
-	let ranking = $state('');
-	let email = $state('');
+	let fieldValues = $state<Record<string, string>>({});
+
+	const fields = $derived(buildCertificateFieldDefs(properties, certificate));
 
 	$effect(() => {
 		templateId = certificate.templateId;
 		certName = certificate.certName;
-		recipientName = certificate.recipientName;
-		certTitle = certificate.certTitle;
-		role = certificate.role;
-		ranking = certificate.ranking;
-		email = certificate.email ?? '';
+		fieldValues = extractCertificateFieldValues(certificate, fields);
 	});
 
 	$effect(() => {
-		onDraftChange?.({
+		const draft = buildCertificateUpdateFromFields(
+			certificate,
+			fields,
+			fieldValues,
 			templateId,
-			certName,
-			recipientName,
-			certTitle,
-			role,
-			ranking,
-			email: email.trim() || null
-		});
+			certName
+		);
+		onDraftChange?.(draft);
 	});
 
 	async function handleSubmit(event: SubmitEvent) {
 		event.preventDefault();
-		await onSave({
+		const patch = buildCertificateUpdateFromFields(
+			certificate,
+			fields,
+			fieldValues,
 			templateId,
-			certName: certName.trim(),
-			recipientName: recipientName.trim(),
-			certTitle: certTitle.trim(),
-			role: role.trim(),
-			ranking: ranking.trim(),
-			email: email.trim() || null
-		});
+			certName
+		);
+		await onSave(patch);
 	}
 
 	const statusTone = $derived(
@@ -141,76 +141,52 @@
 			/>
 		</div>
 
-		<div>
-			<label for="prop-recipient" class="block text-xs font-medium text-ink-secondary">
-				Name on Certificate
-			</label>
-			<input
-				id="prop-recipient"
-				type="text"
-				required
-				bind:value={recipientName}
-				class="mt-1 block w-full rounded-lg border border-border-strong px-3 py-2 text-sm"
-			/>
-		</div>
-
-		<div>
-			<label for="prop-title" class="block text-xs font-medium text-ink-secondary">
-				Certificate / Event Title
-			</label>
-			<input
-				id="prop-title"
-				type="text"
-				bind:value={certTitle}
-				placeholder="e.g. Annual Conference 2026"
-				class="mt-1 block w-full rounded-lg border border-border-strong px-3 py-2 text-sm"
-			/>
-		</div>
-
-		<div class="grid gap-3 sm:grid-cols-2">
-			<div>
-				<label for="prop-role" class="block text-xs font-medium text-ink-secondary">Role</label>
-				<input
-					id="prop-role"
-					type="text"
-					bind:value={role}
-					placeholder="Participant / Organiser"
-					class="mt-1 block w-full rounded-lg border border-border-strong px-3 py-2 text-sm"
-				/>
+		{#if fields.length > 0}
+			<div class="space-y-3 border-t border-border-default pt-3">
+				{#each fields as field (field.key)}
+					{@const inputId = `cert-field-${field.key}`}
+					<div>
+						<div class="flex items-center justify-between gap-2">
+							<label for={inputId} class="block text-xs font-medium text-ink-secondary">
+								{field.label}
+							</label>
+							<code class="text-[10px] text-ink-muted">{`{{${field.key}}}`}</code>
+						</div>
+						{#if field.isEmail}
+							<div class="relative mt-1">
+								<Mail class="pointer-events-none absolute top-2.5 left-3 h-4 w-4 text-ink-muted" />
+								<input
+									id={inputId}
+									type="email"
+									value={fieldValues[field.key] ?? ''}
+									oninput={(e) => {
+										fieldValues = { ...fieldValues, [field.key]: e.currentTarget.value };
+									}}
+									placeholder="recipient@example.org"
+									class="block w-full rounded-lg border border-border-strong py-2 pr-3 pl-9 text-sm"
+								/>
+							</div>
+						{:else}
+							<input
+								id={inputId}
+								type="text"
+								required={field.isRequired}
+								value={fieldValues[field.key] ?? ''}
+								oninput={(e) => {
+									fieldValues = { ...fieldValues, [field.key]: e.currentTarget.value };
+								}}
+								placeholder={`Enter ${field.label}`}
+								class="mt-1 block w-full rounded-lg border border-border-strong px-3 py-2 text-sm"
+							/>
+						{/if}
+					</div>
+				{/each}
 			</div>
-			<div>
-				<label for="prop-ranking" class="block text-xs font-medium text-ink-secondary">
-					Rank
-				</label>
-				<input
-					id="prop-ranking"
-					type="text"
-					bind:value={ranking}
-					placeholder="Empty for template default, or e.g. Champion"
-					class="mt-1 block w-full rounded-lg border border-border-strong px-3 py-2 text-sm"
-				/>
-			</div>
-		</div>
+		{/if}
 
-		<div>
-			<label for="prop-email" class="block text-xs font-medium text-ink-secondary">
-				Recipient Email (Optional)
-			</label>
-			<div class="relative mt-1">
-				<Mail class="pointer-events-none absolute top-2.5 left-3 h-4 w-4 text-ink-muted" />
-				<input
-					id="prop-email"
-					type="email"
-					bind:value={email}
-					placeholder="No email attached"
-					class="block w-full rounded-lg border border-border-strong py-2 pr-3 pl-9 text-sm"
-				/>
-			</div>
-		</div>
-
-		<div class="flex items-center justify-end gap-2 border-t border-border-default pt-4">
-			<Button type="submit" variant="primary" size="sm" disabled={saving}>
-				<Save class="h-3.5 w-3.5" />
+		<div class="flex justify-end pt-2">
+			<Button type="submit" variant="primary" disabled={saving}>
+				<Save class="h-4 w-4" />
 				{saving ? 'Saving...' : 'Save Properties'}
 			</Button>
 		</div>

@@ -13,7 +13,8 @@ const updateCertSchema = z.object({
 	certTitle: z.string().trim().max(200).optional(),
 	role: z.string().trim().max(100).optional(),
 	ranking: z.string().trim().max(160).optional(),
-	email: z.string().trim().email().nullable().optional()
+	email: z.string().trim().email().nullable().optional(),
+	customProperties: z.record(z.string(), z.string()).optional()
 });
 
 export const PATCH: RequestHandler = async ({ params, request, locals }) => {

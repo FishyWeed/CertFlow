@@ -1,5 +1,6 @@
 <script lang="ts">
 	import {
+		ArrowLeft,
 		ArrowRight,
 		Award,
 		Check,
@@ -12,12 +13,14 @@
 		HardDrive,
 		Layers,
 		Mail,
+		Maximize2,
 		Monitor,
 		Send,
 		SlidersHorizontal,
 		Star,
 		Terminal,
-		Type
+		Type,
+		X
 	} from '@lucide/svelte';
 	import AppHeader from '#lib/components/layout/AppHeader.svelte';
 	import type { PageProps } from './$types';
@@ -78,6 +81,93 @@
 		sampleRecipients.find((r) => r.id === activeSampleId) ?? sampleRecipients[0]
 	);
 
+	// Interactive Product Tour slides powered by real Playwright captures (light & dark)
+	interface ProductSlide {
+		id: string;
+		step: string;
+		label: string;
+		title: string;
+		caption: string;
+		lightSrc: string;
+		darkSrc: string;
+		activeTabClass: string;
+		badgeClass: string;
+		highlights: string[];
+	}
+
+	const productSlides: ProductSlide[] = [
+		{
+			id: 'editor',
+			step: '1',
+			label: '1. Design Editor',
+			title: 'Gridded canvas sandbox with direct on-canvas text editing',
+			caption:
+				'Drag properties onto the certificate, style individual words with 114 built-in fonts and align elements using smart centre and equal-spacing guides.',
+			lightSrc: '/demo/editor-light.png',
+			darkSrc: '/demo/editor-dark.png',
+			activeTabClass: 'border-indigo-500 bg-indigo-50 text-indigo-700',
+			badgeClass: 'bg-indigo-100 text-indigo-700',
+			highlights: ['Direct on-canvas WYSIWYG', 'Optical vertical centring', '114 built-in fonts']
+		},
+		{
+			id: 'data',
+			step: '2',
+			label: '2. Data & Mapping',
+			title: 'Spreadsheet import, inline editing and automatic template routing',
+			caption:
+				'Upload CSV or Excel lists, search or filter any column, drag to reorder rows and inspect which certificate template matches each recipient.',
+			lightSrc: '/demo/data-light.png',
+			darkSrc: '/demo/data-dark.png',
+			activeTabClass: 'border-emerald-500 bg-emerald-50 text-emerald-700',
+			badgeClass: 'bg-emerald-100 text-emerald-700',
+			highlights: ['CSV & Excel import', 'Filter & sort every column', 'Matched Template badges']
+		},
+		{
+			id: 'certificates',
+			step: '3',
+			label: '3. Generate Certificates',
+			title: 'Live side-by-side previews with per-recipient overrides',
+			caption:
+				'Review every generated certificate before export, override single-recipient properties without changing your dataset and download PDF, PNG, JPG or ZIP archives.',
+			lightSrc: '/demo/certificates-light.png',
+			darkSrc: '/demo/certificates-dark.png',
+			activeTabClass: 'border-amber-500 bg-amber-50 text-amber-800',
+			badgeClass: 'bg-amber-100 text-amber-800',
+			highlights: ['Role filter pills', 'Per-recipient overrides', 'Single file or role-sorted ZIP']
+		},
+		{
+			id: 'email',
+			step: '4',
+			label: '4. Send Email',
+			title: 'Personalised bulk delivery with per-recipient tracking',
+			caption:
+				'Write reusable email templates with {{property}} tokens, attach rendered certificates and track sent, remaining, failed and skipped recipients.',
+			lightSrc: '/demo/email-light.png',
+			darkSrc: '/demo/email-dark.png',
+			activeTabClass: 'border-sky-500 bg-sky-50 text-sky-700',
+			badgeClass: 'bg-sky-100 text-sky-700',
+			highlights: ['Brevo, Resend & SMTP', 'Saved project drafts', 'Live delivery tracker']
+		}
+	];
+
+	let activeSlideIndex = $state(0);
+	let expandedSlide = $state<ProductSlide | null>(null);
+	const activeSlide = $derived(productSlides[activeSlideIndex] ?? productSlides[0]);
+
+	function prevSlide() {
+		activeSlideIndex = (activeSlideIndex - 1 + productSlides.length) % productSlides.length;
+	}
+
+	function nextSlide() {
+		activeSlideIndex = (activeSlideIndex + 1) % productSlides.length;
+	}
+
+	function handleLandingKeydown(event: KeyboardEvent) {
+		if (event.key === 'Escape' && expandedSlide) {
+			expandedSlide = null;
+		}
+	}
+
 	// Interactive Deploy & Self-Host selector
 	type DeployTab = 'windows' | 'portable' | 'cloud' | 'docker';
 	let activeDeployTab = $state<DeployTab>('windows');
@@ -113,10 +203,18 @@
 	/>
 </svelte:head>
 
+<svelte:window onkeydown={handleLandingKeydown} />
+
 <div class="flex min-h-screen flex-col bg-surface-page text-ink-primary">
 	<AppHeader brandHref="/">
 		{#snippet actions()}
 			<nav aria-label="Landing sections" class="hidden items-center gap-1 md:flex">
+				<a
+					href="#tour"
+					class="rounded-lg px-3 py-1.5 text-xs font-medium text-ink-secondary transition hover:bg-surface-subtle hover:text-ink-primary"
+				>
+					Product Tour
+				</a>
 				<a
 					href="#features"
 					class="rounded-lg px-3 py-1.5 text-xs font-medium text-ink-secondary transition hover:bg-surface-subtle hover:text-ink-primary"
@@ -415,6 +513,130 @@
 								<span class="truncate text-ink-muted">Ready to send to {activeSample.email}</span>
 							</div>
 						</div>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- Interactive Product Tour Slides (Real Screenshots in Light & Dark Mode) -->
+		<section id="tour" class="mx-auto max-w-6xl scroll-mt-24 px-4 pt-14 pb-6 sm:px-6 lg:pt-20">
+			<div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+				<div class="max-w-2xl">
+					<p class="text-xs font-semibold tracking-wider text-accent uppercase">Product Tour</p>
+					<h2 class="mt-2 text-2xl font-bold tracking-tight text-ink-primary sm:text-3xl">
+						See every stage of the workspace in action.
+					</h2>
+					<p class="mt-2 text-sm text-ink-secondary sm:text-base">
+						Step through real screenshots of the editor, spreadsheet router, certificate generator
+						and email sender. Switch light or dark mode above to preview both themes.
+					</p>
+				</div>
+
+				<div class="flex shrink-0 items-center gap-2">
+					<span class="text-xs font-semibold text-ink-muted">
+						{activeSlideIndex + 1} / {productSlides.length}
+					</span>
+					<button
+						type="button"
+						onclick={prevSlide}
+						aria-label="Previous product slide"
+						class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border-default bg-surface-card text-ink-secondary transition hover:bg-surface-subtle hover:text-ink-primary"
+					>
+						<ArrowLeft class="h-4 w-4" />
+					</button>
+					<button
+						type="button"
+						onclick={nextSlide}
+						aria-label="Next product slide"
+						class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border-default bg-surface-card text-ink-secondary transition hover:bg-surface-subtle hover:text-ink-primary"
+					>
+						<ArrowRight class="h-4 w-4" />
+					</button>
+				</div>
+			</div>
+
+			<!-- Slide Selector Tabs -->
+			<div
+				class="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-4"
+				role="tablist"
+				aria-label="Product walkthrough slides"
+			>
+				{#each productSlides as slide, idx (slide.id)}
+					<button
+						type="button"
+						role="tab"
+						aria-selected={activeSlideIndex === idx}
+						onclick={() => (activeSlideIndex = idx)}
+						class="flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-left text-xs font-semibold transition {activeSlideIndex ===
+						idx
+							? slide.activeTabClass + ' shadow-xs'
+							: 'border-border-default bg-surface-card text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary'}"
+					>
+						<span
+							class="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[11px] font-bold {slide.badgeClass}"
+						>
+							{slide.step}
+						</span>
+						<span class="truncate">{slide.label.replace(/^\d+\.\s*/, '')}</span>
+					</button>
+				{/each}
+			</div>
+
+			<!-- Active Slide Frame -->
+			<div
+				class="mt-4 overflow-hidden rounded-2xl border border-border-strong bg-surface-card shadow-md"
+			>
+				<div
+					class="flex flex-wrap items-center justify-between gap-2 border-b border-border-default bg-surface-page px-4 py-2.5"
+				>
+					<div class="flex min-w-0 items-center gap-2">
+						<span class="h-2.5 w-2.5 shrink-0 rounded-full bg-red-400"></span>
+						<span class="h-2.5 w-2.5 shrink-0 rounded-full bg-amber-400"></span>
+						<span class="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-400"></span>
+						<span class="ml-1 truncate text-xs font-semibold text-ink-primary">
+							{activeSlide.label} — {activeSlide.title}
+						</span>
+					</div>
+					<button
+						type="button"
+						onclick={() => (expandedSlide = activeSlide)}
+						class="inline-flex items-center gap-1.5 rounded-lg border border-border-default bg-surface-card px-2.5 py-1 text-[11px] font-semibold text-ink-secondary transition hover:bg-surface-subtle hover:text-ink-primary"
+					>
+						<Maximize2 class="h-3 w-3" />
+						Expand
+					</button>
+				</div>
+
+				<div class="relative bg-surface-subtle">
+					<img
+						src={activeSlide.lightSrc}
+						alt={`CertFlow ${activeSlide.label} screenshot (light mode)`}
+						class="block aspect-[16/10] w-full object-cover object-top dark:hidden"
+						loading="lazy"
+					/>
+					<img
+						src={activeSlide.darkSrc}
+						alt={`CertFlow ${activeSlide.label} screenshot (dark mode)`}
+						class="hidden aspect-[16/10] w-full object-cover object-top dark:block"
+						loading="lazy"
+					/>
+				</div>
+
+				<div
+					class="flex flex-col justify-between gap-3 border-t border-border-default bg-surface-card px-5 py-4 sm:flex-row sm:items-center"
+				>
+					<p class="max-w-2xl text-xs leading-relaxed text-ink-secondary sm:text-sm">
+						{activeSlide.caption}
+					</p>
+					<div class="flex flex-wrap items-center gap-1.5">
+						{#each activeSlide.highlights as item (item)}
+							<span
+								class="inline-flex items-center gap-1 rounded-full border border-border-default bg-surface-page px-2.5 py-1 text-[11px] font-medium text-ink-secondary"
+							>
+								<Check class="h-3 w-3 text-emerald-600" />
+								{item}
+							</span>
+						{/each}
 					</div>
 				</div>
 			</div>
@@ -1164,4 +1386,46 @@
 			</div>
 		</div>
 	</footer>
+
+	<!-- Full-size Screenshot Lightbox -->
+	{#if expandedSlide}
+		<div
+			role="dialog"
+			aria-modal="true"
+			aria-label={`${expandedSlide.label} full-size preview`}
+			class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-xs"
+		>
+			<div
+				class="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-border-strong bg-surface-card shadow-2xl"
+			>
+				<div
+					class="flex items-center justify-between gap-3 border-b border-border-default px-4 py-3"
+				>
+					<p class="truncate text-sm font-semibold text-ink-primary">
+						{expandedSlide.label} — {expandedSlide.title}
+					</p>
+					<button
+						type="button"
+						onclick={() => (expandedSlide = null)}
+						aria-label="Close expanded preview"
+						class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border-default text-ink-secondary transition hover:bg-surface-subtle hover:text-ink-primary"
+					>
+						<X class="h-4 w-4" />
+					</button>
+				</div>
+				<div class="overflow-auto bg-surface-subtle">
+					<img
+						src={expandedSlide.lightSrc}
+						alt={`CertFlow ${expandedSlide.label} full-size screenshot (light mode)`}
+						class="block w-full dark:hidden"
+					/>
+					<img
+						src={expandedSlide.darkSrc}
+						alt={`CertFlow ${expandedSlide.label} full-size screenshot (dark mode)`}
+						class="hidden w-full dark:block"
+					/>
+				</div>
+			</div>
+		</div>
+	{/if}
 </div>
