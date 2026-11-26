@@ -575,12 +575,15 @@
 	const inputClass =
 		'mt-1.5 block h-[38px] w-full rounded-lg border border-border-strong bg-surface-card px-3 text-sm text-ink-primary placeholder:text-ink-muted outline-none transition hover:border-ink-muted/60 focus:border-accent-vivid focus:ring-3 focus:ring-accent-vivid/18 dark:bg-surface-recessed';
 
+	let contentPaneEl = $state<HTMLDivElement | null>(null);
+
 	function navigateSection(section: SettingsSection) {
 		activeSection = section;
+		contentPaneEl?.scrollTo({ top: 0 });
 	}
 </script>
 
-<div class="min-h-screen bg-surface-page">
+<div class="flex min-h-screen flex-col bg-surface-page md:h-dvh md:overflow-hidden">
 	<AppHeader brandHref="/" maxWidthClass="max-w-5xl">
 		{#snippet actions()}
 			<a
@@ -593,8 +596,10 @@
 		{/snippet}
 	</AppHeader>
 
-	<main class="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-		<div class="mb-6">
+	<main
+		class="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 pt-8 pb-8 sm:px-6 md:min-h-0 md:overflow-hidden md:pb-0"
+	>
+		<div class="mb-6 shrink-0">
 			<h1 class="font-display text-[28px] leading-tight font-semibold tracking-[-0.03em] text-ink-primary">
 				Settings
 			</h1>
@@ -603,12 +608,12 @@
 			</p>
 		</div>
 
-		<div class="grid grid-cols-1 gap-8 md:grid-cols-12">
-			<!-- Left Sticky Section Nav -->
-			<aside class="md:col-span-3">
+		<div class="grid flex-1 grid-cols-1 gap-8 md:min-h-0 md:grid-cols-12">
+			<!-- Left Pinned Section Nav with Bottom-Anchored Sign Out -->
+			<aside class="flex flex-col md:col-span-3 md:min-h-0 md:pb-6">
 				<nav
 					aria-label="Settings sections"
-					class="flex gap-1 overflow-x-auto pb-1 md:sticky md:top-20 md:flex-col md:overflow-visible md:pb-0"
+					class="flex flex-1 gap-1 overflow-x-auto pb-1 md:flex-col md:overflow-y-auto md:pb-0"
 				>
 					<button
 						type="button"
@@ -680,24 +685,28 @@
 							{data.profiles.length}
 						</span>
 					</button>
+				</nav>
 
-					<div class="my-1.5 hidden border-t border-border-subtle md:block"></div>
+				<div class="mt-3 shrink-0 border-t border-border-subtle pt-3 md:mt-auto md:pt-4">
 					<Button
 						type="button"
 						variant="danger"
 						size="sm"
 						disabled={signingOut}
 						onclick={handleSignOut}
-						class="shrink-0 justify-start md:w-full"
+						class="w-full justify-start"
 					>
 						<LogOut class="h-4 w-4 shrink-0" />
 						<span>{signingOut ? 'Signing Out...' : 'Sign Out'}</span>
 					</Button>
-				</nav>
+				</div>
 			</aside>
 
-			<!-- Right Active Section -->
-			<div class="space-y-6 md:col-span-9">
+			<!-- Right Independently Scrollable Active Section -->
+			<div
+				bind:this={contentPaneEl}
+				class="space-y-6 md:col-span-9 md:min-h-0 md:overflow-y-auto md:pr-1 md:pb-10"
+			>
 				{#if activeSection === 'profile'}
 					<!-- Account Details -->
 					<section
