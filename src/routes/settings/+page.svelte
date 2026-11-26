@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import {
 		ArrowLeft,
@@ -11,6 +11,7 @@
 		HardDrive,
 		KeyRound,
 		Loader2,
+		LogOut,
 		Mail,
 		Pencil,
 		Plus,
@@ -46,6 +47,17 @@
 	}
 
 	let activeSection = $state<SettingsSection>(resolveInitialSection());
+	let signingOut = $state(false);
+
+	async function handleSignOut() {
+		signingOut = true;
+		try {
+			await authClient.signOut();
+			await goto('/', { invalidateAll: true });
+		} finally {
+			signingOut = false;
+		}
+	}
 
 	// Account profile & password state
 	let accountName = $state('');
@@ -668,6 +680,19 @@
 							{data.profiles.length}
 						</span>
 					</button>
+
+					<div class="my-1.5 hidden border-t border-border-subtle md:block"></div>
+					<Button
+						type="button"
+						variant="danger"
+						size="sm"
+						disabled={signingOut}
+						onclick={handleSignOut}
+						class="shrink-0 justify-start md:w-full"
+					>
+						<LogOut class="h-4 w-4 shrink-0" />
+						<span>{signingOut ? 'Signing Out...' : 'Sign Out'}</span>
+					</Button>
 				</nav>
 			</aside>
 

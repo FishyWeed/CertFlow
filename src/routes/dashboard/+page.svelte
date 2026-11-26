@@ -1,15 +1,5 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
-	import {
-		AlertTriangle,
-		FolderPlus,
-		LogOut,
-		OctagonAlert,
-		Search,
-		Settings,
-		X
-	} from '@lucide/svelte';
-	import { authClient } from '#lib/auth-client.ts';
+	import { AlertTriangle, FolderPlus, OctagonAlert, Search, Settings, X } from '@lucide/svelte';
 	import AppHeader from '#lib/components/layout/AppHeader.svelte';
 	import Badge from '#lib/components/ui/Badge.svelte';
 	import Button from '#lib/components/ui/Button.svelte';
@@ -21,7 +11,6 @@
 
 	let { data, form }: PageProps = $props();
 	let showCreateModal = $state(false);
-	let signingOut = $state(false);
 	let searchQuery = $state('');
 
 	const atProjectLimit = $derived(
@@ -38,16 +27,6 @@
 				(p.description ?? '').toLowerCase().includes(q)
 		);
 	});
-
-	async function handleSignOut() {
-		signingOut = true;
-		try {
-			await authClient.signOut();
-			await goto('/', { invalidateAll: true });
-		} finally {
-			signingOut = false;
-		}
-	}
 </script>
 
 <div class="min-h-screen bg-surface-page">
@@ -64,15 +43,6 @@
 				<Settings class="h-4 w-4 shrink-0 text-ink-secondary" />
 				<span>Settings</span>
 			</a>
-			<button
-				type="button"
-				disabled={signingOut}
-				onclick={handleSignOut}
-				class="cf-pressable inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-border-default bg-surface-card px-2.5 py-1.5 text-xs font-medium text-ink-primary shadow-xs hover:bg-surface-subtle disabled:opacity-45 sm:px-3"
-			>
-				<LogOut class="h-4 w-4 shrink-0 text-ink-secondary" />
-				<span class="hidden sm:inline">Sign Out</span>
-			</button>
 		{/snippet}
 	</AppHeader>
 
