@@ -335,6 +335,15 @@ function locateExtractedBundleDir(extractRoot: string): string | null {
 
 const UPDATE_RESTART_EXIT_CODE = 75;
 
+export function buildWindowsVbsLauncherContent(scriptPath: string): string {
+	const psExe = existsSync('C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe')
+		? 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe'
+		: 'powershell.exe';
+	const cmd = `"${psExe}" -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "${scriptPath}"`;
+	const escaped = cmd.replace(/"/g, '""');
+	return `CreateObject("WScript.Shell").Run "${escaped}", 0, False\r\n`;
+}
+
 export function buildWindowsUpdateScriptContent(params: {
 	rootDir: string;
 	bundleDir: string;
@@ -398,9 +407,9 @@ export function buildWindowsUpdateScriptContent(params: {
 		'    }',
 		'}',
 		'',
+		'Write-Log "Updater started (script PID $PID, waiting for server PID $OldPid)..."',
 		'try {',
 		'    Set-Location -LiteralPath $Root',
-		'    Write-Log "Waiting for PID $OldPid to exit..."',
 		'    $deadline = (Get-Date).AddSeconds(15)',
 		'    while ((Get-Date) -lt $deadline) {',
 		'        if (-not (Get-Process -Id $OldPid -ErrorAction SilentlyContinue)) { break }',
@@ -410,6 +419,15 @@ export function buildWindowsUpdateScriptContent(params: {
 		'        Write-Log "PID $OldPid still alive after timeout; terminating..."',
 		'        Stop-Process -Id $OldPid -Force -ErrorAction SilentlyContinue',
 		'        Start-Sleep -Milliseconds 600',
+		'    }',
+		'',
+		'    # Wait briefly for CertFlow.exe tray wrapper (if running from this folder) to exit cleanly.',
+		'    $TrayExe = Join-Path $Root "CertFlow.exe"',
+		'    $trayDeadline = (Get-Date).AddSeconds(6)',
+		'    while ((Get-Date) -lt $trayDeadline) {',
+		'        $trayProcs = @(Get-Process -Name "CertFlow" -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $TrayExe })',
+		'        if ($trayProcs.Count -eq 0) { break }',
+		'        Start-Sleep -Milliseconds 250',
 		'    }',
 		'    Start-Sleep -Milliseconds 400',
 		'',
@@ -460,8 +478,39 @@ export function buildWindowsUpdateScriptContent(params: {
 		'    Remove-Quiet $AppBak',
 		'    Remove-Quiet $RuntimeBak',
 		'',
+		'    # Refresh Desktop, Start Menu and Windows shell icon cache so new app logos appear immediately.',
+		'    try {',
+		'        $IcoPath = Join-Path $Root "certflow.ico"',
+		'        if (Test-Path -LiteralPath $IcoPath) {',
+		'            $Wsh = New-Object -ComObject WScript.Shell',
+		'            $ShortcutPaths = @(',
+		'                (Join-Path ([Environment]::GetFolderPath("Desktop")) "CertFlow.lnk"),',
+		'                (Join-Path $env:APPDATA "Microsoft\\Windows\\Start Menu\\Programs\\CertFlow\\CertFlow.lnk"),',
+		'                (Join-Path $env:APPDATA "Microsoft\\Windows\\Start Menu\\Programs\\CertFlow.lnk")',
+		'            )',
+		'            foreach ($lnk in $ShortcutPaths) {',
+		'                if (Test-Path -LiteralPath $lnk) {',
+		'                    $sc = $Wsh.CreateShortcut($lnk)',
+		'                    if ($sc.TargetPath -and ($sc.TargetPath -like "$Root*")) {',
+		'                        $sc.IconLocation = "$IcoPath,0"',
+		'                        $sc.Save()',
+		'                        Write-Log "Updated shortcut icon: $lnk"',
+		'                    }',
+		'                }',
+		'            }',
+		'            Add-Type -TypeDefinition \'using System; using System.Runtime.InteropServices; public static class CertFlowShell { [DllImport("shell32.dll")] public static extern void SHChangeNotify(int wEventId, uint uFlags, IntPtr dwItem1, IntPtr dwItem2); }\' -ErrorAction SilentlyContinue',
+		'            [CertFlowShell]::SHChangeNotify(0x08000000, 0, [IntPtr]::Zero, [IntPtr]::Zero)',
+		'            $ie4uinit = Join-Path $env:WINDIR "System32\\ie4uinit.exe"',
+		'            if (Test-Path -LiteralPath $ie4uinit) {',
+		'                Start-Process -FilePath $ie4uinit -ArgumentList @("-show") -WindowStyle Hidden -ErrorAction SilentlyContinue',
+		'            }',
+		'            Write-Log "Refreshed Windows shell icon cache."',
+		'        }',
+		'    } catch {',
+		'        Write-Log "Shortcut/icon refresh skipped: $_"',
+		'    }',
+		'',
 		'    $env:CERTFLOW_PORT = $Port',
-		'    $TrayExe = Join-Path $Root "CertFlow.exe"',
 		'    $BatLauncher = Join-Path $Root "Start-CertFlow.bat"',
 		'    if (Test-Path -LiteralPath $TrayExe) {',
 		'        Write-Log "Starting updated CertFlow silently via $TrayExe --no-open..."',
@@ -687,6 +736,7 @@ function launchStagedInstallHandoff(info: PortableRuntimeInfo, staged: StagedPor
 
 	if (process.platform === 'win32') {
 		const scriptPath = join(stagingDir, 'apply-update.ps1');
+		const vbsPath = join(stagingDir, 'launch-update.vbs');
 		writeWindowsUpdateScript({
 			scriptPath,
 			rootDir: info.rootDir,
@@ -695,16 +745,20 @@ function launchStagedInstallHandoff(info: PortableRuntimeInfo, staged: StagedPor
 			pid: process.pid,
 			port
 		});
-		const child = spawn(
-			'powershell.exe',
-			['-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', scriptPath],
-			{
-				cwd: info.rootDir,
-				detached: true,
-				stdio: 'ignore',
-				windowsHide: true
-			}
-		);
+		writeFileSync(vbsPath, buildWindowsVbsLauncherContent(scriptPath), 'utf8');
+
+		// Note: Spawning powershell.exe directly from Node with `detached: true` + `windowsHide: true`
+		// causes Windows PowerShell 5.1 to exit immediately (code 0) without running `-File`.
+		// Launching through GUI-subsystem `wscript.exe` avoids console inheritance and runs hidden cleanly.
+		const wscriptExe = existsSync('C:\\Windows\\System32\\wscript.exe')
+			? 'C:\\Windows\\System32\\wscript.exe'
+			: 'wscript.exe';
+		const child = spawn(wscriptExe, ['//B', '//NoLogo', vbsPath], {
+			cwd: info.rootDir,
+			detached: true,
+			stdio: 'ignore',
+			windowsHide: true
+		});
 		child.unref();
 	} else {
 		const scriptPath = join(stagingDir, 'apply-update.sh');

@@ -5,6 +5,7 @@ import JSZip from 'jszip';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
 	buildWindowsUpdateScriptContent,
+	buildWindowsVbsLauncherContent,
 	compareSemver,
 	extractZipArchive,
 	findMatchingReleaseAsset,
@@ -128,13 +129,24 @@ describe('portable updater helpers', () => {
 
 		expect(script).toContain('Get-Process -Id $OldPid');
 		expect(script).toContain('Stop-Process -Id $OldPid -Force');
+		expect(script).toContain('Get-Process -Name "CertFlow"');
 		expect(script).toContain('Move-WithRetry');
 		expect(script).toContain('Copy-WithRetry');
 		expect(script).toContain('CertFlow.exe');
 		expect(script).toContain('--no-open');
+		expect(script).toContain('SHChangeNotify');
+		expect(script).toContain('Start Menu\\Programs\\CertFlow\\CertFlow.lnk');
+		expect(script).toContain('ie4uinit.exe');
 		expect(script).not.toContain('tasklist');
 		expect(script).not.toContain('find /I');
 		expect(script).not.toContain('timeout /t');
+
+		const vbs = buildWindowsVbsLauncherContent('C:\\Portable\\CertFlow\\.update-staging\\apply-update.ps1');
+		expect(vbs).toContain('WScript.Shell');
+		expect(vbs).toContain('-NonInteractive');
+		expect(vbs).toContain('-WindowStyle Hidden');
+		expect(vbs).toContain('apply-update.ps1');
+		expect(vbs).toContain(', 0, False');
 	});
 
 	it('requires a staged download before Install can run and reads staged-update.json safely', () => {
