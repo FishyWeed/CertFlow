@@ -2,28 +2,30 @@
 	import type { Snippet } from 'svelte';
 
 	interface Props {
-		tone?: 'neutral' | 'indigo' | 'emerald' | 'amber' | 'sky' | 'red';
+		tone?: 'neutral' | 'indigo' | 'emerald' | 'amber' | 'sky' | 'danger' | 'red';
+		dot?: boolean;
+		class?: string;
 		children: Snippet;
 	}
 
-	let { tone = 'neutral', children }: Props = $props();
+	let { tone = 'neutral', dot = false, class: className = '', children }: Props = $props();
 
 	const toneClasses: Record<NonNullable<Props['tone']>, string> = {
-		neutral:
-			'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200',
-		indigo:
-			'border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-500/35 dark:bg-indigo-500/15 dark:text-indigo-300',
-		emerald:
-			'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/35 dark:bg-emerald-500/15 dark:text-emerald-300',
-		amber:
-			'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/35 dark:bg-amber-500/15 dark:text-amber-300',
-		sky: 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-500/35 dark:bg-sky-500/15 dark:text-sky-300',
-		red: 'border-red-200 bg-red-50 text-red-700 dark:border-red-500/35 dark:bg-red-500/15 dark:text-red-300'
+		neutral: 'border-border-default bg-surface-subtle text-ink-secondary',
+		indigo: 'border-tone-editor-border bg-tone-editor-soft text-tone-editor-ink',
+		emerald: 'border-tone-data-border bg-tone-data-soft text-tone-data-ink',
+		amber: 'border-tone-certs-border bg-tone-certs-soft text-tone-certs-ink',
+		sky: 'border-tone-email-border bg-tone-email-soft text-tone-email-ink',
+		danger: 'border-tone-danger-border bg-tone-danger-soft text-tone-danger-ink',
+		red: 'border-tone-danger-border bg-tone-danger-soft text-tone-danger-ink'
 	};
 </script>
 
 <span
-	class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium {toneClasses[tone]}"
+	class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs leading-4 font-medium whitespace-nowrap tabular-nums {toneClasses[tone]} {className}"
 >
+	{#if dot}
+		<span class="h-1.5 w-1.5 shrink-0 rounded-full bg-current" aria-hidden="true"></span>
+	{/if}
 	{@render children()}
 </span>

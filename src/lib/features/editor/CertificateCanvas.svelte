@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
 	import type KonvaType from 'konva';
+	import { Copy, EyeOff, Lock, Minus, Plus, Trash2, Unlock } from '@lucide/svelte';
 	import { LAYOUT_BREAKPOINTS } from '#lib/config/layout.ts';
 	import type { CanvasElement, CriterionDefinition, StaticTextCanvasElement } from '#lib/types/certflow.ts';
 	import type { EditorState } from './editor-state.svelte.ts';
@@ -73,7 +74,7 @@
 		editor.zoom = Number(next.toFixed(3));
 
 		if (transformer) {
-			transformer.anchorSize(isSmall ? 13 : 9);
+			transformer.anchorSize(isSmall ? 12 : 8);
 		}
 	}
 
@@ -445,14 +446,14 @@
 					new Konva.Line({
 						name: 'marquee-hit-outline',
 						points: [x1, y1, x2, y2],
-						stroke: 'rgba(79, 70, 229, 0.3)',
+						stroke: 'rgba(59, 91, 219, 0.3)',
 						strokeWidth: glowW,
 						lineCap: 'round'
 					}),
 					new Konva.Line({
 						name: 'marquee-hit-outline',
 						points: [x1, y1, x2, y2],
-						stroke: '#4f46e5',
+						stroke: '#3B5BDB',
 						strokeWidth: strokeW,
 						lineCap: 'round'
 					}),
@@ -462,7 +463,7 @@
 						y: y1,
 						radius: 4 / zoom,
 						fill: '#ffffff',
-						stroke: '#4f46e5',
+						stroke: '#3B5BDB',
 						strokeWidth: 1.5 / zoom
 					}),
 					new Konva.Circle({
@@ -471,7 +472,7 @@
 						y: y2,
 						radius: 4 / zoom,
 						fill: '#ffffff',
-						stroke: '#4f46e5',
+						stroke: '#3B5BDB',
 						strokeWidth: 1.5 / zoom
 					})
 				);
@@ -484,8 +485,8 @@
 						radiusX: el.width / 2,
 						radiusY: el.height / 2,
 						rotation: el.rotation,
-						fill: 'rgba(79, 70, 229, 0.08)',
-						stroke: '#4f46e5',
+						fill: 'rgba(59, 91, 219, 0.08)',
+						stroke: '#3B5BDB',
 						strokeWidth: strokeW
 					})
 				);
@@ -498,8 +499,8 @@
 						width: el.width,
 						height: el.height,
 						rotation: el.rotation,
-						fill: 'rgba(79, 70, 229, 0.08)',
-						stroke: '#4f46e5',
+						fill: 'rgba(59, 91, 219, 0.08)',
+						stroke: '#3B5BDB',
 						strokeWidth: strokeW,
 						cornerRadius: 2 / zoom
 					})
@@ -530,7 +531,7 @@
 				new Konva.Line({
 					name: 'hover-outline',
 					points: [x1, y1, x2, y2],
-					stroke: 'rgba(79, 70, 229, 0.5)',
+					stroke: 'rgba(59, 91, 219, 0.5)',
 					strokeWidth: Math.max(4, (el.strokeWidth || 2) + 3) / zoom,
 					lineCap: 'round'
 				})
@@ -544,7 +545,7 @@
 					radiusX: el.width / 2,
 					radiusY: el.height / 2,
 					rotation: el.rotation,
-					stroke: 'rgba(79, 70, 229, 0.65)',
+					stroke: 'rgba(59, 91, 219, 0.65)',
 					strokeWidth: strokeW
 				})
 			);
@@ -557,7 +558,7 @@
 					width: el.width,
 					height: el.height,
 					rotation: el.rotation,
-					stroke: 'rgba(79, 70, 229, 0.65)',
+					stroke: 'rgba(59, 91, 219, 0.65)',
 					strokeWidth: strokeW,
 					cornerRadius: 2 / zoom
 				})
@@ -590,7 +591,7 @@
 	function renderSnapGuides(snap: ReturnType<typeof computeSnapResult>) {
 		if (!Konva || !guideLayer) return;
 
-		// Render alignment guides (indigo dashed for canvas centre, rose for sibling edges and centres).
+		// Render alignment guides (Blueprint Cobalt dashed for canvas centre, Wax Vermilion for sibling edges and centres).
 		for (const g of snap.alignGuides) {
 			const isCanvas = g.kind === 'canvas';
 			guideLayer.add(
@@ -599,7 +600,7 @@
 						g.orientation === 'vertical'
 							? [g.position, g.start, g.position, g.end]
 							: [g.start, g.position, g.end, g.position],
-					stroke: isCanvas ? '#4f46e5' : '#e11d48',
+					stroke: isCanvas ? '#3B5BDB' : '#EB4A1E',
 					strokeWidth: 1,
 					dash: isCanvas ? [6, 4] : undefined
 				})
@@ -612,20 +613,20 @@
 			guideLayer.add(
 				new Konva.Line({
 					points: [sg.x1, sg.y1, sg.x2, sg.y2],
-					stroke: '#e11d48',
+					stroke: '#EB4A1E',
 					strokeWidth: 1.5
 				})
 			);
 
 			if (sg.orientation === 'vertical') {
 				guideLayer.add(
-					new Konva.Line({ points: [sg.x1 - cap, sg.y1, sg.x1 + cap, sg.y1], stroke: '#e11d48', strokeWidth: 1.5 }),
-					new Konva.Line({ points: [sg.x2 - cap, sg.y2, sg.x2 + cap, sg.y2], stroke: '#e11d48', strokeWidth: 1.5 })
+					new Konva.Line({ points: [sg.x1 - cap, sg.y1, sg.x1 + cap, sg.y1], stroke: '#EB4A1E', strokeWidth: 1.5 }),
+					new Konva.Line({ points: [sg.x2 - cap, sg.y2, sg.x2 + cap, sg.y2], stroke: '#EB4A1E', strokeWidth: 1.5 })
 				);
 			} else {
 				guideLayer.add(
-					new Konva.Line({ points: [sg.x1, sg.y1 - cap, sg.x1, sg.y1 + cap], stroke: '#e11d48', strokeWidth: 1.5 }),
-					new Konva.Line({ points: [sg.x2, sg.y2 - cap, sg.x2, sg.y2 + cap], stroke: '#e11d48', strokeWidth: 1.5 })
+					new Konva.Line({ points: [sg.x1, sg.y1 - cap, sg.x1, sg.y1 + cap], stroke: '#EB4A1E', strokeWidth: 1.5 }),
+					new Konva.Line({ points: [sg.x2, sg.y2 - cap, sg.x2, sg.y2 + cap], stroke: '#EB4A1E', strokeWidth: 1.5 })
 				);
 			}
 
@@ -643,7 +644,7 @@
 					y: midY + offsetY,
 					width: badgeW,
 					height: badgeH,
-					fill: '#e11d48',
+					fill: '#D13B15',
 					cornerRadius: 4
 				}),
 				new Konva.Text({
@@ -653,7 +654,7 @@
 					height: badgeH,
 					text: labelText,
 					fontSize: 11,
-					fontFamily: 'Inter, sans-serif',
+					fontFamily: 'Geist Mono, monospace',
 					fontStyle: 'bold',
 					fill: '#ffffff',
 					align: 'center'
@@ -911,8 +912,8 @@
 							y: 0,
 							width: el.width,
 							height: el.height,
-							fill: 'rgba(248, 250, 252, 0.85)',
-							stroke: '#94a3b8',
+							fill: 'rgba(245, 245, 247, 0.9)',
+							stroke: '#cbcbd3',
 							strokeWidth: 1.5,
 							dash: [6, 4],
 							cornerRadius: 4
@@ -924,8 +925,8 @@
 							height: el.height,
 							text: 'Signature\n(Draw or upload in right panel)',
 							fontSize: 13,
-							fontFamily: 'Inter, sans-serif',
-							fill: '#64748b',
+							fontFamily: 'Geist, sans-serif',
+							fill: '#5e5e6a',
 							align: 'center',
 							verticalAlign: 'middle',
 							lineHeight: 1.35
@@ -1122,7 +1123,7 @@
 				const guideLine = new Konva.Line({
 					name: 'line-handle-ui',
 					points: [initial.x1, initial.y1, initial.x2, initial.y2],
-					stroke: '#4f46e5',
+					stroke: '#3B5BDB',
 					strokeWidth: 1.5 / zoom,
 					dash: [4 / zoom, 3 / zoom],
 					listening: false
@@ -1134,8 +1135,8 @@
 					y: initial.y1,
 					radius: handleRadius,
 					fill: '#ffffff',
-					stroke: '#4f46e5',
-					strokeWidth: 2 / zoom,
+					stroke: '#3B5BDB',
+					strokeWidth: 1.75 / zoom,
 					hitStrokeWidth: 10 / zoom,
 					draggable: true
 				});
@@ -1146,8 +1147,8 @@
 					y: initial.y2,
 					radius: handleRadius,
 					fill: '#ffffff',
-					stroke: '#4f46e5',
-					strokeWidth: 2 / zoom,
+					stroke: '#3B5BDB',
+					strokeWidth: 1.75 / zoom,
 					hitStrokeWidth: 10 / zoom,
 					draggable: true
 				});
@@ -1442,11 +1443,13 @@
 		guideLayer = new Konva.Layer({ listening: false });
 
 		transformer = new Konva.Transformer({
-			borderStroke: '#4f46e5',
-			anchorStroke: '#4f46e5',
+			borderStroke: '#3B5BDB',
+			borderStrokeWidth: 1.5,
+			anchorStroke: '#3B5BDB',
+			anchorStrokeWidth: 1.5,
 			anchorFill: '#ffffff',
-			anchorSize: isSmall ? 13 : 9,
-			anchorCornerRadius: 2,
+			anchorSize: isSmall ? 12 : 8,
+			anchorCornerRadius: 1,
 			rotateAnchorOffset: 24,
 			keepRatio: false,
 			flipEnabled: false,
@@ -1861,75 +1864,183 @@
 		<div
 			aria-hidden="true"
 			style="left: {marqueeOverlay.left}px; top: {marqueeOverlay.top}px; width: {marqueeOverlay.width}px; height: {marqueeOverlay.height}px;"
-			class="pointer-events-none absolute z-30 border border-dashed border-indigo-600 bg-indigo-500/12"
+			class="pointer-events-none absolute z-30 border border-dashed border-[#3B5BDB] bg-[#3B5BDB]/12"
 		></div>
 	{/if}
-	<div
-		class="preserve-light relative m-auto shrink-0 rounded-sm bg-white shadow-md ring-2 transition {isDragOver
-			? 'ring-accent'
-			: 'ring-border-strong'}"
-	>
+	<div class="relative m-auto shrink-0">
 		<div
-			bind:this={containerEl}
-			role="region"
-			aria-label="Certificate canvas drop zone"
-			ondragover={handleCanvasDragOver}
-			ondragleave={handleCanvasDragLeave}
-			ondrop={handleCanvasDrop}
-			style="touch-action: none;"
-		></div>
-
-		<!-- Direct On-Canvas WYSIWYG Text Editor Overlay -->
-		{#if inlineEdit && editingTextEl && editingBaseStyle}
-			{@const z = editor.zoom}
-			{@const vAlignCss =
-				editingTextEl.verticalAlign === 'top'
-					? 'flex-start'
-					: editingTextEl.verticalAlign === 'bottom'
-						? 'flex-end'
-						: 'center'}
+			class="preserve-light relative rounded-[2px] bg-white transition {isDragOver
+				? 'ring-2 ring-tone-editor'
+				: ''}"
+		>
 			<div
-				style="left: {editingTextEl.x * z}px; top: {editingTextEl.y * z}px; width: {editingTextEl.width * z}px; min-height: {editingTextEl.height * z}px; transform: rotate({editingTextEl.rotation}deg); transform-origin: top left;"
-				class="absolute z-20 flex flex-col"
-			>
-				<!-- Subtle floating edit status bar above the active text box -->
-				<div
-					class="pointer-events-auto absolute -top-7 left-0 flex items-center gap-2 rounded-md bg-indigo-600 px-2 py-0.5 text-[10px] font-medium whitespace-nowrap text-white shadow-md"
-				>
-					<span>Editing {inlineEdit.label} · Highlight words for toolbar</span>
-					<button
-						type="button"
-						onmousedown={(e) => e.preventDefault()}
-						onclick={finishInlineTextEdit}
-						class="rounded bg-white/20 px-1.5 py-0.25 font-semibold hover:bg-white/30"
-					>
-						Done
-					</button>
-				</div>
+				bind:this={containerEl}
+				role="region"
+				aria-label="Certificate canvas drop zone"
+				ondragover={handleCanvasDragOver}
+				ondragleave={handleCanvasDragLeave}
+				ondrop={handleCanvasDrop}
+				style="touch-action: none;"
+			></div>
 
-				<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<!-- Direct On-Canvas WYSIWYG Text Editor Overlay -->
+			{#if inlineEdit && editingTextEl && editingBaseStyle}
+				{@const z = editor.zoom}
+				{@const vAlignCss =
+					editingTextEl.verticalAlign === 'top'
+						? 'flex-start'
+						: editingTextEl.verticalAlign === 'bottom'
+							? 'flex-end'
+							: 'center'}
 				<div
-					style="min-height: {editingTextEl.height * z}px; justify-content: {vAlignCss};"
-					class="flex w-full flex-col rounded-[2px] ring-2 ring-indigo-500 ring-offset-0"
+					style="left: {editingTextEl.x * z}px; top: {editingTextEl.y * z}px; width: {editingTextEl.width * z}px; min-height: {editingTextEl.height * z}px; transform: rotate({editingTextEl.rotation}deg); transform-origin: top left;"
+					class="absolute z-20 flex flex-col"
 				>
+					<!-- Subtle floating edit status bar above the active text box -->
 					<div
-						bind:this={inlineEditorEl}
-						role="textbox"
-						tabindex={0}
-						aria-multiline="true"
-						aria-label="Edit {editingTextEl.name} directly on canvas"
-						contenteditable="true"
-						spellcheck="false"
-						style="width: 100%; font-family: {quoteFontFamily(editingTextEl.fontFamily)}, sans-serif; font-size: {(editingTextEl.fontSize * z).toFixed(2)}px; font-weight: {editingTextEl.fontWeight}; font-style: {editingTextEl.fontStyle}; text-decoration: {editingTextEl.textDecoration === 'underline' ? 'underline' : 'none'}; color: {editingTextEl.fill}; text-align: {editingTextEl.align}; line-height: {editingTextEl.lineHeight}; letter-spacing: {(editingTextEl.letterSpacing * z).toFixed(2)}px; text-transform: {editingTextEl.textTransform}; word-break: {editingTextEl.wrap === 'char' ? 'break-all' : 'normal'}; white-space: {editingTextEl.wrap === 'none' ? 'pre' : 'pre-wrap'};"
-						oninput={handleInlineCanvasInput}
-						onmouseup={syncInlineSelectionFromDom}
-						onkeyup={syncInlineSelectionFromDom}
-						onpaste={handleInlineCanvasPaste}
-						onkeydown={handleInlineCanvasKeydown}
-						class="w-full cursor-text bg-transparent outline-none"
-					></div>
+						class="pointer-events-auto absolute -top-7 left-0 flex items-center gap-2 rounded-md bg-[#3B5BDB] px-2 py-0.5 text-[10px] font-medium whitespace-nowrap text-white shadow-md"
+					>
+						<span>Editing {inlineEdit.label} · Highlight words for toolbar</span>
+						<button
+							type="button"
+							onmousedown={(e) => e.preventDefault()}
+							onclick={finishInlineTextEdit}
+							class="cursor-pointer rounded bg-white/20 px-1.5 py-0.25 font-semibold hover:bg-white/30"
+						>
+							Done
+						</button>
+					</div>
+
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
+					<div
+						style="min-height: {editingTextEl.height * z}px; justify-content: {vAlignCss};"
+						class="flex w-full flex-col rounded-[2px] ring-[1.5px] ring-[#3B5BDB] ring-offset-0"
+					>
+						<div
+							bind:this={inlineEditorEl}
+							role="textbox"
+							tabindex={0}
+							aria-multiline="true"
+							aria-label="Edit {editingTextEl.name} directly on canvas"
+							contenteditable="true"
+							spellcheck="false"
+							style="width: 100%; font-family: {quoteFontFamily(editingTextEl.fontFamily)}, sans-serif; font-size: {(editingTextEl.fontSize * z).toFixed(2)}px; font-weight: {editingTextEl.fontWeight}; font-style: {editingTextEl.fontStyle}; text-decoration: {editingTextEl.textDecoration === 'underline' ? 'underline' : 'none'}; color: {editingTextEl.fill}; text-align: {editingTextEl.align}; line-height: {editingTextEl.lineHeight}; letter-spacing: {(editingTextEl.letterSpacing * z).toFixed(2)}px; text-transform: {editingTextEl.textTransform}; word-break: {editingTextEl.wrap === 'char' ? 'break-all' : 'normal'}; white-space: {editingTextEl.wrap === 'none' ? 'pre' : 'pre-wrap'};"
+							oninput={handleInlineCanvasInput}
+							onmouseup={syncInlineSelectionFromDom}
+							onkeyup={syncInlineSelectionFromDom}
+							onpaste={handleInlineCanvasPaste}
+							onkeydown={handleInlineCanvasKeydown}
+							class="w-full cursor-text bg-transparent outline-none"
+						></div>
+					</div>
 				</div>
+			{/if}
+		</div>
+
+		<!-- Floating Context Micro-Toolbar above single selected element (outside .preserve-light so studio tokens apply in dark mode) -->
+		{#if editor.selectedIds.length === 1 && editor.selectedElement && !inlineEdit}
+			{@const sel = editor.selectedElement}
+			{@const z = editor.zoom}
+			{@const barTop = Math.max(-48, Math.round(sel.y * z) - 72)}
+			{@const barLeft = Math.max(
+				72,
+				Math.min(
+					Math.round((sel.x + sel.width / 2) * z),
+					Math.max(72, Math.round(editor.width * z) - 72)
+				)
+			)}
+			<div
+				role="toolbar"
+				aria-label="Selected element quick actions"
+				style="left: {barLeft}px; top: {barTop}px;"
+				class="cf-popover-in pointer-events-auto absolute z-20 hidden -translate-x-1/2 items-center gap-0.5 rounded-xl border border-border-default bg-surface-elevated p-1 text-ink-secondary shadow-md sm:flex"
+			>
+				<button
+					type="button"
+					title="Duplicate element (Ctrl+D)"
+					aria-label="Duplicate element"
+					onpointerdown={(e) => e.stopPropagation()}
+					onclick={() => editor.duplicateElement(sel.id)}
+					class="cf-pressable flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg hover:bg-surface-subtle hover:text-ink-primary"
+				>
+					<Copy class="h-3.5 w-3.5" />
+				</button>
+				<button
+					type="button"
+					title="Hide element"
+					aria-label="Hide element"
+					onpointerdown={(e) => e.stopPropagation()}
+					onclick={() => editor.updateElement(sel.id, { visible: false })}
+					class="cf-pressable flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg hover:bg-surface-subtle hover:text-ink-primary"
+				>
+					<EyeOff class="h-3.5 w-3.5" />
+				</button>
+				<button
+					type="button"
+					title={sel.locked ? 'Unlock element' : 'Lock element'}
+					aria-label={sel.locked ? 'Unlock element' : 'Lock element'}
+					onpointerdown={(e) => e.stopPropagation()}
+					onclick={() => editor.updateElement(sel.id, { locked: !sel.locked })}
+					class="cf-pressable flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg hover:bg-surface-subtle hover:text-ink-primary"
+				>
+					{#if sel.locked}
+						<Lock class="h-3.5 w-3.5 text-tone-certs" />
+					{:else}
+						<Unlock class="h-3.5 w-3.5" />
+					{/if}
+				</button>
+				<div class="mx-0.5 h-4 w-px bg-border-default"></div>
+				<button
+					type="button"
+					title="Delete element (Del)"
+					aria-label="Delete element"
+					onpointerdown={(e) => e.stopPropagation()}
+					onclick={() => editor.deleteElement(sel.id)}
+					class="cf-pressable flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-tone-danger-ink hover:bg-tone-danger-soft"
+				>
+					<Trash2 class="h-3.5 w-3.5" />
+				</button>
 			</div>
 		{/if}
+	</div>
+
+	<!-- Floating Zoom Dock anchored bottom-centre -->
+	<div
+		role="toolbar"
+		aria-label="Canvas zoom controls"
+		tabindex="-1"
+		onpointerdown={(e) => e.stopPropagation()}
+		class="pointer-events-auto absolute bottom-3 left-1/2 z-20 hidden -translate-x-1/2 items-center gap-1 rounded-full border border-border-default bg-surface-elevated/92 px-2 py-1 text-ink-secondary shadow-sm backdrop-blur-md lg:inline-flex"
+	>
+		<button
+			type="button"
+			aria-label="Zoom out"
+			onclick={() => editor.setManualZoom(editor.zoom - 0.1)}
+			class="cf-pressable flex h-6 w-6 cursor-pointer items-center justify-center rounded-full hover:bg-surface-subtle hover:text-ink-primary"
+		>
+			<Minus class="h-3 w-3" />
+		</button>
+		<span class="min-w-10 text-center font-mono text-[11px] font-medium text-ink-primary tabular-nums">
+			{Math.round(editor.zoom * 100)}%
+		</span>
+		<button
+			type="button"
+			aria-label="Zoom in"
+			onclick={() => editor.setManualZoom(editor.zoom + 0.1)}
+			class="cf-pressable flex h-6 w-6 cursor-pointer items-center justify-center rounded-full hover:bg-surface-subtle hover:text-ink-primary"
+		>
+			<Plus class="h-3 w-3" />
+		</button>
+		<span class="mx-0.5 h-3.5 w-px bg-border-default"></span>
+		<button
+			type="button"
+			aria-label="Fit canvas to viewport"
+			onclick={() => editor.enableAutoFitZoom()}
+			class="cf-pressable cursor-pointer rounded-full px-2 py-0.5 text-[11px] font-medium transition {editor.autoFitZoom
+				? 'bg-surface-subtle font-semibold text-ink-primary'
+				: 'hover:bg-surface-subtle hover:text-ink-primary'}"
+		>
+			Fit
+		</button>
 	</div>
 </div>

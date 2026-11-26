@@ -2,6 +2,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import {
 		Archive,
+		CheckCircle2,
 		ChevronDown,
 		Download,
 		Eye,
@@ -271,14 +272,27 @@
 <main class="mx-auto w-full max-w-[1600px] space-y-5 px-4 py-6 sm:px-6">
 	<div class="flex flex-wrap items-center justify-between gap-4">
 		<div>
-			<h2 class="text-lg font-bold text-ink-primary">Generate Certificates</h2>
-			<p class="mt-1 text-sm text-ink-secondary">
+			<h2 class="font-display text-lg font-semibold tracking-tight text-ink-primary">
+				Generate Certificates
+			</h2>
+			<p class="mt-0.5 text-sm text-ink-secondary">
 				Select a certificate from the list to preview or edit its properties. Export single files or
 				a ZIP archive as PDF, PNG or JPG.
 			</p>
 		</div>
 
 		<div class="flex flex-wrap items-center gap-2">
+			{#if exporting && exportingLabel}
+				<div
+					class="cf-popover-in inline-flex items-center gap-2.5 rounded-full border border-border-default bg-surface-elevated px-3.5 py-1.5 text-xs font-medium text-ink-primary shadow-md"
+				>
+					<span class="font-mono text-[11px]">{exportingLabel}</span>
+					<div class="h-1.5 w-16 overflow-hidden rounded-full bg-surface-subtle">
+						<div class="cf-progress-sheen h-full w-3/4 rounded-full bg-accent-vivid"></div>
+					</div>
+				</div>
+			{/if}
+
 			{#if filteredCertificates.length > 0}
 				<Button
 					size="sm"
@@ -295,7 +309,7 @@
 				</Button>
 			{/if}
 
-			<Button variant="primary" disabled={generating} onclick={handleGenerateAll}>
+			<Button variant="contrast" disabled={generating} onclick={handleGenerateAll}>
 				<RefreshCw class="h-4 w-4 {generating ? 'animate-spin' : ''}" />
 				{generating ? 'Generating...' : 'Generate from Dataset'}
 			</Button>
@@ -303,6 +317,7 @@
 			{#if filteredCertificates.length > 0}
 				<div bind:this={exportTriggerEl} class="shrink-0">
 					<Button
+						variant="primary"
 						aria-haspopup="menu"
 						aria-expanded={showExportMenu}
 						disabled={exporting}
@@ -310,7 +325,7 @@
 					>
 						<Download class="h-4 w-4" />
 						{exportingLabel ? `Exporting ${exportingLabel}...` : 'Export'}
-						<ChevronDown class="h-4 w-4 text-ink-muted" />
+						<ChevronDown class="h-4 w-4 opacity-80" />
 					</Button>
 				</div>
 			{/if}
@@ -318,8 +333,11 @@
 	</div>
 
 	{#if message}
-		<div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-			{message}
+		<div
+			class="flex items-start gap-2.5 rounded-xl border border-tone-certs-border bg-tone-certs-soft px-4 py-3 text-sm font-medium text-tone-certs-ink"
+		>
+			<CheckCircle2 class="cf-seal-stamp mt-0.5 h-4 w-4 shrink-0" />
+			<span>{message}</span>
 		</div>
 	{/if}
 
@@ -348,7 +366,7 @@
 						filterKey = e.currentTarget.value;
 						filterValue = 'all';
 					}}
-					class="rounded-lg border border-border-default bg-surface-card px-2.5 py-1 text-xs font-semibold text-ink-primary outline-none focus:border-amber-500"
+					class="h-[30px] rounded-md border border-border-strong bg-surface-card px-2.5 text-xs font-semibold text-ink-primary outline-none focus:border-accent-vivid dark:bg-surface-recessed"
 				>
 					{#each filterOptions as opt (opt.key)}
 						<option value={opt.key}>{opt.label}</option>
@@ -360,9 +378,9 @@
 				<button
 					type="button"
 					onclick={() => (filterValue = 'all')}
-					class="rounded-full border px-3 py-1 text-xs font-medium transition {filterValue === 'all'
-						? 'border-amber-500 bg-amber-50 text-amber-900'
-						: 'border-border-default bg-white text-ink-secondary hover:bg-surface-subtle'}"
+					class="cf-pressable cursor-pointer rounded-full border px-3 py-1 text-xs font-medium tabular-nums {filterValue === 'all'
+						? 'border-tone-certs-border bg-tone-certs-soft font-semibold text-tone-certs-ink'
+						: 'border-border-default bg-surface-card text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary'}"
 				>
 					All ({data.certificates.length})
 				</button>
@@ -370,10 +388,10 @@
 					<button
 						type="button"
 						onclick={() => (filterValue = item.value)}
-						class="rounded-full border px-3 py-1 text-xs font-medium transition {filterValue ===
+						class="cf-pressable cursor-pointer rounded-full border px-3 py-1 text-xs font-medium tabular-nums {filterValue ===
 						item.value
-							? 'border-amber-500 bg-amber-50 text-amber-900'
-							: 'border-border-default bg-white text-ink-secondary hover:bg-surface-subtle'}"
+							? 'border-tone-certs-border bg-tone-certs-soft font-semibold text-tone-certs-ink'
+							: 'border-border-default bg-surface-card text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary'}"
 					>
 						{item.label} ({item.count})
 					</button>
@@ -382,29 +400,30 @@
 		</div>
 
 		<!-- Numbered List + Live Preview Pane + Selected Properties Inspector -->
-		<div class="grid items-start gap-4 lg:grid-cols-12 {showPreview ? 'xl:items-stretch' : 'lg:items-stretch'}">
+		<div class="grid items-start gap-5 lg:grid-cols-12 {showPreview ? 'xl:items-stretch' : 'lg:items-stretch'}">
 			<div
 				class="relative {showPreview
 					? 'lg:col-span-4 xl:col-span-3 xl:min-h-[360px]'
 					: 'lg:col-span-5 lg:min-h-[360px]'}"
 			>
 				<div
-					class="flex flex-col overflow-hidden rounded-xl border border-border-default bg-surface-card {showPreview
+					class="flex flex-col overflow-hidden rounded-2xl border border-border-default bg-surface-card shadow-xs {showPreview
 						? 'xl:absolute xl:inset-0'
 						: 'lg:absolute lg:inset-0'}"
 				>
 					<div class="shrink-0 border-b border-border-default px-4 py-3">
-						<h3 class="text-xs font-semibold tracking-wide text-ink-secondary uppercase">
+						<h3 class="text-[11px] font-semibold tracking-[0.07em] text-ink-muted uppercase tabular-nums">
 							Certificates ({filteredCertificates.length})
 						</h3>
 					</div>
 					<ul
-						class="min-h-0 flex-1 divide-y divide-border-default overflow-y-auto {showPreview
+						class="min-h-0 flex-1 divide-y divide-border-subtle overflow-y-auto {showPreview
 							? 'max-h-[420px] xl:max-h-none'
 							: 'max-h-[420px] lg:max-h-none'}"
 					>
 						{#each filteredCertificates as cert, idx (cert.id)}
 							{@const rowBadge = getListRowBadge(cert)}
+							{@const isSelected = selectedCertId === cert.id}
 							<li>
 								<button
 									type="button"
@@ -412,13 +431,12 @@
 										selectedCertId = cert.id;
 										liveDraft = null;
 									}}
-									class="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm transition {selectedCertId ===
-									cert.id
-										? 'bg-amber-50 font-semibold text-amber-950'
-										: 'hover:bg-surface-subtle'}"
+									class="flex w-full cursor-pointer items-center justify-between gap-3 border-l-2 px-4 py-3 text-left text-sm transition {isSelected
+										? 'border-l-tone-editor bg-tone-editor-soft/70 font-semibold text-ink-primary'
+										: 'border-l-transparent text-ink-secondary hover:bg-surface-subtle/70 hover:text-ink-primary'}"
 								>
 									<span class="min-w-0 truncate">
-										<span class="mr-2 font-mono text-xs text-ink-muted">{idx + 1}.</span>
+										<span class="mr-2 font-mono text-xs text-ink-muted tabular-nums">{idx + 1}.</span>
 										{cert.recipientName}
 									</span>
 									{#if rowBadge}
@@ -483,11 +501,11 @@
 		role="menu"
 		aria-label="Export certificates"
 		style="top: {exportMenuPos.top}px; left: {exportMenuPos.left}px;"
-		class="fixed z-50 w-64 rounded-xl border border-border-default bg-surface-card p-1.5 shadow-lg"
+		class="cf-popover-in fixed z-50 w-64 rounded-xl border border-border-default bg-surface-elevated p-1.5 shadow-md"
 	>
 		{#if selectedCertificate}
 			<div class="px-2.5 py-1">
-				<p class="text-[11px] font-semibold tracking-wide text-ink-muted uppercase">
+				<p class="text-[11px] font-semibold tracking-[0.07em] text-ink-muted uppercase">
 					Selected Certificate
 				</p>
 				<p class="truncate text-[11px] text-ink-secondary">
@@ -498,9 +516,9 @@
 				type="button"
 				role="menuitem"
 				onclick={() => handleSingleExport('png')}
-				class="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs text-ink-primary transition hover:bg-surface-subtle"
+				class="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs text-ink-primary transition hover:bg-surface-subtle"
 			>
-				<FileImage class="h-4 w-4 shrink-0 text-indigo-600" />
+				<FileImage class="h-4 w-4 shrink-0 text-tone-editor" />
 				<span>
 					<span class="block font-semibold">PNG</span>
 					<span class="block text-[11px] text-ink-muted">High-resolution image</span>
@@ -510,9 +528,9 @@
 				type="button"
 				role="menuitem"
 				onclick={() => handleSingleExport('jpg')}
-				class="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs text-ink-primary transition hover:bg-surface-subtle"
+				class="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs text-ink-primary transition hover:bg-surface-subtle"
 			>
-				<FileImage class="h-4 w-4 shrink-0 text-emerald-600" />
+				<FileImage class="h-4 w-4 shrink-0 text-tone-data" />
 				<span>
 					<span class="block font-semibold">JPG</span>
 					<span class="block text-[11px] text-ink-muted">Smaller image file</span>
@@ -522,9 +540,9 @@
 				type="button"
 				role="menuitem"
 				onclick={() => handleSingleExport('pdf')}
-				class="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs text-ink-primary transition hover:bg-surface-subtle"
+				class="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs text-ink-primary transition hover:bg-surface-subtle"
 			>
-				<FileText class="h-4 w-4 shrink-0 text-amber-600" />
+				<FileText class="h-4 w-4 shrink-0 text-tone-certs" />
 				<span>
 					<span class="block font-semibold">PDF</span>
 					<span class="block text-[11px] text-ink-muted">Print-ready document</span>
@@ -532,17 +550,17 @@
 			</button>
 		{/if}
 
-		<div class={selectedCertificate ? 'mt-1.5 border-t border-border-default pt-1.5' : ''}>
-			<p class="px-2.5 py-1 text-[11px] font-semibold tracking-wide text-ink-muted uppercase">
+		<div class={selectedCertificate ? 'mt-1.5 border-t border-border-subtle pt-1.5' : ''}>
+			<p class="px-2.5 py-1 text-[11px] font-semibold tracking-[0.07em] text-ink-muted uppercase tabular-nums">
 				Download ZIP ({filteredCertificates.length})
 			</p>
 			<button
 				type="button"
 				role="menuitem"
 				onclick={() => handleBulkZipExport('png')}
-				class="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs text-ink-primary transition hover:bg-surface-subtle"
+				class="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs text-ink-primary transition hover:bg-surface-subtle"
 			>
-				<Archive class="h-4 w-4 shrink-0 text-indigo-600" />
+				<Archive class="h-4 w-4 shrink-0 text-tone-editor" />
 				<span>
 					<span class="block font-semibold">ZIP — PNG</span>
 					<span class="block text-[11px] text-ink-muted">
@@ -556,9 +574,9 @@
 				type="button"
 				role="menuitem"
 				onclick={() => handleBulkZipExport('jpg')}
-				class="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs text-ink-primary transition hover:bg-surface-subtle"
+				class="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs text-ink-primary transition hover:bg-surface-subtle"
 			>
-				<Archive class="h-4 w-4 shrink-0 text-emerald-600" />
+				<Archive class="h-4 w-4 shrink-0 text-tone-data" />
 				<span>
 					<span class="block font-semibold">ZIP — JPG</span>
 					<span class="block text-[11px] text-ink-muted">
@@ -572,9 +590,9 @@
 				type="button"
 				role="menuitem"
 				onclick={() => handleBulkZipExport('pdf')}
-				class="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs text-ink-primary transition hover:bg-surface-subtle"
+				class="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs text-ink-primary transition hover:bg-surface-subtle"
 			>
-				<Archive class="h-4 w-4 shrink-0 text-amber-600" />
+				<Archive class="h-4 w-4 shrink-0 text-tone-certs" />
 				<span>
 					<span class="block font-semibold">ZIP — PDF</span>
 					<span class="block text-[11px] text-ink-muted">

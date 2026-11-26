@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { invalidateAll } from '$app/navigation';
-	import { Download, Redo2, Save, Undo2, Upload } from '@lucide/svelte';
+	import { CheckCircle2, Download, Redo2, Save, Undo2, Upload } from '@lucide/svelte';
 	import Button from '#lib/components/ui/Button.svelte';
 	import Modal from '#lib/components/ui/Modal.svelte';
 	import { triggerFileDownload } from '#lib/features/certificates/renderer.ts';
@@ -305,10 +305,12 @@
 
 <svelte:window onkeydown={handleDataKeydown} />
 
-<main class="mx-auto w-full min-w-0 max-w-[1600px] space-y-4 px-3 py-5 sm:px-6 sm:py-6">
+<main class="mx-auto w-full min-w-0 max-w-[1600px] space-y-4 px-4 py-6 sm:px-6">
 	<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 		<div class="min-w-0">
-			<h2 class="text-base font-bold text-ink-primary sm:text-lg">Data & Property Table</h2>
+			<h2 class="font-display text-lg font-semibold tracking-tight text-ink-primary">
+				Data &amp; Property Table
+			</h2>
 			<p class="mt-0.5 text-xs text-ink-secondary sm:text-sm">
 				Each column header is a property. Edit cells, add or rename columns or import a CSV or Excel
 				file.
@@ -341,24 +343,27 @@
 				onchange={handleFileSelect}
 				class="hidden"
 			/>
-			<Button size="sm" onclick={() => fileInputEl?.click()}>
-				<Upload class="h-4 w-4" />
+			<Button size="sm" variant="contrast" onclick={() => fileInputEl?.click()}>
+				<Upload class="h-3.5 w-3.5" />
 				Import CSV / Excel
 			</Button>
-			<Button size="sm" disabled={headers.length === 0} onclick={handleExportCsv}>
-				<Download class="h-4 w-4" />
+			<Button size="sm" variant="secondary" disabled={headers.length === 0} onclick={handleExportCsv}>
+				<Download class="h-3.5 w-3.5" />
 				Export CSV
 			</Button>
 			<Button size="sm" variant="primary" disabled={saving} onclick={handleSaveDataset}>
-				<Save class="h-4 w-4" />
+				<Save class="h-3.5 w-3.5" />
 				{saving ? 'Saving...' : `Save Dataset (${nonEmptyRows.length})`}
 			</Button>
 		</div>
 	</div>
 
 	{#if feedback}
-		<div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs text-emerald-800 sm:text-sm">
-			{feedback}
+		<div
+			class="flex items-start gap-2.5 rounded-xl border border-tone-data-border bg-tone-data-soft px-4 py-2.5 text-xs font-medium text-tone-data-ink sm:text-sm"
+		>
+			<CheckCircle2 class="cf-seal-stamp mt-0.5 h-4 w-4 shrink-0" />
+			<span>{feedback}</span>
 		</div>
 	{/if}
 
@@ -387,7 +392,7 @@
 >
 	{#if pendingImport}
 		<div class="space-y-4">
-			<div class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+			<div class="rounded-xl border border-tone-warning-border bg-tone-warning-soft p-3.5 text-xs text-tone-warning-ink">
 				<p>
 					<strong>Incoming file:</strong>
 					{pendingImport.fileName} ({pendingImport.rows.length} rows, {pendingImport.headers.length}
@@ -400,7 +405,7 @@
 				</p>
 			</div>
 
-			<div class="flex justify-end gap-2">
+			<div class="flex justify-end gap-2.5 border-t border-border-subtle pt-4">
 				<Button onclick={cancelReplaceImport}>Cancel</Button>
 				<Button variant="danger" onclick={confirmReplaceImport}>Replace Data</Button>
 			</div>

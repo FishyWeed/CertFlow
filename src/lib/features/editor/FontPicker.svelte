@@ -123,8 +123,8 @@
 	onmousedown={(e) => e.preventDefault()}
 	onclick={toggleMenu}
 	class={compact
-		? 'flex h-8 w-40 shrink-0 items-center justify-between gap-1.5 rounded-lg border border-border-strong bg-white px-2.5 text-left text-xs text-ink-primary transition hover:border-accent/60 focus:border-accent focus:outline-none sm:w-44'
-		: 'mt-1 flex w-full items-center justify-between gap-2 rounded-lg border border-border-strong bg-white px-2.5 py-1.5 text-left text-xs text-ink-primary transition hover:border-accent/60 focus:border-accent focus:outline-none'}
+		? 'flex h-[30px] w-40 shrink-0 cursor-pointer items-center justify-between gap-1.5 rounded-md border border-border-strong bg-surface-card px-2.5 text-left text-xs text-ink-primary transition hover:border-ink-muted/60 focus:border-accent-vivid focus:outline-none dark:bg-surface-recessed sm:w-44'
+		: 'mt-1 flex w-full cursor-pointer items-center justify-between gap-2 rounded-md border border-border-strong bg-surface-card px-2.5 py-1.5 text-left text-xs text-ink-primary transition hover:border-ink-muted/60 focus:border-accent-vivid focus:outline-none dark:bg-surface-recessed'}
 >
 	<span
 		class="truncate leading-tight {compact ? 'text-xs' : 'text-sm'}"
@@ -145,7 +145,7 @@
 		role="dialog"
 		aria-label="Choose font family"
 		style="top: {menuPos.top}px; left: {menuPos.left}px; width: {menuPos.width}px; max-height: {menuPos.maxHeight}px;"
-		class="fixed z-50 flex flex-col overflow-hidden rounded-xl border border-border-default bg-surface-card shadow-xl"
+		class="cf-popover-in fixed z-50 flex flex-col overflow-hidden rounded-xl border border-border-default bg-surface-elevated shadow-md"
 	>
 		<!-- Search bar -->
 		<div class="border-b border-border-default p-2">
@@ -156,14 +156,14 @@
 					type="text"
 					bind:value={query}
 					placeholder={`Search ${FONT_CATALOG.length} fonts...`}
-					class="w-full rounded-lg border border-border-strong bg-white py-1.5 pr-7 pl-8 text-xs text-ink-primary outline-none focus:border-accent"
+					class="h-[30px] w-full rounded-md border border-border-strong bg-surface-card py-1 pr-7 pl-8 text-xs text-ink-primary placeholder:text-ink-muted outline-none focus:border-accent-vivid dark:bg-surface-recessed"
 				/>
 				{#if query}
 					<button
 						type="button"
 						aria-label="Clear font search"
 						onclick={() => (query = '')}
-						class="absolute top-1.5 right-1.5 rounded p-0.5 text-ink-muted hover:bg-surface-subtle hover:text-ink-primary"
+						class="absolute top-1.5 right-1.5 cursor-pointer rounded p-0.5 text-ink-muted hover:bg-surface-subtle hover:text-ink-primary"
 					>
 						<X class="h-3.5 w-3.5" />
 					</button>
@@ -175,8 +175,8 @@
 				<button
 					type="button"
 					onclick={() => (activeCategory = 'all')}
-					class="rounded-md px-2 py-0.5 text-[11px] font-medium transition {activeCategory === 'all'
-						? 'bg-accent text-white'
+					class="cursor-pointer rounded-md px-2 py-0.5 text-[11px] font-medium transition {activeCategory === 'all'
+						? 'bg-contrast text-ink-inverted'
 						: 'bg-surface-subtle text-ink-secondary hover:text-ink-primary'}"
 				>
 					All ({FONT_CATALOG.length})
@@ -185,8 +185,8 @@
 					<button
 						type="button"
 						onclick={() => (activeCategory = cat.id)}
-						class="rounded-md px-2 py-0.5 text-[11px] font-medium transition {activeCategory === cat.id
-							? 'bg-accent text-white'
+						class="cursor-pointer rounded-md px-2 py-0.5 text-[11px] font-medium transition {activeCategory === cat.id
+							? 'bg-contrast text-ink-inverted'
 							: 'bg-surface-subtle text-ink-secondary hover:text-ink-primary'}"
 					>
 						{cat.shortLabel}
@@ -208,8 +208,8 @@
 						aria-selected={isSelected}
 						use:observeFontPreview={font.family}
 						onclick={() => handleChoose(font.family)}
-						class="flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left transition {isSelected
-							? 'bg-indigo-50 text-indigo-950'
+						class="flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left transition {isSelected
+							? 'bg-tone-editor-soft text-tone-editor-ink'
 							: 'text-ink-primary hover:bg-surface-subtle'}"
 					>
 						<span
@@ -223,7 +223,7 @@
 								{categoryShortMap.get(font.category) ?? font.category}
 							</span>
 							{#if isSelected}
-								<Check class="h-3.5 w-3.5 text-accent" />
+								<Check class="h-3.5 w-3.5 text-tone-editor" />
 							{/if}
 						</span>
 					</button>

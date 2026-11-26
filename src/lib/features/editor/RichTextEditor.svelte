@@ -265,14 +265,14 @@
 				e.preventDefault();
 				insertPlainTextAtSelection(token);
 			}}
-			class="block w-full resize-y overflow-auto rounded-lg border bg-white px-2.5 py-1.5 text-xs leading-relaxed whitespace-pre-wrap text-ink-primary outline-none transition {isSelectionActive
-				? 'border-accent ring-2 ring-indigo-200/80'
-				: 'border-border-strong focus:border-accent'}"
+			class="block w-full resize-y overflow-auto rounded-md border bg-surface-card px-2.5 py-1.5 text-xs leading-relaxed whitespace-pre-wrap text-ink-primary outline-none transition dark:bg-surface-recessed {isSelectionActive
+				? 'border-tone-editor ring-2 ring-tone-editor/25'
+				: 'border-border-strong focus:border-accent-vivid'}"
 		></div>
 	</div>
 
 	{#if isSelectionActive && editor.activeTextSelection}
-		<p class="text-[11px] font-medium text-indigo-700">
+		<p class="text-[11px] font-medium text-tone-editor-ink">
 			Selected "{editor.activeTextSelection.selectedText.replace(/\s+/g, ' ')}" — use the top
 			toolbar to change font, size, colour or style.
 		</p>
@@ -288,7 +288,7 @@
 					syncSelectionFromDom();
 				}}
 				onclick={() => insertPlainTextAtSelection(`{{${prop.key}}}`)}
-				class="rounded border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 font-mono text-indigo-700 hover:bg-indigo-100 {compact
+				class="cf-pressable cursor-pointer rounded border border-border-default bg-surface-subtle px-1.5 py-0.5 font-mono text-ink-secondary hover:border-tone-editor-border hover:bg-tone-editor-soft hover:text-tone-editor-ink {compact
 					? 'text-[10px]'
 					: 'text-[11px]'}"
 			>

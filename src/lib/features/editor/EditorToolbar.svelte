@@ -364,13 +364,13 @@
 <div
 	role="toolbar"
 	aria-label="Editor formatting toolbar"
-	class="flex min-h-11 shrink-0 items-center gap-1.5 overflow-x-auto border-b border-border-default bg-surface-card px-3 py-1.5 sm:px-4"
+	class="flex h-11 shrink-0 items-center gap-1.5 overflow-x-auto border-b border-border-default bg-surface-card px-3 sm:px-4"
 >
 	{#if selectedTextEl && effectiveStyle}
 		<!-- Highlighted Words Indicator Pill -->
 		{#if activeSel}
 			<div
-				class="flex shrink-0 items-center gap-1 rounded-full border border-indigo-300 bg-indigo-50 py-0.5 pr-1 pl-2.5 text-[11px] font-semibold text-indigo-800"
+				class="flex shrink-0 items-center gap-1 rounded-full border border-tone-editor-border bg-tone-editor-soft py-0.5 pr-1 pl-2.5 text-[11px] font-semibold text-tone-editor-ink"
 				title="Formatting applies only to the highlighted words inside {activeSel.label}"
 			>
 				<span class="max-w-32 truncate">
@@ -382,12 +382,12 @@
 					aria-label="Clear highlighted word selection"
 					onmousedown={(e) => e.preventDefault()}
 					onclick={() => activeSel.clear()}
-					class="rounded-full p-0.5 text-indigo-600 hover:bg-indigo-200/70 hover:text-indigo-950"
+					class="cursor-pointer rounded-full p-0.5 hover:opacity-75"
 				>
 					<X class="h-3 w-3" />
 				</button>
 			</div>
-			<div class="mx-0.5 h-5 w-px shrink-0 bg-border-default"></div>
+			<div class="mx-0.5 h-[18px] w-px shrink-0 bg-border-default"></div>
 		{/if}
 
 		<!-- Font Family -->
@@ -401,7 +401,7 @@
 
 		<!-- Font Size (- / input / presets / +) -->
 		<div
-			class="flex h-8 shrink-0 items-center overflow-hidden rounded-lg border border-border-strong bg-white"
+			class="flex h-[30px] shrink-0 items-center overflow-hidden rounded-md border border-border-strong bg-surface-card transition focus-within:border-accent-vivid focus-within:ring-3 focus-within:ring-accent-vivid/18 dark:bg-surface-recessed"
 			title={activeSel ? 'Change font size of highlighted words' : 'Change font size of text element'}
 		>
 			<button
@@ -409,7 +409,7 @@
 				aria-label="Decrease font size"
 				onmousedown={(e) => e.preventDefault()}
 				onclick={() => applyFontSize(effectiveStyle.fontSize - 1, { restoreFocus: true })}
-				class="flex h-full w-6 items-center justify-center text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary"
+				class="flex h-full w-6 cursor-pointer items-center justify-center text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary"
 			>
 				<Minus class="h-3 w-3" />
 			</button>
@@ -436,7 +436,7 @@
 						}
 					}
 				}}
-				class="h-full w-11 border-x border-border-default bg-transparent text-center text-xs font-medium text-ink-primary outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+				class="h-full w-11 border-x border-border-default bg-transparent text-center font-mono text-xs font-medium text-ink-primary tabular-nums outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
 			/>
 			<button
 				bind:this={sizeTriggerEl}
@@ -445,7 +445,7 @@
 				aria-expanded={sizeMenuOpen}
 				onmousedown={(e) => e.preventDefault()}
 				onclick={openSizeMenu}
-				class="flex h-full w-5 items-center justify-center border-r border-border-default text-ink-muted hover:bg-surface-subtle hover:text-ink-primary"
+				class="flex h-full w-5 cursor-pointer items-center justify-center border-r border-border-default text-ink-muted hover:bg-surface-subtle hover:text-ink-primary"
 			>
 				<ChevronDown class="h-3 w-3" />
 			</button>
@@ -454,7 +454,7 @@
 				aria-label="Increase font size"
 				onmousedown={(e) => e.preventDefault()}
 				onclick={() => applyFontSize(effectiveStyle.fontSize + 1, { restoreFocus: true })}
-				class="flex h-full w-6 items-center justify-center text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary"
+				class="flex h-full w-6 cursor-pointer items-center justify-center text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary"
 			>
 				<Plus class="h-3 w-3" />
 			</button>
@@ -462,7 +462,7 @@
 
 		<!-- Text Colour -->
 		<label
-			class="flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-border-strong bg-white px-2 hover:border-accent/60"
+			class="flex h-[30px] shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-border-strong bg-surface-card px-2 transition hover:border-ink-muted/60 dark:bg-surface-recessed"
 			title={activeSel ? 'Change colour of highlighted words' : 'Change text colour'}
 		>
 			<input
@@ -470,17 +470,17 @@
 				aria-label={activeSel ? 'Highlighted words colour' : 'Text colour'}
 				value={effectiveStyle.fill}
 				oninput={(e) => applyColor(e.currentTarget.value)}
-				class="h-5 w-5 cursor-pointer rounded border border-border-default bg-transparent p-0"
+				class="h-4 w-4 cursor-pointer rounded border border-border-default bg-transparent p-0"
 			/>
-			<span class="hidden font-mono text-[11px] text-ink-secondary xl:inline">
+			<span class="hidden font-mono text-[11px] text-ink-secondary uppercase xl:inline">
 				{effectiveStyle.fill}
 			</span>
 		</label>
 
-		<div class="mx-0.5 h-5 w-px shrink-0 bg-border-default"></div>
+		<div class="mx-0.5 h-[18px] w-px shrink-0 bg-border-default"></div>
 
 		<!-- Bold / Italic / Underline / Clear Formatting -->
-		<div class="flex shrink-0 items-center gap-1">
+		<div class="flex shrink-0 items-center gap-0.5 rounded-lg border border-border-default bg-surface-subtle p-0.5 dark:bg-surface-recessed">
 			<button
 				type="button"
 				title={activeSel ? 'Bold highlighted words (Ctrl+B)' : 'Bold'}
@@ -488,10 +488,10 @@
 				aria-pressed={effectiveStyle.fontWeight >= 600}
 				onmousedown={(e) => e.preventDefault()}
 				onclick={toggleBold}
-				class="flex h-8 w-8 items-center justify-center rounded-lg border text-xs transition {effectiveStyle.fontWeight >=
+				class="flex h-[26px] w-7 cursor-pointer items-center justify-center rounded-[5px] text-xs transition {effectiveStyle.fontWeight >=
 				600
-					? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-					: 'border-transparent text-ink-secondary hover:border-border-default hover:bg-surface-subtle hover:text-ink-primary'}"
+					? 'bg-tone-editor-soft text-tone-editor-ink shadow-xs ring-1 ring-tone-editor-border'
+					: 'text-ink-secondary hover:bg-surface-card/60 hover:text-ink-primary'}"
 			>
 				<Bold class="h-3.5 w-3.5" />
 			</button>
@@ -502,10 +502,10 @@
 				aria-pressed={effectiveStyle.fontStyle === 'italic'}
 				onmousedown={(e) => e.preventDefault()}
 				onclick={toggleItalic}
-				class="flex h-8 w-8 items-center justify-center rounded-lg border text-xs transition {effectiveStyle.fontStyle ===
+				class="flex h-[26px] w-7 cursor-pointer items-center justify-center rounded-[5px] text-xs transition {effectiveStyle.fontStyle ===
 				'italic'
-					? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-					: 'border-transparent text-ink-secondary hover:border-border-default hover:bg-surface-subtle hover:text-ink-primary'}"
+					? 'bg-tone-editor-soft text-tone-editor-ink shadow-xs ring-1 ring-tone-editor-border'
+					: 'text-ink-secondary hover:bg-surface-card/60 hover:text-ink-primary'}"
 			>
 				<Italic class="h-3.5 w-3.5" />
 			</button>
@@ -516,9 +516,9 @@
 				aria-pressed={effectiveStyle.underline}
 				onmousedown={(e) => e.preventDefault()}
 				onclick={toggleUnderline}
-				class="flex h-8 w-8 items-center justify-center rounded-lg border text-xs transition {effectiveStyle.underline
-					? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-					: 'border-transparent text-ink-secondary hover:border-border-default hover:bg-surface-subtle hover:text-ink-primary'}"
+				class="flex h-[26px] w-7 cursor-pointer items-center justify-center rounded-[5px] text-xs transition {effectiveStyle.underline
+					? 'bg-tone-editor-soft text-tone-editor-ink shadow-xs ring-1 ring-tone-editor-border'
+					: 'text-ink-secondary hover:bg-surface-card/60 hover:text-ink-primary'}"
 			>
 				<Underline class="h-3.5 w-3.5" />
 			</button>
@@ -530,17 +530,21 @@
 					aria-label="Clear inline formatting"
 					onmousedown={(e) => e.preventDefault()}
 					onclick={clearFormatting}
-					class="flex h-8 w-8 items-center justify-center rounded-lg border border-transparent text-ink-muted transition hover:border-border-default hover:bg-surface-subtle hover:text-ink-primary"
+					class="flex h-[26px] w-7 cursor-pointer items-center justify-center rounded-[5px] text-ink-muted transition hover:bg-surface-card/60 hover:text-ink-primary"
 				>
 					<RemoveFormatting class="h-3.5 w-3.5" />
 				</button>
 			{/if}
 		</div>
 
-		<div class="mx-0.5 h-5 w-px shrink-0 bg-border-default"></div>
+		<div class="mx-0.5 h-[18px] w-px shrink-0 bg-border-default"></div>
 
 		<!-- Horizontal Alignment -->
-		<div class="flex shrink-0 items-center gap-0.5" role="group" aria-label="Horizontal text alignment">
+		<div
+			class="flex shrink-0 items-center gap-0.5 rounded-lg border border-border-default bg-surface-subtle p-0.5 dark:bg-surface-recessed"
+			role="group"
+			aria-label="Horizontal text alignment"
+		>
 			{#each alignOptions as opt (opt.value)}
 				<button
 					type="button"
@@ -549,10 +553,10 @@
 					aria-pressed={selectedTextEl.align === opt.value}
 					onmousedown={(e) => e.preventDefault()}
 					onclick={() => editor.updateElement(selectedTextEl.id, { align: opt.value })}
-					class="flex h-8 w-8 items-center justify-center rounded-lg border text-xs transition {selectedTextEl.align ===
+					class="flex h-[26px] w-7 cursor-pointer items-center justify-center rounded-[5px] text-xs transition {selectedTextEl.align ===
 					opt.value
-						? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-						: 'border-transparent text-ink-secondary hover:border-border-default hover:bg-surface-subtle hover:text-ink-primary'}"
+						? 'bg-surface-card text-ink-primary shadow-xs dark:bg-surface-elevated'
+						: 'text-ink-secondary hover:text-ink-primary'}"
 				>
 					{#if opt.value === 'left'}
 						<AlignLeft class="h-3.5 w-3.5" />
@@ -567,10 +571,14 @@
 			{/each}
 		</div>
 
-		<div class="mx-0.5 h-5 w-px shrink-0 bg-border-default"></div>
+		<div class="mx-0.5 h-[18px] w-px shrink-0 bg-border-default"></div>
 
 		<!-- Vertical Alignment -->
-		<div class="flex shrink-0 items-center gap-0.5" role="group" aria-label="Vertical text alignment">
+		<div
+			class="flex shrink-0 items-center gap-0.5 rounded-lg border border-border-default bg-surface-subtle p-0.5 dark:bg-surface-recessed"
+			role="group"
+			aria-label="Vertical text alignment"
+		>
 			{#each vAlignOptions as opt (opt.value)}
 				<button
 					type="button"
@@ -579,10 +587,10 @@
 					aria-pressed={selectedTextEl.verticalAlign === opt.value}
 					onmousedown={(e) => e.preventDefault()}
 					onclick={() => editor.updateElement(selectedTextEl.id, { verticalAlign: opt.value })}
-					class="flex h-8 w-8 items-center justify-center rounded-lg border text-xs transition {selectedTextEl.verticalAlign ===
+					class="flex h-[26px] w-7 cursor-pointer items-center justify-center rounded-[5px] text-xs transition {selectedTextEl.verticalAlign ===
 					opt.value
-						? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-						: 'border-transparent text-ink-secondary hover:border-border-default hover:bg-surface-subtle hover:text-ink-primary'}"
+						? 'bg-surface-card text-ink-primary shadow-xs dark:bg-surface-elevated'
+						: 'text-ink-secondary hover:text-ink-primary'}"
 				>
 					{#if opt.value === 'top'}
 						<ArrowUpToLine class="h-3.5 w-3.5" />
@@ -595,7 +603,7 @@
 			{/each}
 		</div>
 
-		<div class="mx-0.5 h-5 w-px shrink-0 bg-border-default"></div>
+		<div class="mx-0.5 h-[18px] w-px shrink-0 bg-border-default"></div>
 
 		<!-- Text Case -->
 		<select
@@ -606,7 +614,7 @@
 				editor.updateElement(selectedTextEl.id, {
 					textTransform: e.currentTarget.value as TextTransformMode
 				})}
-			class="h-8 shrink-0 rounded-lg border border-border-strong bg-white px-2 text-xs text-ink-primary outline-none focus:border-accent"
+			class="h-[30px] shrink-0 rounded-md border border-border-strong bg-surface-card px-2 text-xs text-ink-primary outline-none focus:border-accent-vivid dark:bg-surface-recessed"
 		>
 			{#each transformOptions as opt (opt.value)}
 				<option value={opt.value}>{opt.label}</option>
@@ -621,29 +629,29 @@
 			aria-expanded={spacingMenuOpen}
 			onmousedown={(e) => e.preventDefault()}
 			onclick={openSpacingMenu}
-			class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition {spacingMenuOpen
-				? 'border-accent bg-accent-soft text-accent'
-				: 'border-border-strong bg-white text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary'}"
+			class="cf-pressable inline-flex h-[30px] shrink-0 cursor-pointer items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium {spacingMenuOpen
+				? 'border-accent-border bg-accent-soft text-accent-ink'
+				: 'border-border-strong bg-surface-card text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary'}"
 		>
 			<SlidersHorizontal class="h-3.5 w-3.5" />
 			<span class="hidden sm:inline">Spacing</span>
 			<ChevronDown class="h-3 w-3 opacity-70" />
 		</button>
 
-		<div class="mx-0.5 h-5 w-px shrink-0 bg-border-default"></div>
+		<div class="mx-0.5 h-[18px] w-px shrink-0 bg-border-default"></div>
 
 		<!-- Quick Canvas Centre Controls -->
 		<div class="flex shrink-0 items-center gap-1.5" role="group" aria-label="Centre element on canvas">
 			<span class="text-[11px] font-medium text-ink-muted">Centre:</span>
 			<div
-				class="inline-flex h-8 shrink-0 items-center overflow-hidden rounded-lg border border-border-default bg-white divide-x divide-border-default"
+				class="inline-flex h-[30px] shrink-0 items-center divide-x divide-border-default overflow-hidden rounded-md border border-border-default bg-surface-card"
 			>
 				<button
 					type="button"
 					title="Centre element horizontally on canvas"
 					onmousedown={(e) => e.preventDefault()}
 					onclick={() => editor.alignElementOnCanvas(selectedTextEl.id, 'center-x')}
-					class="h-full px-2 text-[11px] font-medium text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary"
+					class="h-full cursor-pointer px-2 text-[11px] font-medium text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary"
 				>
 					Horizontal
 				</button>
@@ -652,84 +660,60 @@
 					title="Centre element vertically on canvas"
 					onmousedown={(e) => e.preventDefault()}
 					onclick={() => editor.alignElementOnCanvas(selectedTextEl.id, 'center-y')}
-					class="h-full px-2 text-[11px] font-medium text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary"
+					class="h-full cursor-pointer px-2 text-[11px] font-medium text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary"
 				>
 					Vertical
 				</button>
 			</div>
 		</div>
 	{:else if editor.selectedElements.length > 1}
-		<span class="shrink-0 rounded-md bg-indigo-50 px-2 py-1 text-xs font-semibold text-indigo-800">
+		<span
+			class="shrink-0 rounded-full border border-tone-editor-border bg-tone-editor-soft px-2.5 py-0.5 text-xs font-semibold text-tone-editor-ink tabular-nums"
+		>
 			{editor.selectedElements.length} selected
 		</span>
-		<div class="mx-0.5 h-5 w-px shrink-0 bg-border-default"></div>
+		<div class="mx-0.5 h-[18px] w-px shrink-0 bg-border-default"></div>
 		<div class="flex shrink-0 items-center gap-1">
-			<button
-				type="button"
-				onclick={() => editor.alignSelectedElements('left')}
-				class="h-8 rounded-lg border border-border-default bg-white px-2 text-xs text-ink-secondary hover:bg-surface-subtle"
-			>
-				Left
-			</button>
-			<button
-				type="button"
-				onclick={() => editor.alignSelectedElements('center-x')}
-				class="h-8 rounded-lg border border-border-default bg-white px-2 text-xs text-ink-secondary hover:bg-surface-subtle"
-			>
-				Centre
-			</button>
-			<button
-				type="button"
-				onclick={() => editor.alignSelectedElements('right')}
-				class="h-8 rounded-lg border border-border-default bg-white px-2 text-xs text-ink-secondary hover:bg-surface-subtle"
-			>
-				Right
-			</button>
-			<button
-				type="button"
-				onclick={() => editor.alignSelectedElements('top')}
-				class="h-8 rounded-lg border border-border-default bg-white px-2 text-xs text-ink-secondary hover:bg-surface-subtle"
-			>
-				Top
-			</button>
-			<button
-				type="button"
-				onclick={() => editor.alignSelectedElements('center-y')}
-				class="h-8 rounded-lg border border-border-default bg-white px-2 text-xs text-ink-secondary hover:bg-surface-subtle"
-			>
-				Middle
-			</button>
-			<button
-				type="button"
-				onclick={() => editor.alignSelectedElements('bottom')}
-				class="h-8 rounded-lg border border-border-default bg-white px-2 text-xs text-ink-secondary hover:bg-surface-subtle"
-			>
-				Bottom
-			</button>
+			{#each [
+				{ id: 'left' as const, label: 'Left' },
+				{ id: 'center-x' as const, label: 'Centre' },
+				{ id: 'right' as const, label: 'Right' },
+				{ id: 'top' as const, label: 'Top' },
+				{ id: 'center-y' as const, label: 'Middle' },
+				{ id: 'bottom' as const, label: 'Bottom' }
+			] as act (act.id)}
+				<button
+					type="button"
+					onclick={() => editor.alignSelectedElements(act.id)}
+					class="cf-pressable h-[30px] cursor-pointer rounded-md border border-border-default bg-surface-card px-2 text-xs text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary"
+				>
+					{act.label}
+				</button>
+			{/each}
 		</div>
 		{#if editor.selectedElements.length >= 3}
-			<div class="mx-0.5 h-5 w-px shrink-0 bg-border-default"></div>
+			<div class="mx-0.5 h-[18px] w-px shrink-0 bg-border-default"></div>
 			<button
 				type="button"
 				onclick={() => editor.alignSelectedElements('distribute-h')}
-				class="h-8 shrink-0 rounded-lg border border-border-default bg-white px-2 text-xs text-ink-secondary hover:bg-surface-subtle"
+				class="cf-pressable h-[30px] shrink-0 cursor-pointer rounded-md border border-border-default bg-surface-card px-2 text-xs text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary"
 			>
 				Space H
 			</button>
 			<button
 				type="button"
 				onclick={() => editor.alignSelectedElements('distribute-v')}
-				class="h-8 shrink-0 rounded-lg border border-border-default bg-white px-2 text-xs text-ink-secondary hover:bg-surface-subtle"
+				class="cf-pressable h-[30px] shrink-0 cursor-pointer rounded-md border border-border-default bg-surface-card px-2 text-xs text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary"
 			>
 				Space V
 			</button>
 		{/if}
-		<div class="mx-0.5 h-5 w-px shrink-0 bg-border-default"></div>
+		<div class="mx-0.5 h-[18px] w-px shrink-0 bg-border-default"></div>
 		<button
 			type="button"
 			disabled={!editor.canGroup}
 			onclick={() => editor.groupSelected()}
-			class="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 text-xs font-semibold text-indigo-800 hover:bg-indigo-100 disabled:opacity-45"
+			class="cf-pressable inline-flex h-[30px] shrink-0 cursor-pointer items-center gap-1 rounded-md border border-tone-editor-border bg-tone-editor-soft px-2.5 text-xs font-semibold text-tone-editor-ink hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
 		>
 			<Group class="h-3.5 w-3.5" />
 			Group
@@ -738,58 +722,58 @@
 			type="button"
 			disabled={!editor.canUngroup}
 			onclick={() => editor.ungroupSelected()}
-			class="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg border border-border-default bg-white px-2.5 text-xs font-medium text-ink-secondary hover:bg-surface-subtle disabled:opacity-45"
+			class="cf-pressable inline-flex h-[30px] shrink-0 cursor-pointer items-center gap-1 rounded-md border border-border-default bg-surface-card px-2.5 text-xs font-medium text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary disabled:cursor-not-allowed disabled:opacity-45"
 		>
 			<Ungroup class="h-3.5 w-3.5" />
 			Ungroup
 		</button>
 	{:else if selected}
-		<span class="shrink-0 rounded-md bg-surface-subtle px-2 py-1 text-xs font-semibold text-ink-secondary capitalize">
+		<span class="shrink-0 rounded-md border border-border-default bg-surface-subtle px-2 py-0.5 text-xs font-semibold text-ink-secondary capitalize">
 			{selected.type}
 		</span>
-		<div class="mx-0.5 h-5 w-px shrink-0 bg-border-default"></div>
+		<div class="mx-0.5 h-[18px] w-px shrink-0 bg-border-default"></div>
 		<button
 			type="button"
 			onclick={() => editor.alignElementOnCanvas(selected.id, 'left')}
-			class="h-8 shrink-0 rounded-lg border border-border-default bg-white px-2 text-xs text-ink-secondary hover:bg-surface-subtle"
+			class="cf-pressable h-[30px] shrink-0 cursor-pointer rounded-md border border-border-default bg-surface-card px-2 text-xs text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary"
 		>
 			Align Left
 		</button>
 		<button
 			type="button"
 			onclick={() => editor.alignElementOnCanvas(selected.id, 'right')}
-			class="h-8 shrink-0 rounded-lg border border-border-default bg-white px-2 text-xs text-ink-secondary hover:bg-surface-subtle"
+			class="cf-pressable h-[30px] shrink-0 cursor-pointer rounded-md border border-border-default bg-surface-card px-2 text-xs text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary"
 		>
 			Align Right
 		</button>
-		<div class="mx-0.5 h-5 w-px shrink-0 bg-border-default"></div>
+		<div class="mx-0.5 h-[18px] w-px shrink-0 bg-border-default"></div>
 		<div class="flex shrink-0 items-center gap-1.5" role="group" aria-label="Centre element on canvas">
 			<span class="text-[11px] font-medium text-ink-muted">Centre:</span>
 			<div
-				class="inline-flex h-8 shrink-0 items-center overflow-hidden rounded-lg border border-border-default bg-white divide-x divide-border-default"
+				class="inline-flex h-[30px] shrink-0 items-center divide-x divide-border-default overflow-hidden rounded-md border border-border-default bg-surface-card"
 			>
 				<button
 					type="button"
 					onclick={() => editor.alignElementOnCanvas(selected.id, 'center-x')}
-					class="h-full px-2 text-[11px] font-medium text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary"
+					class="h-full cursor-pointer px-2 text-[11px] font-medium text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary"
 				>
 					Horizontal
 				</button>
 				<button
 					type="button"
 					onclick={() => editor.alignElementOnCanvas(selected.id, 'center-y')}
-					class="h-full px-2 text-[11px] font-medium text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary"
+					class="h-full cursor-pointer px-2 text-[11px] font-medium text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary"
 				>
 					Vertical
 				</button>
 			</div>
 		</div>
-		<div class="mx-0.5 h-5 w-px shrink-0 bg-border-default"></div>
+		<div class="mx-0.5 h-[18px] w-px shrink-0 bg-border-default"></div>
 		<button
 			type="button"
 			title="Duplicate element"
 			onclick={() => editor.duplicateElement(selected.id)}
-			class="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg border border-border-default bg-white px-2 text-xs text-ink-secondary hover:bg-surface-subtle"
+			class="cf-pressable inline-flex h-[30px] shrink-0 cursor-pointer items-center gap-1 rounded-md border border-border-default bg-surface-card px-2 text-xs text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary"
 		>
 			<Copy class="h-3.5 w-3.5" />
 			Duplicate
@@ -798,7 +782,7 @@
 			type="button"
 			title="Delete element"
 			onclick={() => editor.deleteElement(selected.id)}
-			class="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2 text-xs text-red-700 hover:bg-red-100"
+			class="cf-pressable inline-flex h-[30px] shrink-0 cursor-pointer items-center gap-1 rounded-md border border-tone-danger-border bg-tone-danger-soft px-2 text-xs font-medium text-tone-danger-ink hover:opacity-90"
 		>
 			<Trash2 class="h-3.5 w-3.5" />
 			Delete
@@ -808,7 +792,7 @@
 			Select a text element to format font, size, colour and alignment, or double-click text on the
 			canvas to type and style individual words.
 		</p>
-		<span class="ml-auto shrink-0 font-mono text-[11px] text-ink-muted">
+		<span class="ml-auto shrink-0 font-mono text-[11px] text-ink-muted tabular-nums">
 			{editor.width} × {editor.height} px
 		</span>
 	{/if}
@@ -821,7 +805,7 @@
 		role="listbox"
 		aria-label="Choose font size"
 		style="top: {sizeMenuPos.top}px; left: {sizeMenuPos.left}px;"
-		class="fixed z-50 max-h-64 w-24 overflow-y-auto rounded-xl border border-border-default bg-surface-card p-1 shadow-xl"
+		class="cf-popover-in fixed z-50 max-h-64 w-24 overflow-y-auto rounded-xl border border-border-default bg-surface-elevated p-1 shadow-md"
 	>
 		{#each FONT_SIZE_PRESETS as px (px)}
 			<button
@@ -833,10 +817,10 @@
 					sizeMenuOpen = false;
 					applyFontSize(px, { restoreFocus: true });
 				}}
-				class="flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-xs transition {Math.round(
+				class="flex w-full cursor-pointer items-center justify-between rounded-md px-2.5 py-1.5 font-mono text-xs tabular-nums transition {Math.round(
 					effectiveStyle.fontSize
 				) === px
-					? 'bg-indigo-50 font-semibold text-indigo-700'
+					? 'bg-tone-editor-soft font-semibold text-tone-editor-ink'
 					: 'text-ink-primary hover:bg-surface-subtle'}"
 			>
 				<span>{px}</span>
@@ -853,7 +837,7 @@
 		role="dialog"
 		aria-label="Text spacing and wrap settings"
 		style="top: {spacingMenuPos.top}px; left: {spacingMenuPos.left}px;"
-		class="fixed z-50 w-66 space-y-3 rounded-xl border border-border-default bg-surface-card p-3 shadow-xl"
+		class="cf-popover-in fixed z-50 w-66 space-y-3 rounded-xl border border-border-default bg-surface-elevated p-3 shadow-md"
 	>
 		<div class="grid grid-cols-2 gap-2">
 			<ScrubNumberInput
@@ -893,7 +877,7 @@
 					editor.updateElement(selectedTextEl.id, {
 						wrap: e.currentTarget.value as TextWrapMode
 					})}
-				class="mt-1 block w-full rounded-lg border border-border-strong bg-white px-2 py-1.5 text-xs"
+				class="mt-1 block h-[30px] w-full rounded-md border border-border-strong bg-surface-card px-2 text-xs text-ink-primary outline-none focus:border-accent-vivid dark:bg-surface-recessed"
 			>
 				{#each wrapOptions as opt (opt.value)}
 					<option value={opt.value}>{opt.label}</option>
@@ -901,13 +885,14 @@
 			</select>
 		</div>
 
-		<div class="space-y-1.5 border-t border-border-default pt-2">
+		<div class="space-y-1.5 border-t border-border-subtle pt-2">
 			<label class="flex cursor-pointer items-center gap-2 text-xs text-ink-primary">
 				<input
 					type="checkbox"
 					checked={selectedTextEl.autoFit}
 					onchange={(e) =>
 						editor.updateElement(selectedTextEl.id, { autoFit: e.currentTarget.checked })}
+					class="h-4 w-4 rounded-[4px] border-border-strong accent-accent"
 				/>
 				Auto-Fit Long Text
 			</label>
@@ -917,6 +902,7 @@
 					checked={selectedTextEl.ellipsis}
 					onchange={(e) =>
 						editor.updateElement(selectedTextEl.id, { ellipsis: e.currentTarget.checked })}
+					class="h-4 w-4 rounded-[4px] border-border-strong accent-accent"
 				/>
 				Ellipsis on Overflow
 			</label>

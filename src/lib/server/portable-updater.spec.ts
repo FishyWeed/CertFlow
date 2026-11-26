@@ -8,7 +8,9 @@ import {
 	compareSemver,
 	extractZipArchive,
 	findMatchingReleaseAsset,
-	getPortableRuntimeInfo
+	getPortableRuntimeInfo,
+	getStagedPortableUpdate,
+	startPortableInstall
 } from './portable-updater.ts';
 
 const SAVED_ENV = { ...process.env };
@@ -133,5 +135,47 @@ describe('portable updater helpers', () => {
 		expect(script).not.toContain('tasklist');
 		expect(script).not.toContain('find /I');
 		expect(script).not.toContain('timeout /t');
+	});
+
+	it('requires a staged download before Install can run and reads staged-update.json safely', () => {
+		const root = mkdtempSync(join(tmpdir(), 'certflow-staged-test-'));
+		tempDirs.push(root);
+		mkdirSync(join(root, 'app', 'build'), { recursive: true });
+		mkdirSync(join(root, 'data'), { recursive: true });
+		writeFileSync(join(root, 'app', 'build', 'index.js'), '');
+		writeFileSync(
+			join(root, 'app', 'portable-meta.json'),
+			JSON.stringify({
+				portable: true,
+				version: 'v1.2.0',
+				target: 'win-x64',
+				repo: 'FishyWeed/CertFlow'
+			})
+		);
+
+		process.env.CERTFLOW_PORTABLE = 'true';
+		process.env.CERTFLOW_PORTABLE_ROOT = root;
+		process.env.CERTFLOW_APP_DIR = join(root, 'app');
+
+		// No downloaded update yet -> staged is null and startPortableInstall rejects.
+		expect(getStagedPortableUpdate()).toBeNull();
+		expect(() => startPortableInstall()).toThrow('No downloaded update is ready to install');
+
+		// Write a valid staged update manifest + extracted bundle.
+		const bundleDir = join(root, '.update-staging', 'extracted', 'CertFlow');
+		mkdirSync(join(bundleDir, 'app', 'scripts'), { recursive: true });
+		writeFileSync(join(bundleDir, 'app', 'scripts', 'start.mjs'), '');
+		writeFileSync(
+			join(root, '.update-staging', 'staged-update.json'),
+			JSON.stringify({
+				version: 'v1.2.3',
+				bundleDir,
+				downloadedAt: new Date().toISOString()
+			})
+		);
+
+		const staged = getStagedPortableUpdate();
+		expect(staged?.version).toBe('v1.2.3');
+		expect(staged?.bundleDir).toBe(bundleDir);
 	});
 });

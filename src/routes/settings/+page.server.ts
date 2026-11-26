@@ -4,7 +4,8 @@ import { getUserAccountUsage } from '#lib/server/asset-cleanup.ts';
 import { db } from '#lib/server/db/index.ts';
 import { senderProfiles } from '#lib/server/db/schema.ts';
 import { getMailCapabilities } from '#lib/server/mail.ts';
-import { getPortableRuntimeInfo } from '#lib/server/portable-updater.ts';
+import { getPortableRuntimeInfo, getStagedPortableUpdate } from '#lib/server/portable-updater.ts';
+import { isLocalAppRuntime } from '#lib/server/runtime-config.ts';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -36,6 +37,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 	}));
 
 	const portableInfo = getPortableRuntimeInfo();
+	const stagedUpdate = getStagedPortableUpdate(portableInfo);
+	const canShowUpdates = portableInfo.isPortable || isLocalAppRuntime();
 
 	return {
 		user: locals.user,
@@ -44,8 +47,10 @@ export const load: PageServerLoad = async ({ locals }) => {
 		mailCapabilities: getMailCapabilities(),
 		portableInfo: {
 			isPortable: portableInfo.isPortable,
-			currentVersion: portableInfo.currentVersion,
-			target: portableInfo.target
+			canShowUpdates,
+			currentVersion: portableInfo.currentVersion || 'dev',
+			target: portableInfo.target,
+			stagedVersion: stagedUpdate?.version ?? null
 		}
 	};
 };

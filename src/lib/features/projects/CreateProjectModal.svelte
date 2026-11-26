@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { FolderPlus } from '@lucide/svelte';
+	import Button from '#lib/components/ui/Button.svelte';
 	import Modal from '#lib/components/ui/Modal.svelte';
 
 	interface Props {
@@ -13,8 +15,13 @@
 <Modal
 	bind:open
 	title="Create New Project"
-	description="Each project holds its own role templates, imported dataset and generated certificates."
+	description="Organise role templates, recipient spreadsheets and generated certificates in one workspace."
+	maxWidthClass="max-w-md"
 >
+	{#snippet icon()}
+		<FolderPlus class="h-5 w-5" />
+	{/snippet}
+
 	<form
 		method="POST"
 		{action}
@@ -29,7 +36,7 @@
 		class="space-y-4"
 	>
 		<div>
-			<label for="project-name" class="block text-sm font-medium text-slate-700">
+			<label for="project-name" class="block text-xs font-medium text-ink-secondary">
 				Project Name
 			</label>
 			<input
@@ -38,12 +45,12 @@
 				type="text"
 				required
 				placeholder="e.g. Annual Conference 2026"
-				class="mt-1 block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+				class="mt-1.5 block h-[38px] w-full rounded-lg border border-border-strong bg-surface-card px-3 text-sm text-ink-primary placeholder:text-ink-muted outline-none transition hover:border-ink-muted/60 focus:border-accent-vivid focus:ring-3 focus:ring-accent-vivid/18 dark:bg-surface-recessed"
 			/>
 		</div>
 
 		<div>
-			<label for="cert-title" class="block text-sm font-medium text-slate-700">
+			<label for="cert-title" class="block text-xs font-medium text-ink-secondary">
 				Default Certificate / Event Title
 			</label>
 			<input
@@ -51,12 +58,12 @@
 				name="defaultCertTitle"
 				type="text"
 				placeholder="Defaults to Project Name if left blank"
-				class="mt-1 block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+				class="mt-1.5 block h-[38px] w-full rounded-lg border border-border-strong bg-surface-card px-3 text-sm text-ink-primary placeholder:text-ink-muted outline-none transition hover:border-ink-muted/60 focus:border-accent-vivid focus:ring-3 focus:ring-accent-vivid/18 dark:bg-surface-recessed"
 			/>
 		</div>
 
 		<div>
-			<label for="project-desc" class="block text-sm font-medium text-slate-700">
+			<label for="project-desc" class="block text-xs font-medium text-ink-secondary">
 				Description (Optional)
 			</label>
 			<textarea
@@ -64,24 +71,13 @@
 				name="description"
 				rows={3}
 				placeholder="Notes about roles, categories or distribution..."
-				class="mt-1 block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+				class="mt-1.5 block w-full rounded-lg border border-border-strong bg-surface-card px-3 py-2 text-sm text-ink-primary placeholder:text-ink-muted outline-none transition hover:border-ink-muted/60 focus:border-accent-vivid focus:ring-3 focus:ring-accent-vivid/18 dark:bg-surface-recessed"
 			></textarea>
 		</div>
 
-		<div class="flex justify-end gap-2 pt-2">
-			<button
-				type="button"
-				onclick={() => (open = false)}
-				class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-			>
-				Cancel
-			</button>
-			<button
-				type="submit"
-				class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
-			>
-				Create Project
-			</button>
+		<div class="mt-6 flex items-center justify-end gap-2.5 border-t border-border-subtle pt-4">
+			<Button type="button" variant="secondary" onclick={() => (open = false)}>Cancel</Button>
+			<Button type="submit" variant="primary">Create Project</Button>
 		</div>
 	</form>
 </Modal>

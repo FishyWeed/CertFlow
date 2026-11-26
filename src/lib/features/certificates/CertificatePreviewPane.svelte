@@ -80,13 +80,13 @@
 	}}
 />
 
-<div class="flex flex-col overflow-hidden rounded-xl border border-border-default bg-surface-card">
+<div class="flex flex-col overflow-hidden rounded-2xl border border-border-default bg-surface-card shadow-xs">
 	<div class="flex items-center justify-between gap-2 border-b border-border-default px-4 py-3">
 		<div class="min-w-0">
-			<p class="text-[11px] font-semibold tracking-wide text-indigo-700 uppercase">
+			<p class="text-[11px] font-semibold tracking-[0.07em] text-tone-editor-ink uppercase">
 				Certificate Preview
 			</p>
-			<p class="truncate text-xs font-medium text-ink-secondary">
+			<p class="truncate text-xs font-medium text-ink-secondary tabular-nums">
 				{templateName} · {width}×{height}px
 			</p>
 		</div>
@@ -94,7 +94,7 @@
 		<div class="flex shrink-0 items-center gap-2">
 			{#if rendering}
 				<span
-					class="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700"
+					class="inline-flex items-center gap-1 rounded-full border border-tone-editor-border bg-tone-editor-soft px-2 py-0.5 text-[11px] font-medium text-tone-editor-ink"
 				>
 					<RefreshCw class="h-3 w-3 animate-spin" />
 					Updating
@@ -106,7 +106,7 @@
 				onclick={() => (expanded = true)}
 				title="Expand preview"
 				aria-label="Expand preview"
-				class="inline-flex items-center gap-1 rounded-lg border border-border-default bg-white px-2.5 py-1.5 text-xs font-medium text-ink-secondary transition hover:bg-surface-subtle hover:text-ink-primary disabled:opacity-40"
+				class="cf-pressable inline-flex cursor-pointer items-center gap-1 rounded-md border border-border-strong bg-surface-card px-2.5 py-1 text-xs font-medium text-ink-secondary shadow-xs hover:bg-surface-subtle hover:text-ink-primary disabled:opacity-40"
 			>
 				<Maximize2 class="h-3.5 w-3.5" />
 				Expand
@@ -114,9 +114,9 @@
 		</div>
 	</div>
 
-	<div class="flex items-center justify-center bg-slate-100/90 p-4 sm:p-5">
+	<div class="editor-sandbox-grid flex items-center justify-center p-4 sm:p-6">
 		{#if renderError}
-			<div class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+			<div class="rounded-lg border border-tone-danger-border bg-tone-danger-soft px-3 py-2 text-xs text-tone-danger-ink">
 				{renderError}
 			</div>
 		{:else if previewDataUrl}
@@ -124,12 +124,12 @@
 				src={previewDataUrl}
 				alt="Certificate preview for {recipientName}"
 				style="aspect-ratio: {width} / {height};"
-				class="max-h-[520px] w-full rounded border border-slate-200 bg-white object-contain shadow-md"
+				class="preserve-light max-h-[520px] w-full rounded-[3px] bg-white object-contain"
 			/>
 		{:else}
 			<div
 				style="aspect-ratio: {width} / {height};"
-				class="flex w-full items-center justify-center rounded border border-dashed border-border-strong bg-white/80 text-xs text-ink-muted"
+				class="preserve-light flex w-full items-center justify-center rounded-[3px] border border-dashed border-border-strong bg-white/90 text-xs text-ink-muted"
 			>
 				Rendering preview...
 			</div>
@@ -138,7 +138,7 @@
 
 	<div class="flex items-center justify-between border-t border-border-default bg-surface-page px-4 py-2 text-[11px] text-ink-muted">
 		<span class="truncate font-medium text-ink-secondary">{recipientName}</span>
-		<span class="shrink-0 font-mono">{certCode}</span>
+		<span class="shrink-0 font-mono tabular-nums">{certCode}</span>
 	</div>
 </div>
 
@@ -148,18 +148,20 @@
 		role="dialog"
 		aria-modal="true"
 		aria-label="Expanded certificate preview for {recipientName}"
-		class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/75 p-4 backdrop-blur-xs sm:p-8"
+		class="cf-backdrop-in fixed inset-0 z-[100] flex items-center justify-center bg-black/72 p-4 backdrop-blur-[5px] sm:p-8"
 	>
 		<div
 			role="presentation"
 			onclick={() => (expanded = false)}
 			class="fixed inset-0"
 		></div>
-		<div class="relative z-10 flex max-h-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-surface-card shadow-2xl">
-			<div class="flex items-center justify-between gap-4 border-b border-border-default px-4 py-3">
+		<div
+			class="cf-modal-in relative z-10 flex max-h-full max-w-6xl flex-col overflow-hidden rounded-[20px] border border-border-default bg-surface-elevated shadow-lg"
+		>
+			<div class="flex items-center justify-between gap-4 border-b border-border-default px-5 py-3.5">
 				<div class="min-w-0">
-					<p class="truncate text-sm font-semibold text-ink-primary">{recipientName}</p>
-					<p class="truncate text-xs text-ink-muted">
+					<p class="font-display truncate text-sm font-semibold text-ink-primary">{recipientName}</p>
+					<p class="truncate font-mono text-xs text-ink-muted">
 						{templateName} · {certCode}
 					</p>
 				</div>
@@ -167,16 +169,16 @@
 					type="button"
 					aria-label="Close expanded preview"
 					onclick={() => (expanded = false)}
-					class="rounded-lg p-1.5 text-ink-muted hover:bg-surface-subtle hover:text-ink-primary"
+					class="cf-pressable cursor-pointer rounded-lg p-1.5 text-ink-muted hover:bg-surface-subtle hover:text-ink-primary"
 				>
-					<X class="h-4 w-4" />
+					<X class="h-[18px] w-[18px]" />
 				</button>
 			</div>
-			<div class="flex items-center justify-center overflow-auto bg-slate-100 p-4 sm:p-6">
+			<div class="editor-sandbox-grid flex items-center justify-center overflow-auto p-5 sm:p-8">
 				<img
 					src={previewDataUrl}
 					alt="Expanded certificate preview for {recipientName}"
-					class="max-h-[80vh] max-w-full rounded border border-slate-200 bg-white shadow-lg"
+					class="preserve-light max-h-[80vh] max-w-full rounded-[3px] bg-white"
 				/>
 			</div>
 		</div>

@@ -3,265 +3,271 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
- * Semantic design tokens for CertFlow.
- * Keep components bound to these tokens so a future design system can replace
- * colours, radii and fonts in one place without rewriting feature logic.
+ * CertFlow Design System — Press & Signal (v2.0)
+ * Complete Tailwind CSS v4 semantic tokens for Light Mode and Dark Mode.
  */
 @theme {
-	--font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+	/* Typography */
+	--font-display: 'Instrument Sans', 'Geist', ui-sans-serif, system-ui, sans-serif;
+	--font-sans: 'Geist', ui-sans-serif, system-ui, -apple-system, sans-serif;
+	--font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
-	--color-surface-page: #f8fafc;
+	/* Surfaces (Light Mode — Gallery Alabaster) */
+	--color-surface-page: #f5f5f7;
 	--color-surface-card: #ffffff;
-	--color-surface-subtle: #f1f5f9;
-	--color-border-default: #e2e8f0;
-	--color-border-strong: #cbd5e1;
+	--color-surface-elevated: #ffffff;
+	--color-surface-subtle: #ececef;
+	--color-surface-recessed: #e4e4e8;
 
-	--color-ink-primary: #0f172a;
-	--color-ink-secondary: #475569;
-	--color-ink-muted: #64748b;
+	/* Borders & Specular Rim (Light Mode) */
+	--color-border-subtle: #efeff2;
+	--color-border-default: #e2e2e7;
+	--color-border-strong: #cbcbd3;
+	--color-specular: rgba(255, 255, 255, 0.85);
 
-	--color-accent: #4f46e5;
-	--color-accent-hover: #4338ca;
-	--color-accent-soft: #eef2ff;
+	/* Ink / Text (Light Mode — WCAG AA/AAA verified) */
+	--color-ink-primary: #121215;
+	--color-ink-secondary: #4a4a54;
+	--color-ink-muted: #5e5e6a;
+	--color-ink-inverted: #ffffff;
 
-	--color-tone-editor: #4f46e5;
-	--color-tone-data: #059669;
-	--color-tone-certs: #d97706;
-	--color-tone-email: #0284c7;
-	--color-tone-danger: #dc2626;
+	/* Brand Accent — Wax Vermilion */
+	--color-accent: #d13b15;
+	--color-accent-hover: #b33010;
+	--color-accent-active: #99280d;
+	--color-accent-vivid: #eb4a1e;
+	--color-accent-soft: #fff1ec;
+	--color-accent-border: #fbcbb9;
+	--color-accent-ink: #b83210;
+
+	/* Monochrome Studio Action */
+	--color-contrast: #141418;
+	--color-contrast-hover: #27272e;
+
+	/* Stage 1: Editor — Blueprint Cobalt */
+	--color-tone-editor: #3b5bdb;
+	--color-tone-editor-soft: #eef2ff;
+	--color-tone-editor-border: #c5d2ff;
+	--color-tone-editor-ink: #2f4bc4;
+
+	/* Stage 2: Data & Mapping — Verdigris Jade */
+	--color-tone-data: #0d8a62;
+	--color-tone-data-soft: #ecfdf5;
+	--color-tone-data-border: #a7f3d0;
+	--color-tone-data-ink: #0b7351;
+
+	/* Stage 3: Generate Certificates — Burnished Ochre */
+	--color-tone-certs: #b56806;
+	--color-tone-certs-soft: #fef7e6;
+	--color-tone-certs-border: #f8db94;
+	--color-tone-certs-ink: #9a5404;
+
+	/* Stage 4: Send Email — Cerulean Dispatch */
+	--color-tone-email: #0277bd;
+	--color-tone-email-soft: #edf8fe;
+	--color-tone-email-border: #b3e2fc;
+	--color-tone-email-ink: #03669e;
+
+	/* Semantic States */
+	--color-tone-danger: #c91d32;
+	--color-tone-danger-soft: #fef1f2;
+	--color-tone-danger-border: #fecdd3;
+	--color-tone-danger-ink: #ad182b;
+
+	--color-tone-success: #0d8a62;
+	--color-tone-success-soft: #ecfdf5;
+	--color-tone-success-border: #a7f3d0;
+	--color-tone-success-ink: #0b7351;
+
+	--color-tone-warning: #b56806;
+	--color-tone-warning-soft: #fef7e6;
+	--color-tone-warning-border: #f8db94;
+	--color-tone-warning-ink: #9a5404;
+
+	--color-tone-info: #0277bd;
+	--color-tone-info-soft: #edf8fe;
+	--color-tone-info-border: #b3e2fc;
+	--color-tone-info-ink: #03669e;
+
+	/* Radii */
+	--radius-xs: 0.25rem;
+	--radius-sm: 0.375rem;
+	--radius-md: 0.5rem;
+	--radius-lg: 0.75rem;
+	--radius-xl: 1rem;
+	--radius-2xl: 1.25rem;
+
+	/* Elevation Shadows (Light Mode) */
+	--shadow-xs: 0 1px 2px rgba(18, 18, 21, 0.06);
+	--shadow-sm: 0 2px 8px -2px rgba(18, 18, 21, 0.08), 0 1px 2px rgba(18, 18, 21, 0.04);
+	--shadow-md: 0 12px 28px -8px rgba(18, 18, 21, 0.12), 0 2px 6px rgba(18, 18, 21, 0.04);
+	--shadow-lg: 0 24px 56px -12px rgba(18, 18, 21, 0.18), 0 4px 12px rgba(18, 18, 21, 0.06);
+	--shadow-canvas-sheet:
+		0 14px 40px -10px rgba(18, 18, 21, 0.16), 0 0 0 1px rgba(18, 18, 21, 0.08);
+	--shadow-accent-glow:
+		inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 2px 8px rgba(209, 59, 21, 0.28);
+
+	/* Motion */
+	--duration-instant: 90ms;
+	--duration-fast: 150ms;
+	--duration-normal: 220ms;
+	--duration-deliberate: 280ms;
+	--ease-studio: cubic-bezier(0.2, 0, 0, 1);
+	--ease-spring: cubic-bezier(0.22, 1.14, 0.36, 1);
+	--ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* Dark Mode — Matte Obsidian Studio */
 html.dark {
 	color-scheme: dark;
 
-	--color-surface-page: #0b1120;
-	--color-surface-card: #111827;
-	--color-surface-subtle: #1e293b;
-	--color-border-default: #263245;
-	--color-border-strong: #374761;
+	--color-surface-page: #09090b;
+	--color-surface-card: #121215;
+	--color-surface-elevated: #1a1a1f;
+	--color-surface-subtle: #1c1c22;
+	--color-surface-recessed: #0e0e11;
 
-	--color-ink-primary: #f1f5f9;
-	--color-ink-secondary: #cbd5e1;
-	--color-ink-muted: #94a3b8;
+	--color-border-subtle: #1b1b21;
+	--color-border-default: #26262e;
+	--color-border-strong: #383844;
+	--color-specular: rgba(255, 255, 255, 0.07);
 
-	--color-accent: #6366f1;
-	--color-accent-hover: #818cf8;
-	--color-accent-soft: #1e1b4b;
+	--color-ink-primary: #f5f5f7;
+	--color-ink-secondary: #a3a3b0;
+	--color-ink-muted: #858594;
+	--color-ink-inverted: #09090b;
+
+	--color-accent: #d43e18;
+	--color-accent-hover: #c03512;
+	--color-accent-active: #a62c0e;
+	--color-accent-vivid: #ff5e33;
+	--color-accent-soft: rgba(255, 84, 32, 0.14);
+	--color-accent-border: rgba(255, 112, 67, 0.34);
+	--color-accent-ink: #ff8766;
+
+	--color-contrast: #f5f5f7;
+	--color-contrast-hover: #e4e4e9;
+
+	--color-tone-editor: #5c7cfa;
+	--color-tone-editor-soft: rgba(76, 110, 245, 0.15);
+	--color-tone-editor-border: rgba(116, 143, 252, 0.34);
+	--color-tone-editor-ink: #91a7ff;
+
+	--color-tone-data: #20c997;
+	--color-tone-data-soft: rgba(18, 184, 134, 0.15);
+	--color-tone-data-border: rgba(52, 211, 153, 0.34);
+	--color-tone-data-ink: #5ce0b2;
+
+	--color-tone-certs: #f5b942;
+	--color-tone-certs-soft: rgba(245, 159, 0, 0.15);
+	--color-tone-certs-border: rgba(245, 185, 66, 0.34);
+	--color-tone-certs-ink: #f7c95c;
+
+	--color-tone-email: #38bdf8;
+	--color-tone-email-soft: rgba(34, 167, 240, 0.15);
+	--color-tone-email-border: rgba(79, 195, 247, 0.34);
+	--color-tone-email-ink: #6fd0fa;
+
+	--color-tone-danger: #c91d32;
+	--color-tone-danger-soft: rgba(225, 29, 72, 0.15);
+	--color-tone-danger-border: rgba(251, 113, 133, 0.35);
+	--color-tone-danger-ink: #ffa3ac;
+
+	--color-tone-success: #12b886;
+	--color-tone-success-soft: rgba(18, 184, 134, 0.15);
+	--color-tone-success-border: rgba(52, 211, 153, 0.34);
+	--color-tone-success-ink: #5ce0b2;
+
+	--color-tone-warning: #f59f00;
+	--color-tone-warning-soft: rgba(245, 159, 0, 0.15);
+	--color-tone-warning-border: rgba(245, 185, 66, 0.34);
+	--color-tone-warning-ink: #f7c95c;
+
+	--color-tone-info: #22a7f0;
+	--color-tone-info-soft: rgba(34, 167, 240, 0.15);
+	--color-tone-info-border: rgba(79, 195, 247, 0.34);
+	--color-tone-info-ink: #6fd0fa;
+
+	--shadow-xs: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 1px 2px rgba(0, 0, 0, 0.5);
+	--shadow-sm: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 4px 14px rgba(0, 0, 0, 0.55);
+	--shadow-md: inset 0 1px 0 rgba(255, 255, 255, 0.09), 0 14px 34px rgba(0, 0, 0, 0.72);
+	--shadow-lg: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 28px 64px rgba(0, 0, 0, 0.86);
+	--shadow-canvas-sheet:
+		0 24px 64px -12px rgba(0, 0, 0, 0.92), 0 0 0 1px rgba(255, 255, 255, 0.13);
+	--shadow-accent-glow:
+		inset 0 1px 0 rgba(255, 255, 255, 0.24), 0 4px 18px rgba(235, 74, 30, 0.34);
 }
 
+/* Base layer */
 @layer base {
 	html,
 	body {
 		height: 100%;
 		background-color: var(--color-surface-page);
 		color: var(--color-ink-primary);
+		font-family: var(--font-sans);
 		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
 	}
 
-	html.dark input:not([type='color']):not([type='checkbox']):not([type='radio']),
-	html.dark select,
-	html.dark textarea {
-		color: var(--color-ink-primary);
+	@media (prefers-reduced-motion: no-preference) {
+		html {
+			scroll-behavior: smooth;
+		}
+	}
+
+	h1,
+	h2,
+	h3 {
+		font-family: var(--font-display);
 	}
 
 	html.dark option {
-		background-color: #111827;
-		color: #f1f5f9;
+		background-color: var(--color-surface-elevated);
+		color: var(--color-ink-primary);
+	}
+
+	input[type='checkbox'],
+	input[type='radio'],
+	input[type='range'] {
+		accent-color: var(--color-accent-vivid);
+	}
+
+	::selection {
+		background-color: var(--color-accent-soft);
+		color: var(--color-accent-ink);
+	}
+
+	* {
+		scrollbar-width: thin;
+		scrollbar-color: var(--color-border-strong) transparent;
+	}
+
+	:focus-visible {
+		outline: 2px solid var(--color-accent-vivid);
+		outline-offset: 2px;
 	}
 }
 
-/*
- * Adaptive dark-mode overrides for legacy light-palette utility classes across feature views.
- * Add `.preserve-light` to paper surfaces (certificate canvas, signature pad) that must remain white.
- */
-html.dark .bg-white:not(.preserve-light) {
-	background-color: #162032;
+/* Paper-preserving isolation for certificate canvas and signature pad */
+.preserve-light {
+	color-scheme: light;
+	--color-surface-page: #f5f5f7;
+	--color-surface-card: #ffffff;
+	--color-ink-primary: #121215;
+	--color-ink-secondary: #4a4a54;
+	--color-ink-muted: #5e5e6a;
+	box-shadow: var(--shadow-canvas-sheet);
 }
 
-html.dark .hover\:bg-white:not(.preserve-light):hover {
-	background-color: #1e293b;
-}
-
-html.dark .bg-slate-50,
-html.dark .bg-slate-100,
-html.dark .bg-slate-100\/90,
-html.dark .hover\:bg-slate-50:hover {
-	background-color: #1e293b;
-}
-
-html.dark .bg-indigo-50,
-html.dark .bg-indigo-50\/40,
-html.dark .bg-indigo-50\/60,
-html.dark .bg-indigo-50\/70,
-html.dark .bg-indigo-50\/80 {
-	background-color: rgba(99, 102, 241, 0.16);
-}
-
-html.dark .bg-indigo-100,
-html.dark .bg-indigo-100\/80,
-html.dark .hover\:bg-indigo-100:hover {
-	background-color: rgba(99, 102, 241, 0.26);
-}
-
-html.dark .bg-emerald-50,
-html.dark .bg-emerald-50\/60,
-html.dark .bg-emerald-50\/70 {
-	background-color: rgba(16, 185, 129, 0.14);
-}
-
-html.dark .bg-amber-50,
-html.dark .bg-amber-50\/40,
-html.dark .bg-amber-50\/60,
-html.dark .bg-amber-50\/70 {
-	background-color: rgba(245, 158, 11, 0.14);
-}
-
-html.dark .hover\:bg-amber-100\/60:hover,
-html.dark .hover\:bg-amber-100:hover {
-	background-color: rgba(245, 158, 11, 0.24);
-}
-
-html.dark .bg-sky-50,
-html.dark .bg-sky-50\/70 {
-	background-color: rgba(14, 165, 233, 0.15);
-}
-
-html.dark .bg-sky-200 {
-	background-color: rgba(14, 165, 233, 0.25);
-}
-
-html.dark .bg-red-50,
-html.dark .bg-red-50\/40,
-html.dark .bg-red-50\/70,
-html.dark .hover\:bg-red-50:hover {
-	background-color: rgba(239, 68, 68, 0.14);
-}
-
-html.dark .hover\:bg-red-100:hover {
-	background-color: rgba(239, 68, 68, 0.26);
-}
-
-html.dark .border-slate-100,
-html.dark .border-slate-200,
-html.dark .border-slate-300 {
-	border-color: #334155;
-}
-
-html.dark .border-indigo-100,
-html.dark .border-indigo-200,
-html.dark .border-indigo-300 {
-	border-color: rgba(129, 140, 248, 0.35);
-}
-
-html.dark .border-emerald-100,
-html.dark .border-emerald-200,
-html.dark .border-emerald-300 {
-	border-color: rgba(52, 211, 153, 0.35);
-}
-
-html.dark .border-amber-100,
-html.dark .border-amber-200,
-html.dark .border-amber-200\/80,
-html.dark .border-amber-300 {
-	border-color: rgba(251, 191, 36, 0.35);
-}
-
-html.dark .border-sky-200,
-html.dark .border-sky-300 {
-	border-color: rgba(56, 189, 248, 0.35);
-}
-
-html.dark .border-red-200,
-html.dark .border-red-300 {
-	border-color: rgba(248, 113, 113, 0.35);
-}
-
-html.dark .text-slate-600,
-html.dark .hover\:text-slate-600:hover {
-	color: #94a3b8;
-}
-
-html.dark .text-slate-700,
-html.dark .text-slate-800,
-html.dark .hover\:text-slate-700:hover {
-	color: #cbd5e1;
-}
-
-html.dark .text-slate-900 {
-	color: #f1f5f9;
-}
-
-html.dark .text-indigo-600,
-html.dark .text-indigo-700,
-html.dark .hover\:text-indigo-700:hover,
-html.dark .group:hover .group-hover\:text-indigo-700 {
-	color: #a5b4fc;
-}
-
-html.dark .text-indigo-800,
-html.dark .text-indigo-900,
-html.dark .hover\:text-indigo-900:hover {
-	color: #c7d2fe;
-}
-
-html.dark .text-indigo-950 {
-	color: #e0e7ff;
-}
-
-html.dark .text-emerald-600,
-html.dark .text-emerald-700,
-html.dark .text-emerald-800,
-html.dark .text-emerald-900 {
-	color: #6ee7b7;
-}
-
-html.dark .text-emerald-950 {
-	color: #d1fae5;
-}
-
-html.dark .text-amber-600,
-html.dark .text-amber-700,
-html.dark .text-amber-800,
-html.dark .text-amber-900 {
-	color: #fcd34d;
-}
-
-html.dark .text-amber-950,
-html.dark .hover\:text-amber-950:hover {
-	color: #fef3c7;
-}
-
-html.dark .text-sky-600,
-html.dark .text-sky-700,
-html.dark .text-sky-800,
-html.dark .text-sky-900 {
-	color: #7dd3fc;
-}
-
-html.dark .text-sky-950 {
-	color: #e0f2fe;
-}
-
-html.dark .text-red-600,
-html.dark .text-red-700,
-html.dark .hover\:text-red-600:hover {
-	color: #fca5a5;
-}
-
-html.dark .text-red-800,
-html.dark .text-red-900,
-html.dark .text-red-950 {
-	color: #fecaca;
-}
-
-/* Subtle architectural grid behind the certificate inside the editor sandbox. */
+/* Architectural cutting-mat grid (24px minor / 120px major) */
 .editor-sandbox-grid {
-	background-color: var(--color-surface-subtle);
+	background-color: #eaeaef;
 	background-image:
-		linear-gradient(to right, rgba(100, 116, 139, 0.22) 1px, transparent 1px),
-		linear-gradient(to bottom, rgba(100, 116, 139, 0.22) 1px, transparent 1px),
-		linear-gradient(to right, rgba(148, 163, 184, 0.22) 1px, transparent 1px),
-		linear-gradient(to bottom, rgba(148, 163, 184, 0.22) 1px, transparent 1px);
+		linear-gradient(to right, rgba(18, 18, 21, 0.115) 1px, transparent 1px),
+		linear-gradient(to bottom, rgba(18, 18, 21, 0.115) 1px, transparent 1px),
+		linear-gradient(to right, rgba(18, 18, 21, 0.055) 1px, transparent 1px),
+		linear-gradient(to bottom, rgba(18, 18, 21, 0.055) 1px, transparent 1px);
 	background-size:
 		120px 120px,
 		120px 120px,
@@ -271,10 +277,227 @@ html.dark .text-red-950 {
 }
 
 html.dark .editor-sandbox-grid {
-	background-color: #070b14;
+	background-color: #060608;
 	background-image:
-		linear-gradient(to right, rgba(148, 163, 184, 0.16) 1px, transparent 1px),
-		linear-gradient(to bottom, rgba(148, 163, 184, 0.16) 1px, transparent 1px),
-		linear-gradient(to right, rgba(148, 163, 184, 0.07) 1px, transparent 1px),
-		linear-gradient(to bottom, rgba(148, 163, 184, 0.07) 1px, transparent 1px);
+		linear-gradient(to right, rgba(255, 255, 255, 0.088) 1px, transparent 1px),
+		linear-gradient(to bottom, rgba(255, 255, 255, 0.088) 1px, transparent 1px),
+		linear-gradient(to right, rgba(255, 255, 255, 0.038) 1px, transparent 1px),
+		linear-gradient(to bottom, rgba(255, 255, 255, 0.038) 1px, transparent 1px);
+}
+
+/* Radial-faded 48px architectural drafting grid for auth and setup pages */
+.cf-drafting-grid {
+	background-image:
+		linear-gradient(to right, rgba(18, 18, 21, 0.055) 1px, transparent 1px),
+		linear-gradient(to bottom, rgba(18, 18, 21, 0.055) 1px, transparent 1px);
+	background-size: 48px 48px;
+	mask-image: radial-gradient(ellipse 68% 68% at 50% 44%, #000 35%, transparent 100%);
+	-webkit-mask-image: radial-gradient(ellipse 68% 68% at 50% 44%, #000 35%, transparent 100%);
+}
+
+html.dark .cf-drafting-grid {
+	background-image:
+		linear-gradient(to right, rgba(255, 255, 255, 0.055) 1px, transparent 1px),
+		linear-gradient(to bottom, rgba(255, 255, 255, 0.055) 1px, transparent 1px);
+}
+
+/* Press & Signal Custom Interaction Animations */
+@keyframes cf-backdrop-in {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+@keyframes cf-modal-in {
+	from {
+		opacity: 0;
+		transform: translateY(10px) scale(0.97);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+@keyframes cf-popover-in {
+	from {
+		opacity: 0;
+		transform: translateY(-4px) scale(0.96);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+@keyframes cf-seal-stamp {
+	0% {
+		opacity: 0.6;
+		transform: scale(0.82);
+	}
+	58% {
+		opacity: 1;
+		transform: scale(1.08);
+	}
+	100% {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
+@keyframes cf-handle-settle {
+	from {
+		opacity: 0;
+		transform: scale(0.6);
+	}
+	to {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
+@keyframes cf-progress-sheen {
+	0% {
+		transform: translateX(-100%);
+	}
+	100% {
+		transform: translateX(230%);
+	}
+}
+
+@keyframes cf-route-beam {
+	0% {
+		stroke-dashoffset: 320;
+		opacity: 0.35;
+	}
+	50% {
+		opacity: 1;
+	}
+	100% {
+		stroke-dashoffset: 0;
+		opacity: 0.95;
+	}
+}
+
+@keyframes cf-theme-morph {
+	from {
+		opacity: 0;
+		transform: rotate(-55deg) scale(0.72);
+	}
+	to {
+		opacity: 1;
+		transform: rotate(0deg) scale(1);
+	}
+}
+
+.cf-pressable {
+	transition:
+		background-color var(--duration-fast) var(--ease-studio),
+		border-color var(--duration-fast) var(--ease-studio),
+		color var(--duration-fast) var(--ease-studio),
+		box-shadow var(--duration-fast) var(--ease-studio),
+		transform var(--duration-instant) var(--ease-studio);
+}
+
+.cf-pressable:active:not(:disabled) {
+	transform: translateY(0.5px) scale(0.982);
+}
+
+.cf-card-lift {
+	transition:
+		border-color var(--duration-fast) var(--ease-studio),
+		box-shadow var(--duration-fast) var(--ease-studio),
+		transform var(--duration-fast) var(--ease-studio);
+}
+
+.cf-card-lift:hover {
+	border-color: var(--color-border-strong);
+	box-shadow: var(--shadow-sm);
+	transform: translateY(-1.5px);
+}
+
+.cf-glide-thumb {
+	transition:
+		transform var(--duration-normal) var(--ease-spring),
+		width var(--duration-normal) var(--ease-spring),
+		background-color var(--duration-fast) var(--ease-studio);
+}
+
+.cf-backdrop-in {
+	animation: cf-backdrop-in 180ms var(--ease-studio) both;
+}
+
+.cf-modal-in {
+	animation: cf-modal-in 240ms var(--ease-out-expo) both;
+}
+
+.cf-popover-in {
+	animation: cf-popover-in 150ms var(--ease-out-expo) both;
+}
+
+.cf-seal-stamp {
+	animation: cf-seal-stamp 340ms var(--ease-spring) both;
+}
+
+.cf-handle-settle {
+	animation: cf-handle-settle 140ms var(--ease-spring) both;
+}
+
+.cf-theme-morph {
+	animation: cf-theme-morph 220ms var(--ease-spring) both;
+}
+
+.cf-scrub-active {
+	border-color: var(--color-accent-vivid);
+	background-color: var(--color-accent-soft);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent-vivid) 22%, transparent);
+}
+
+.cf-progress-sheen {
+	position: relative;
+	overflow: hidden;
+}
+
+.cf-progress-sheen::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	width: 44%;
+	background: linear-gradient(
+		90deg,
+		transparent 0%,
+		rgba(255, 255, 255, 0.28) 50%,
+		transparent 100%
+	);
+	animation: cf-progress-sheen 1.6s linear infinite;
+}
+
+.cf-route-beam {
+	stroke-dasharray: 320;
+	animation: cf-route-beam 650ms var(--ease-out-expo) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.cf-pressable:active:not(:disabled),
+	.cf-card-lift:hover {
+		transform: none;
+	}
+	.cf-glide-thumb {
+		transition: none;
+	}
+	.cf-modal-in,
+	.cf-popover-in,
+	.cf-seal-stamp,
+	.cf-handle-settle,
+	.cf-theme-morph,
+	.cf-route-beam {
+		animation: cf-backdrop-in 120ms ease-out both;
+	}
+	.cf-progress-sheen::after {
+		animation: none;
+		display: none;
+	}
 }

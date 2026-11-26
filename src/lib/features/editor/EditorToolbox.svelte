@@ -177,9 +177,11 @@
 >
 	<!-- Properties ({{}}) -->
 	<section>
-		<h2 class="text-xs font-semibold tracking-wide text-indigo-700 uppercase">Properties</h2>
+		<h2 class="text-[11px] font-semibold tracking-[0.07em] text-tone-editor-ink uppercase">
+			Properties
+		</h2>
 		<p class="mt-1 text-xs text-ink-muted">
-			Drag a property onto the certificate or a text box. You can also click to add it.
+			Drag a property onto the certificate or a text box, or click to add it.
 		</p>
 		<div class="mt-2.5 grid grid-cols-2 gap-1.5 lg:grid-cols-1">
 			{#each criteria as prop (prop.key)}
@@ -188,30 +190,30 @@
 					draggable="true"
 					ondragstart={(e) => handlePropertyDragStart(e, prop)}
 					onclick={() => editor.addPlaceholder(prop)}
-					class="flex cursor-grab items-center justify-between gap-1.5 rounded-lg border border-indigo-100 bg-indigo-50/60 px-2.5 py-2 text-left text-xs font-medium text-indigo-900 transition hover:bg-indigo-100 active:cursor-grabbing"
+					class="cf-pressable flex h-8 cursor-grab items-center justify-between gap-1.5 rounded-lg border border-tone-editor-border bg-tone-editor-soft px-2.5 text-left text-xs font-medium text-tone-editor-ink hover:opacity-90 active:cursor-grabbing"
 				>
 					<span class="flex min-w-0 items-center gap-1.5 truncate">
-						<GripVertical class="h-3.5 w-3.5 shrink-0 text-indigo-400" />
+						<GripVertical class="h-3.5 w-3.5 shrink-0 opacity-55" />
 						<span class="truncate">{prop.label}</span>
 					</span>
-					<code class="shrink-0 text-[10px] text-indigo-600">{`{{${prop.key}}}`}</code>
+					<code class="shrink-0 font-mono text-[10px] opacity-85">{`{{${prop.key}}}`}</code>
 				</button>
 			{/each}
 		</div>
 	</section>
 
 	<!-- Static Elements -->
-	<section class="border-t border-border-default pt-4">
-		<h2 class="text-xs font-semibold tracking-wide text-ink-secondary uppercase">Elements</h2>
+	<section class="border-t border-border-subtle pt-4">
+		<h2 class="text-[11px] font-semibold tracking-[0.07em] text-ink-muted uppercase">Elements</h2>
 		<div class="mt-2.5 grid grid-cols-2 gap-1.5">
 			<button
 				type="button"
 				draggable="true"
 				ondragstart={(e) => handleElementDragStart(e, 'text')}
 				onclick={() => editor.addStaticText()}
-				class="flex min-h-9 cursor-grab items-center gap-1.5 rounded-lg border border-border-default px-2.5 py-1.5 text-xs font-medium text-ink-primary hover:bg-surface-subtle active:cursor-grabbing"
+				class="cf-pressable flex h-8 cursor-grab items-center gap-1.5 rounded-lg border border-border-default bg-surface-card px-2.5 text-xs font-medium text-ink-primary hover:border-border-strong hover:bg-surface-subtle active:cursor-grabbing"
 			>
-				<Type class="h-3.5 w-3.5" />
+				<Type class="h-3.5 w-3.5 text-ink-secondary" />
 				Text
 			</button>
 			<button
@@ -219,9 +221,9 @@
 				draggable="true"
 				ondragstart={(e) => handleElementDragStart(e, 'rect')}
 				onclick={() => editor.addShape('rect')}
-				class="flex min-h-9 cursor-grab items-center gap-1.5 rounded-lg border border-border-default px-2.5 py-1.5 text-xs font-medium text-ink-primary hover:bg-surface-subtle active:cursor-grabbing"
+				class="cf-pressable flex h-8 cursor-grab items-center gap-1.5 rounded-lg border border-border-default bg-surface-card px-2.5 text-xs font-medium text-ink-primary hover:border-border-strong hover:bg-surface-subtle active:cursor-grabbing"
 			>
-				<Square class="h-3.5 w-3.5" />
+				<Square class="h-3.5 w-3.5 text-ink-secondary" />
 				Box
 			</button>
 			<button
@@ -229,9 +231,9 @@
 				draggable="true"
 				ondragstart={(e) => handleElementDragStart(e, 'line')}
 				onclick={() => editor.addShape('line')}
-				class="flex min-h-9 cursor-grab items-center gap-1.5 rounded-lg border border-border-default px-2.5 py-1.5 text-xs font-medium text-ink-primary hover:bg-surface-subtle active:cursor-grabbing"
+				class="cf-pressable flex h-8 cursor-grab items-center gap-1.5 rounded-lg border border-border-default bg-surface-card px-2.5 text-xs font-medium text-ink-primary hover:border-border-strong hover:bg-surface-subtle active:cursor-grabbing"
 			>
-				<Minus class="h-3.5 w-3.5" />
+				<Minus class="h-3.5 w-3.5 text-ink-secondary" />
 				Line
 			</button>
 			<button
@@ -239,18 +241,18 @@
 				draggable="true"
 				ondragstart={(e) => handleElementDragStart(e, 'circle')}
 				onclick={() => editor.addShape('circle')}
-				class="flex min-h-9 cursor-grab items-center gap-1.5 rounded-lg border border-border-default px-2.5 py-1.5 text-xs font-medium text-ink-primary hover:bg-surface-subtle active:cursor-grabbing"
+				class="cf-pressable flex h-8 cursor-grab items-center gap-1.5 rounded-lg border border-border-default bg-surface-card px-2.5 text-xs font-medium text-ink-primary hover:border-border-strong hover:bg-surface-subtle active:cursor-grabbing"
 			>
-				<Circle class="h-3.5 w-3.5" />
+				<Circle class="h-3.5 w-3.5 text-ink-secondary" />
 				Circle
 			</button>
 			<button
 				type="button"
 				disabled={uploading}
 				onclick={() => imageInputEl?.click()}
-				class="flex min-h-9 items-center gap-1.5 rounded-lg border border-border-default px-2.5 py-1.5 text-xs font-medium text-ink-primary hover:bg-surface-subtle disabled:opacity-50"
+				class="cf-pressable flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-border-default bg-surface-card px-2.5 text-xs font-medium text-ink-primary hover:border-border-strong hover:bg-surface-subtle disabled:opacity-45"
 			>
-				<ImagePlus class="h-3.5 w-3.5" />
+				<ImagePlus class="h-3.5 w-3.5 text-ink-secondary" />
 				{uploading ? 'Uploading...' : 'Image'}
 			</button>
 			<button
@@ -258,9 +260,9 @@
 				draggable="true"
 				ondragstart={(e) => handleElementDragStart(e, 'signature')}
 				onclick={() => editor.addSignature()}
-				class="flex min-h-9 cursor-grab items-center gap-1.5 rounded-lg border border-border-default px-2.5 py-1.5 text-xs font-medium text-ink-primary hover:bg-surface-subtle active:cursor-grabbing"
+				class="cf-pressable flex h-8 cursor-grab items-center gap-1.5 rounded-lg border border-border-default bg-surface-card px-2.5 text-xs font-medium text-ink-primary hover:border-border-strong hover:bg-surface-subtle active:cursor-grabbing"
 			>
-				<PenTool class="h-3.5 w-3.5" />
+				<PenTool class="h-3.5 w-3.5 text-ink-secondary" />
 				Signature
 			</button>
 		</div>
@@ -274,14 +276,14 @@
 		/>
 
 		{#if uploadError}
-			<p class="mt-2 text-[11px] text-red-600">{uploadError}</p>
+			<p class="mt-2 text-[11px] text-tone-danger-ink">{uploadError}</p>
 		{/if}
 	</section>
 
 	<!-- Simplified Drag-to-Reorder Layer List -->
-	<section class="border-t border-border-default pt-4">
+	<section class="border-t border-border-subtle pt-4">
 		<div class="flex items-center justify-between">
-			<h2 class="text-xs font-semibold tracking-wide text-ink-secondary uppercase">
+			<h2 class="text-[11px] font-semibold tracking-[0.07em] text-ink-muted uppercase tabular-nums">
 				Layers ({editor.canvasState.elements.length})
 			</h2>
 			<span class="text-[10px] text-ink-muted">
@@ -303,12 +305,12 @@
 					ondragend={handleLayerDragEnd}
 					class="group relative flex items-center gap-1.5 overflow-hidden rounded-lg border px-1.5 py-1 text-xs transition {dragOverLayerId ===
 					el.id
-						? 'border-accent bg-accent-soft'
+						? 'border-accent-border bg-accent-soft'
 						: isSelected
-							? 'border-indigo-400 bg-indigo-50 text-indigo-950'
-							: 'border-transparent hover:bg-surface-subtle'} {!el.visible ? 'opacity-50' : ''}"
+							? 'border-tone-editor-border bg-tone-editor-soft text-tone-editor-ink'
+							: 'border-transparent text-ink-primary hover:bg-surface-subtle'} {!el.visible ? 'opacity-50' : ''}"
 				>
-					<span class="shrink-0 cursor-grab text-slate-400 group-hover:text-slate-600" title="Drag to reorder">
+					<span class="shrink-0 cursor-grab text-ink-muted group-hover:text-ink-secondary" title="Drag to reorder">
 						<GripVertical class="h-3.5 w-3.5" />
 					</span>
 
@@ -322,28 +324,28 @@
 						ondblclick={() => {
 							if (el.groupId) editor.selectElement(el.id, { ignoreGroup: true });
 						}}
-						class="flex min-h-7 min-w-0 flex-1 items-center gap-1.5 pr-1 text-left font-medium"
+						class="flex min-h-6 min-w-0 flex-1 cursor-pointer items-center gap-1.5 pr-1 text-left font-medium"
 					>
 						{#if el.type === 'placeholder' || el.type === 'title' || (el.type === 'text' && (/\{\{\s*[a-zA-Z0-9_]+\s*\}\}/.test(el.text) || (el.rules?.length ?? 0) > 0))}
-							<Tag class="h-3 w-3 shrink-0 text-indigo-500" />
+							<Tag class="h-3 w-3 shrink-0 text-tone-editor" />
 						{:else if el.type === 'text'}
-							<Type class="h-3 w-3 shrink-0 text-slate-500" />
+							<Type class="h-3 w-3 shrink-0 text-ink-muted" />
 						{:else if el.type === 'image'}
-							<ImageIcon class="h-3 w-3 shrink-0 text-emerald-600" />
+							<ImageIcon class="h-3 w-3 shrink-0 text-tone-data" />
 						{:else if el.type === 'signature'}
-							<PenTool class="h-3 w-3 shrink-0 text-violet-600" />
+							<PenTool class="h-3 w-3 shrink-0 text-accent-vivid" />
 						{:else if el.shapeKind === 'line'}
-							<Minus class="h-3 w-3 shrink-0 text-amber-600" />
+							<Minus class="h-3 w-3 shrink-0 text-tone-certs" />
 						{:else if el.shapeKind === 'circle'}
-							<Circle class="h-3 w-3 shrink-0 text-amber-600" />
+							<Circle class="h-3 w-3 shrink-0 text-tone-certs" />
 						{:else}
-							<Square class="h-3 w-3 shrink-0 text-amber-600" />
+							<Square class="h-3 w-3 shrink-0 text-tone-certs" />
 						{/if}
 						<span class="leading-snug break-words">{el.name}</span>
 						{#if el.groupId}
 							<span
 								title="Grouped element (double-click to edit alone)"
-								class="inline-flex shrink-0 items-center rounded bg-indigo-100 px-1 py-0.5 text-[10px] font-semibold text-indigo-700"
+								class="inline-flex shrink-0 items-center rounded border border-tone-editor-border bg-tone-editor-soft px-1 py-0.5 text-[10px] font-semibold text-tone-editor-ink"
 							>
 								<Group class="h-2.5 w-2.5" />
 							</span>
@@ -352,8 +354,8 @@
 
 					<!-- Actions take zero width at rest and slide out from the right on hover -->
 					<div
-						class="pointer-events-none absolute inset-y-0 right-0 flex translate-x-full items-center gap-0.5 bg-gradient-to-l pr-1 pl-5 opacity-0 transition-all duration-150 ease-out group-hover:pointer-events-auto group-hover:translate-x-0 group-hover:opacity-100 focus-within:pointer-events-auto focus-within:translate-x-0 focus-within:opacity-100 {isSelected
-							? 'from-indigo-50 via-indigo-50 to-transparent'
+						class="pointer-events-none absolute inset-y-0 right-0 flex translate-x-full items-center gap-0.5 bg-gradient-to-l pr-1 pl-6 opacity-0 transition-all duration-150 ease-out group-hover:pointer-events-auto group-hover:translate-x-0 group-hover:opacity-100 focus-within:pointer-events-auto focus-within:translate-x-0 focus-within:opacity-100 {isSelected
+							? 'from-surface-elevated via-surface-elevated to-transparent'
 							: 'from-surface-subtle via-surface-subtle to-transparent'}"
 					>
 						<button
@@ -364,7 +366,7 @@
 								e.stopPropagation();
 								editor.updateElement(el.id, { visible: !el.visible });
 							}}
-							class="flex h-6 w-6 items-center justify-center rounded text-ink-muted hover:bg-white hover:text-ink-primary"
+							class="flex h-6 w-6 cursor-pointer items-center justify-center rounded text-ink-muted hover:bg-surface-card hover:text-ink-primary"
 						>
 							{#if el.visible}
 								<Eye class="h-3.5 w-3.5" />
@@ -380,7 +382,7 @@
 								e.stopPropagation();
 								editor.updateElement(el.id, { locked: !el.locked });
 							}}
-							class="flex h-6 w-6 items-center justify-center rounded text-ink-muted hover:bg-white hover:text-ink-primary"
+							class="flex h-6 w-6 cursor-pointer items-center justify-center rounded text-ink-muted hover:bg-surface-card hover:text-ink-primary"
 						>
 							{#if el.locked}
 								<Lock class="h-3.5 w-3.5" />
@@ -396,7 +398,7 @@
 								e.stopPropagation();
 								editor.deleteElement(el.id);
 							}}
-							class="flex h-6 w-6 items-center justify-center rounded text-red-500 hover:bg-red-50"
+							class="flex h-6 w-6 cursor-pointer items-center justify-center rounded text-tone-danger-ink hover:bg-tone-danger-soft"
 						>
 							<Trash2 class="h-3.5 w-3.5" />
 						</button>

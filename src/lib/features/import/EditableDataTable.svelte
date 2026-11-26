@@ -272,15 +272,15 @@
 	}}
 />
 
-<section class="min-w-0 overflow-hidden rounded-xl border border-border-strong bg-surface-card shadow-xs">
+<section class="min-w-0 overflow-hidden rounded-xl border border-border-default bg-surface-card shadow-xs">
 	<!-- Compact Spreadsheet Toolbar -->
 	<div
-		class="flex flex-col gap-2.5 border-b border-border-default bg-surface-subtle px-3 py-2.5 lg:flex-row lg:items-center lg:justify-between sm:px-4"
+		class="flex flex-col gap-2.5 border-b border-border-default bg-surface-subtle/70 px-3 py-2.5 sm:px-4 lg:flex-row lg:items-center lg:justify-between"
 	>
 		<div class="flex min-w-0 flex-wrap items-center gap-2.5">
-			<h3 class="truncate text-sm font-semibold text-ink-primary">
+			<h3 class="font-display truncate text-sm font-semibold text-ink-primary">
 				{fileName || 'Data Table'}
-				<span class="font-normal text-ink-secondary">
+				<span class="font-sans font-normal text-ink-secondary tabular-nums">
 					{#if visibleRows.length !== rows.length}
 						(Showing {visibleRows.length} of {rows.length} rows, {headers.length} columns)
 					{:else}
@@ -301,14 +301,14 @@
 					aria-label="Search table rows"
 					bind:value={searchQuery}
 					placeholder="Search rows..."
-					class="min-h-8 w-full rounded-md border border-border-strong bg-white py-1 pr-7 pl-8 text-xs text-ink-primary outline-none focus:border-accent"
+					class="h-[30px] w-full rounded-md border border-border-strong bg-surface-card py-1 pr-7 pl-8 text-xs text-ink-primary placeholder:text-ink-muted outline-none focus:border-accent-vivid dark:bg-surface-recessed"
 				/>
 				{#if searchQuery}
 					<button
 						type="button"
 						aria-label="Clear search"
 						onclick={() => (searchQuery = '')}
-						class="absolute top-1/2 right-1.5 -translate-y-1/2 rounded p-0.5 text-ink-muted hover:bg-surface-subtle hover:text-ink-primary"
+						class="absolute top-1/2 right-1.5 -translate-y-1/2 cursor-pointer rounded p-0.5 text-ink-muted hover:bg-surface-subtle hover:text-ink-primary"
 					>
 						<X class="h-3 w-3" />
 					</button>
@@ -321,7 +321,7 @@
 					aria-label="New column name"
 					bind:value={newColumnName}
 					placeholder="Add column..."
-					class="min-h-8 w-32 rounded-md border border-border-strong bg-white px-2.5 py-1 text-xs text-ink-primary outline-none focus:border-accent sm:w-36"
+					class="h-[30px] w-32 rounded-md border border-border-strong bg-surface-card px-2.5 py-1 text-xs text-ink-primary placeholder:text-ink-muted outline-none focus:border-accent-vivid dark:bg-surface-recessed sm:w-36"
 				/>
 				<Button type="submit" size="sm" disabled={!newColumnName.trim()}>
 					<Plus class="h-3.5 w-3.5" />
@@ -339,20 +339,20 @@
 	<!-- Active Filters / Sort Bar -->
 	{#if hasActiveViewControls}
 		<div
-			class="flex flex-wrap items-center gap-1.5 border-b border-border-default bg-indigo-50/40 px-3 py-2 text-xs sm:px-4"
+			class="flex flex-wrap items-center gap-1.5 border-b border-border-default bg-tone-editor-soft/50 px-3 py-2 text-xs sm:px-4"
 		>
 			<span class="font-medium text-ink-secondary">Active view:</span>
 
 			{#if searchQuery.trim()}
 				<span
-					class="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-white px-2.5 py-0.5 text-xs font-medium text-indigo-800"
+					class="inline-flex items-center gap-1 rounded-full border border-tone-editor-border bg-surface-card px-2.5 py-0.5 text-xs font-medium text-tone-editor-ink"
 				>
 					Search: "{searchQuery.trim()}"
 					<button
 						type="button"
 						aria-label="Clear search filter"
 						onclick={() => (searchQuery = '')}
-						class="rounded-full text-indigo-500 hover:bg-indigo-100 hover:text-indigo-900"
+						class="cursor-pointer rounded-full hover:opacity-75"
 					>
 						<X class="h-3 w-3" />
 					</button>
@@ -361,14 +361,14 @@
 
 			{#each activeFilterEntries as [colKey, selectedKeys] (colKey)}
 				<span
-					class="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-white px-2.5 py-0.5 text-xs font-medium text-indigo-800"
+					class="inline-flex items-center gap-1 rounded-full border border-tone-editor-border bg-surface-card px-2.5 py-0.5 text-xs font-medium text-tone-editor-ink"
 				>
 					{getColumnLabel(colKey)}: {formatCategoryChipLabel(colKey, selectedKeys)}
 					<button
 						type="button"
 						aria-label="Clear filter on {getColumnLabel(colKey)}"
 						onclick={() => clearColumnFilter(colKey)}
-						class="rounded-full text-indigo-500 hover:bg-indigo-100 hover:text-indigo-900"
+						class="cursor-pointer rounded-full hover:opacity-75"
 					>
 						<X class="h-3 w-3" />
 					</button>
@@ -377,14 +377,14 @@
 
 			{#if sort}
 				<span
-					class="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-900"
+					class="inline-flex items-center gap-1 rounded-full border border-tone-certs-border bg-tone-certs-soft px-2.5 py-0.5 text-xs font-medium text-tone-certs-ink"
 				>
 					Sorted: {getColumnLabel(sort.column)} ({sort.direction === 'asc' ? 'A–Z' : 'Z–A'})
 					<button
 						type="button"
 						aria-label="Clear sort"
 						onclick={() => (sort = null)}
-						class="rounded-full text-amber-600 hover:bg-amber-100 hover:text-amber-950"
+						class="cursor-pointer rounded-full hover:opacity-75"
 					>
 						<X class="h-3 w-3" />
 					</button>
@@ -394,7 +394,7 @@
 			<button
 				type="button"
 				onclick={clearAllViewControls}
-				class="ml-auto text-xs font-semibold text-accent hover:underline"
+				class="ml-auto cursor-pointer text-xs font-semibold text-accent-ink hover:underline"
 			>
 				Clear All
 			</button>
@@ -405,7 +405,7 @@
 	<div class="w-full overflow-x-auto">
 		<table class="w-full border-collapse text-left text-xs">
 			<thead>
-				<tr class="border-b border-border-strong bg-surface-subtle">
+				<tr class="border-b border-border-default bg-surface-subtle">
 					<th
 						class="sticky left-0 z-10 w-14 border-r border-border-default bg-surface-subtle px-2 py-2 text-center font-semibold text-ink-secondary"
 					>
@@ -420,7 +420,7 @@
 							ondrop={(e) => handleColDrop(e, colIdx)}
 							class="min-w-[160px] border-r border-border-default p-1.5 align-top transition xl:min-w-0 {dragOverColIndex ===
 							colIdx
-								? 'bg-indigo-50 ring-2 ring-inset ring-accent'
+								? 'bg-tone-editor-soft ring-2 ring-tone-editor ring-inset'
 								: ''}"
 						>
 							<div class="flex items-center gap-1">
@@ -432,7 +432,7 @@
 									aria-label="Drag to rearrange column {header}"
 									ondragstart={(e) => handleColDragStart(e, colIdx)}
 									ondragend={handleColDragEnd}
-									class="flex h-7 w-5 shrink-0 cursor-grab items-center justify-center rounded text-slate-400 hover:bg-white hover:text-slate-700 active:cursor-grabbing"
+									class="flex h-7 w-5 shrink-0 cursor-grab items-center justify-center rounded text-ink-muted hover:bg-surface-card hover:text-ink-primary active:cursor-grabbing"
 								>
 									<GripVertical class="h-3.5 w-3.5" />
 								</span>
@@ -441,7 +441,7 @@
 									aria-label="Column {colIdx + 1} property name"
 									value={header}
 									onchange={(e) => handleRenameHeader(header, e.currentTarget.value)}
-									class="min-h-7 w-full min-w-0 rounded border border-border-default bg-white px-2 py-1 text-xs font-semibold text-ink-primary outline-none focus:border-accent"
+									class="min-h-7 w-full min-w-0 rounded border border-border-default bg-surface-card px-2 py-1 text-xs font-semibold text-ink-primary outline-none focus:border-tone-editor dark:bg-surface-recessed"
 								/>
 								{#if headers.length > 1}
 									<button
@@ -449,7 +449,7 @@
 										title="Remove column"
 										aria-label="Remove column {header}"
 										onclick={() => handleDeleteHeader(header)}
-										class="flex h-7 w-6 shrink-0 items-center justify-center rounded text-ink-muted hover:bg-red-50 hover:text-red-600"
+										class="flex h-7 w-6 shrink-0 cursor-pointer items-center justify-center rounded text-ink-muted hover:bg-tone-danger-soft hover:text-tone-danger-ink"
 									>
 										<X class="h-3.5 w-3.5" />
 									</button>
@@ -463,14 +463,16 @@
 								aria-expanded={openFilterCol === header}
 								aria-label="Filter or sort {header}"
 								onclick={(e) => openHeaderPopover(header, e.currentTarget)}
-								class="mt-1 flex w-full items-center justify-between gap-1.5 rounded px-1.5 py-1 text-left transition {activeCount >
+								class="mt-1 flex w-full cursor-pointer items-center justify-between gap-1.5 rounded px-1.5 py-1 text-left transition {activeCount >
 									0 || isSorted
-									? 'bg-indigo-100/80 text-indigo-800 hover:bg-indigo-100'
-									: 'text-ink-muted hover:bg-white hover:text-ink-primary'}"
+									? 'bg-tone-editor-soft text-tone-editor-ink'
+									: 'text-ink-muted hover:bg-surface-card hover:text-ink-primary'}"
 							>
 								<span class="flex min-w-0 items-center gap-1 truncate">
 									{#if propKey}
-										<code class="rounded bg-indigo-50 px-1 py-0.5 text-[11px] font-medium text-indigo-700">
+										<code
+											class="rounded border border-tone-editor-border bg-tone-editor-soft px-1 py-0.5 font-mono text-[10.5px] font-medium text-tone-editor-ink"
+										>
 											{`{{${propKey}}}`}
 										</code>
 									{/if}
@@ -479,13 +481,13 @@
 								<span class="flex shrink-0 items-center gap-1 text-[11px] font-medium">
 									{#if isSorted}
 										{#if sort?.direction === 'asc'}
-											<ArrowUpAZ class="h-3 w-3 text-amber-700" />
+											<ArrowUpAZ class="h-3 w-3 text-tone-certs-ink" />
 										{:else}
-											<ArrowDownZA class="h-3 w-3 text-amber-700" />
+											<ArrowDownZA class="h-3 w-3 text-tone-certs-ink" />
 										{/if}
 									{/if}
 									{#if activeCount > 0}
-										<span class="rounded-full bg-indigo-600 px-1.5 text-[10px] font-semibold text-white">
+										<span class="rounded-full bg-tone-editor px-1.5 font-mono text-[10px] font-semibold text-white tabular-nums">
 											{activeCount}
 										</span>
 									{:else}
@@ -505,23 +507,23 @@
 							aria-expanded={openFilterCol === TEMPLATE_COLUMN_KEY}
 							aria-label="Filter or sort Matched Template"
 							onclick={(e) => openHeaderPopover(TEMPLATE_COLUMN_KEY, e.currentTarget)}
-							class="flex w-full flex-col rounded px-2 py-1 text-left transition {tplActiveCount >
+							class="flex w-full cursor-pointer flex-col rounded px-2 py-1 text-left transition {tplActiveCount >
 								0 || tplSorted
-								? 'bg-indigo-100/80 text-indigo-900 hover:bg-indigo-100'
-								: 'hover:bg-white'}"
+								? 'bg-tone-editor-soft text-tone-editor-ink'
+								: 'hover:bg-surface-card'}"
 						>
 							<span class="flex items-center justify-between gap-2 font-semibold text-ink-secondary">
 								<span>Matched Template</span>
 								<span class="flex items-center gap-1">
 									{#if tplSorted}
 										{#if sort?.direction === 'asc'}
-											<ArrowUpAZ class="h-3 w-3 text-amber-700" />
+											<ArrowUpAZ class="h-3 w-3 text-tone-certs-ink" />
 										{:else}
-											<ArrowDownZA class="h-3 w-3 text-amber-700" />
+											<ArrowDownZA class="h-3 w-3 text-tone-certs-ink" />
 										{/if}
 									{/if}
 									{#if tplActiveCount > 0}
-										<span class="rounded-full bg-indigo-600 px-1.5 text-[10px] font-semibold text-white">
+										<span class="rounded-full bg-tone-editor px-1.5 font-mono text-[10px] font-semibold text-white tabular-nums">
 											{tplActiveCount}
 										</span>
 									{:else}
@@ -536,7 +538,7 @@
 				</tr>
 			</thead>
 
-			<tbody class="divide-y divide-border-default bg-surface-card">
+			<tbody class="divide-y divide-border-subtle bg-surface-card">
 				{#if visibleRows.length === 0}
 					<tr>
 						<td
@@ -547,7 +549,7 @@
 							<button
 								type="button"
 								onclick={clearAllViewControls}
-								class="ml-1.5 font-semibold text-accent hover:underline"
+								class="ml-1.5 cursor-pointer font-semibold text-accent-ink hover:underline"
 							>
 								Clear filters
 							</button>
@@ -558,13 +560,13 @@
 						<tr
 							ondragover={(e) => handleRowDragOver(e, item.originalIndex)}
 							ondrop={(e) => handleRowDrop(e, item.originalIndex)}
-							class="group transition hover:bg-surface-page/70 {dragOverRowIndex ===
+							class="group transition hover:bg-surface-subtle/45 {dragOverRowIndex ===
 							item.originalIndex
-								? 'bg-indigo-50/80 outline-2 -outline-offset-2 outline-accent'
+								? 'bg-tone-editor-soft outline-2 -outline-offset-2 outline-tone-editor'
 								: ''}"
 						>
 							<td
-								class="sticky left-0 z-10 border-r border-border-default bg-surface-page px-1.5 py-2 font-mono text-ink-secondary"
+								class="sticky left-0 z-10 border-r border-border-default bg-surface-page px-1.5 py-2 font-mono text-ink-secondary tabular-nums"
 							>
 								<div class="flex items-center justify-center gap-1">
 									<span
@@ -577,9 +579,9 @@
 										aria-label="Drag to rearrange row {displayIdx + 1}"
 										ondragstart={(e) => handleRowDragStart(e, item.originalIndex)}
 										ondragend={handleRowDragEnd}
-										class="flex h-6 w-4 items-center justify-center rounded text-slate-400 {sort ===
+										class="flex h-6 w-4 items-center justify-center rounded text-ink-muted {sort ===
 										null
-											? 'cursor-grab hover:bg-white hover:text-slate-700 active:cursor-grabbing'
+											? 'cursor-grab hover:bg-surface-card hover:text-ink-primary active:cursor-grabbing'
 											: 'cursor-not-allowed opacity-35'}"
 									>
 										<GripVertical class="h-3.5 w-3.5" />
@@ -589,7 +591,7 @@
 							</td>
 
 							{#each headers as header (header)}
-								<td class="border-r border-border-default p-1">
+								<td class="border-r border-border-subtle p-1">
 									<input
 										type="text"
 										aria-label="Row {item.originalIndex + 1} {header}"
@@ -597,13 +599,15 @@
 										oninput={(e) =>
 											onUpdateCell(item.originalIndex, header, e.currentTarget.value)}
 										placeholder="Type here..."
-										class="min-h-9 w-full min-w-0 rounded border border-border-default bg-white px-2 py-1.5 text-xs text-ink-primary outline-none transition placeholder:text-slate-400 focus:border-accent focus:ring-2 focus:ring-accent/15"
+										class="min-h-8 w-full min-w-0 rounded border border-transparent bg-transparent px-2 py-1 text-xs text-ink-primary placeholder:text-ink-muted/60 outline-none transition hover:border-border-default focus:border-tone-editor focus:bg-surface-card focus:ring-2 focus:ring-tone-editor/20 dark:focus:bg-surface-recessed"
 									/>
 								</td>
 							{/each}
 
-							<td class="border-r border-border-default px-2.5 py-2 whitespace-nowrap">
-								<Badge tone="indigo">{item.matchedTemplate}</Badge>
+							<td class="border-r border-border-subtle px-2.5 py-2 whitespace-nowrap">
+								<Badge tone={item.matchedTemplate === 'Unassigned' ? 'danger' : 'indigo'} dot>
+									{item.matchedTemplate}
+								</Badge>
 							</td>
 
 							<td class="px-1.5 py-1.5 text-center">
@@ -612,7 +616,7 @@
 									aria-label="Delete row {item.originalIndex + 1}"
 									title="Delete row"
 									onclick={() => onDeleteRow(item.originalIndex)}
-									class="inline-flex h-8 w-8 items-center justify-center rounded-md text-red-600 transition hover:bg-red-50"
+									class="cf-pressable inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-tone-danger-ink hover:bg-tone-danger-soft"
 								>
 									<Trash2 class="h-3.5 w-3.5" />
 								</button>
@@ -651,15 +655,15 @@
 		role="dialog"
 		aria-label="Filter and sort {getColumnLabel(colKey)}"
 		style="top: {popoverPos.top}px; left: {popoverPos.left}px;"
-		class="fixed z-50 w-64 rounded-xl border border-border-strong bg-surface-card p-3 shadow-xl"
+		class="cf-popover-in fixed z-50 w-64 rounded-xl border border-border-default bg-surface-elevated p-3 shadow-md"
 	>
-		<div class="flex items-center justify-between border-b border-border-default pb-2">
+		<div class="flex items-center justify-between border-b border-border-subtle pb-2">
 			<p class="truncate text-xs font-semibold text-ink-primary">{getColumnLabel(colKey)}</p>
 			<button
 				type="button"
 				aria-label="Close filter menu"
 				onclick={() => (openFilterCol = null)}
-				class="rounded p-0.5 text-ink-muted hover:bg-surface-subtle hover:text-ink-primary"
+				class="cursor-pointer rounded p-0.5 text-ink-muted hover:bg-surface-subtle hover:text-ink-primary"
 			>
 				<X class="h-3.5 w-3.5" />
 			</button>
@@ -670,10 +674,10 @@
 			<button
 				type="button"
 				onclick={() => toggleSort(colKey, 'asc')}
-				class="flex items-center justify-center gap-1 rounded-lg border px-2 py-1.5 text-xs font-medium transition {sort?.column ===
+				class="cf-pressable flex cursor-pointer items-center justify-center gap-1 rounded-md border px-2 py-1.5 text-xs font-medium {sort?.column ===
 					colKey && sort.direction === 'asc'
-					? 'border-indigo-500 bg-indigo-50 text-indigo-800'
-					: 'border-border-default bg-white text-ink-secondary hover:bg-surface-subtle'}"
+					? 'border-tone-editor-border bg-tone-editor-soft text-tone-editor-ink'
+					: 'border-border-default bg-surface-card text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary'}"
 			>
 				<ArrowUpAZ class="h-3.5 w-3.5" />
 				Sort A–Z
@@ -681,10 +685,10 @@
 			<button
 				type="button"
 				onclick={() => toggleSort(colKey, 'desc')}
-				class="flex items-center justify-center gap-1 rounded-lg border px-2 py-1.5 text-xs font-medium transition {sort?.column ===
+				class="cf-pressable flex cursor-pointer items-center justify-center gap-1 rounded-md border px-2 py-1.5 text-xs font-medium {sort?.column ===
 					colKey && sort.direction === 'desc'
-					? 'border-indigo-500 bg-indigo-50 text-indigo-800'
-					: 'border-border-default bg-white text-ink-secondary hover:bg-surface-subtle'}"
+					? 'border-tone-editor-border bg-tone-editor-soft text-tone-editor-ink'
+					: 'border-border-default bg-surface-card text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary'}"
 			>
 				<ArrowDownZA class="h-3.5 w-3.5" />
 				Sort Z–A
@@ -692,16 +696,16 @@
 		</div>
 
 		<!-- Category Checklist -->
-		<div class="mt-3 border-t border-border-default pt-2.5">
+		<div class="mt-3 border-t border-border-subtle pt-2.5">
 			<div class="flex items-center justify-between text-[11px]">
-				<span class="font-semibold tracking-wide text-ink-secondary uppercase">
+				<span class="font-semibold tracking-[0.07em] text-ink-muted uppercase">
 					Filter by Category
 				</span>
 				{#if selectedKeys.length > 0}
 					<button
 						type="button"
 						onclick={() => clearColumnFilter(colKey)}
-						class="font-medium text-accent hover:underline"
+						class="cursor-pointer font-medium text-accent-ink hover:underline"
 					>
 						Show All
 					</button>
@@ -714,7 +718,7 @@
 					aria-label="Search categories"
 					bind:value={categorySearch}
 					placeholder="Filter categories..."
-					class="mt-1.5 min-h-7 w-full rounded-md border border-border-strong bg-white px-2 py-1 text-xs outline-none focus:border-accent"
+					class="mt-1.5 h-[30px] w-full rounded-md border border-border-strong bg-surface-card px-2 py-1 text-xs text-ink-primary placeholder:text-ink-muted outline-none focus:border-accent-vivid dark:bg-surface-recessed"
 				/>
 			{/if}
 
@@ -729,13 +733,13 @@
 								type="checkbox"
 								{checked}
 								onchange={() => toggleCategoryValue(colKey, opt.key)}
-								class="h-3.5 w-3.5 shrink-0 rounded border-border-strong accent-accent"
+								class="h-3.5 w-3.5 shrink-0 rounded-[4px] border-border-strong accent-accent"
 							/>
-							<span class="truncate {opt.key === EMPTY_CATEGORY ? 'italic text-ink-muted' : 'text-ink-primary'}">
+							<span class="truncate {opt.key === EMPTY_CATEGORY ? 'text-ink-muted italic' : 'text-ink-primary'}">
 								{opt.label}
 							</span>
 						</span>
-						<span class="shrink-0 rounded bg-surface-subtle px-1.5 py-0.5 font-mono text-[10px] text-ink-muted">
+						<span class="shrink-0 rounded bg-surface-subtle px-1.5 py-0.5 font-mono text-[10px] text-ink-muted tabular-nums">
 							{opt.count}
 						</span>
 					</label>

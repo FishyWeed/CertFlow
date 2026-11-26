@@ -324,14 +324,14 @@
 	<div class="space-y-4">
 		<!-- Aspect Ratio Presets, Rotation & Quick Actions -->
 		<div class="flex flex-wrap items-center justify-between gap-2">
-			<div class="flex flex-wrap items-center gap-1">
+			<div class="inline-flex flex-wrap items-center gap-0.5 rounded-[10px] border border-border-default bg-surface-subtle p-[3px] dark:bg-surface-recessed">
 				{#each presetButtons as p (p.id)}
 					<button
 						type="button"
 						onclick={() => selectAspectPreset(p.id)}
-						class="rounded-lg border px-2.5 py-1 text-xs font-medium transition {aspectPreset === p.id
-							? 'border-accent bg-accent-soft text-accent'
-							: 'border-border-default bg-white text-ink-secondary hover:bg-surface-subtle'}"
+						class="cf-glide-thumb cursor-pointer rounded-[7px] px-2.5 py-1 text-xs font-medium {aspectPreset === p.id
+							? 'border border-border-default/80 bg-surface-card font-semibold text-ink-primary shadow-xs dark:bg-surface-elevated'
+							: 'border border-transparent text-ink-secondary hover:text-ink-primary'}"
 					>
 						{p.label}
 					</button>
@@ -344,7 +344,7 @@
 					title="Rotate 90° left"
 					aria-label="Rotate 90 degrees left"
 					onclick={() => setRotation(rotation - 90)}
-					class="inline-flex items-center gap-1 rounded-lg border border-border-default bg-white px-2 py-1 text-xs font-medium text-ink-secondary hover:bg-surface-subtle"
+					class="cf-pressable inline-flex cursor-pointer items-center gap-1 rounded-md border border-border-strong bg-surface-card px-2 py-1 text-xs font-medium text-ink-secondary shadow-xs hover:bg-surface-subtle hover:text-ink-primary"
 				>
 					<RotateCcw class="h-3.5 w-3.5" />
 					90°
@@ -354,7 +354,7 @@
 					title="Rotate 90° right"
 					aria-label="Rotate 90 degrees right"
 					onclick={() => setRotation(rotation + 90)}
-					class="inline-flex items-center gap-1 rounded-lg border border-border-default bg-white px-2 py-1 text-xs font-medium text-ink-secondary hover:bg-surface-subtle"
+					class="cf-pressable inline-flex cursor-pointer items-center gap-1 rounded-md border border-border-strong bg-surface-card px-2 py-1 text-xs font-medium text-ink-secondary shadow-xs hover:bg-surface-subtle hover:text-ink-primary"
 				>
 					<RotateCw class="h-3.5 w-3.5" />
 					90°
@@ -363,7 +363,7 @@
 					<button
 						type="button"
 						onclick={handleFitToCertificate}
-						class="rounded-lg border border-border-default bg-white px-2.5 py-1 text-xs font-medium text-ink-secondary hover:bg-surface-subtle"
+						class="cf-pressable cursor-pointer rounded-md border border-border-strong bg-surface-card px-2.5 py-1 text-xs font-medium text-ink-secondary shadow-xs hover:bg-surface-subtle hover:text-ink-primary"
 					>
 						Fit {canvasWidth}×{canvasHeight}
 					</button>
@@ -371,7 +371,7 @@
 				<button
 					type="button"
 					onclick={handleReset}
-					class="rounded-lg border border-border-default bg-white px-2.5 py-1 text-xs font-medium text-ink-secondary hover:bg-surface-subtle"
+					class="cf-pressable cursor-pointer rounded-md border border-border-strong bg-surface-card px-2.5 py-1 text-xs font-medium text-ink-secondary shadow-xs hover:bg-surface-subtle hover:text-ink-primary"
 				>
 					Reset
 				</button>
@@ -391,7 +391,7 @@
 
 		<!-- Interactive Crop Stage -->
 		<div
-			class="flex min-h-[240px] max-h-[46vh] items-center justify-center overflow-hidden rounded-xl border border-border-strong bg-slate-900/95 p-3 select-none"
+			class="flex max-h-[46vh] min-h-[240px] items-center justify-center overflow-hidden rounded-xl border border-border-strong bg-[#09090b] p-3 select-none"
 		>
 			{#if sourceUrl}
 				<div class="relative inline-block leading-none" style="touch-action: none;">
@@ -410,29 +410,29 @@
 
 						<!-- Dimmed masks around active crop region -->
 						<div
-							class="pointer-events-none absolute inset-x-0 top-0 bg-slate-950/55"
+							class="pointer-events-none absolute inset-x-0 top-0 bg-black/60"
 							style="height: {boxT}px;"
 						></div>
 						<div
-							class="pointer-events-none absolute inset-x-0 bottom-0 bg-slate-950/55"
+							class="pointer-events-none absolute inset-x-0 bottom-0 bg-black/60"
 							style="top: {boxT + boxH}px;"
 						></div>
 						<div
-							class="pointer-events-none absolute left-0 bg-slate-950/55"
+							class="pointer-events-none absolute left-0 bg-black/60"
 							style="top: {boxT}px; height: {boxH}px; width: {boxL}px;"
 						></div>
 						<div
-							class="pointer-events-none absolute right-0 bg-slate-950/55"
+							class="pointer-events-none absolute right-0 bg-black/60"
 							style="top: {boxT}px; height: {boxH}px; left: {boxL + boxW}px;"
 						></div>
 
-						<!-- Interactive Crop Box + Rule of Thirds + 8 Resize Handles -->
+						<!-- Interactive Crop Box + Rule of Thirds + 8 Blueprint Cobalt Resize Handles -->
 						<div
 							role="presentation"
 							aria-label="Crop selection area"
 							onpointerdown={(e) => startCropDrag('move', e)}
 							style="left: {boxL}px; top: {boxT}px; width: {boxW}px; height: {boxH}px;"
-							class="absolute cursor-move border-2 border-white shadow-[0_0_0_1px_rgba(79,70,229,0.9)]"
+							class="absolute cursor-move border-[1.5px] border-white shadow-[0_0_0_1px_#3B5BDB]"
 						>
 							<!-- Subtle rule-of-thirds gridlines -->
 							<div class="pointer-events-none absolute inset-y-0 left-1/3 w-px bg-white/35"></div>
@@ -444,7 +444,7 @@
 								<div
 									role="presentation"
 									onpointerdown={(e) => startCropDrag(h.id, e)}
-									class="absolute h-3 w-3 rounded-xs border border-indigo-600 bg-white shadow-xs {h.className}"
+									class="cf-handle-settle absolute h-2.5 w-2.5 rounded-[2px] border border-[#3B5BDB] bg-white shadow-xs {h.className}"
 								></div>
 							{/each}
 						</div>
@@ -458,7 +458,7 @@
 			<div class="flex flex-wrap items-center justify-between gap-2 pb-2">
 				<span class="text-xs font-semibold text-ink-primary">Rotate & Output Resize</span>
 				{#if naturalW > 0}
-					<span class="text-[11px] font-mono text-ink-muted">
+					<span class="font-mono text-[11px] text-ink-muted tabular-nums">
 						Source {naturalW}×{naturalH} · Crop {crop.width}×{crop.height} · {rotation}°
 					</span>
 				{/if}
@@ -503,9 +503,9 @@
 					title={lockOutputAspect ? 'Unlock aspect ratio' : 'Lock aspect ratio'}
 					aria-label={lockOutputAspect ? 'Unlock aspect ratio' : 'Lock aspect ratio'}
 					onclick={() => (lockOutputAspect = !lockOutputAspect)}
-					class="inline-flex h-8 items-center justify-center gap-1 rounded-lg border px-2.5 text-xs font-medium transition {lockOutputAspect
-						? 'border-indigo-300 bg-indigo-50 text-indigo-700'
-						: 'border-border-default bg-white text-ink-secondary hover:bg-surface-subtle'}"
+					class="cf-pressable inline-flex h-[30px] cursor-pointer items-center justify-center gap-1 rounded-md border px-2.5 text-xs font-medium {lockOutputAspect
+						? 'border-tone-editor-border bg-tone-editor-soft text-tone-editor-ink'
+						: 'border-border-strong bg-surface-card text-ink-secondary hover:bg-surface-subtle'}"
 				>
 					{#if lockOutputAspect}
 						<Lock class="h-3.5 w-3.5" />
@@ -540,12 +540,12 @@
 		</div>
 
 		{#if errorMessage}
-			<p class="text-xs text-red-600">{errorMessage}</p>
+			<p class="text-xs text-tone-danger-ink">{errorMessage}</p>
 		{/if}
 
-		<div class="flex justify-end gap-2 pt-1">
+		<div class="flex justify-end gap-2.5 border-t border-border-subtle pt-4">
 			<Button onclick={handleCancel} disabled={processing}>Cancel</Button>
-			<Button variant="primary" onclick={handleApply} disabled={processing || naturalW === 0}>
+			<Button variant="contrast" onclick={handleApply} disabled={processing || naturalW === 0}>
 				{processing ? 'Processing...' : 'Apply & Upload'}
 			</Button>
 		</div>

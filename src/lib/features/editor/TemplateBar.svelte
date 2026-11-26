@@ -1,6 +1,7 @@
 <script lang="ts">
 	import {
 		ArrowRight,
+		Check,
 		Eye,
 		Maximize2,
 		Pencil,
@@ -244,7 +245,7 @@
 			aria-label="Certificate template"
 			value={activeTemplateId}
 			onchange={handleSelectChange}
-			class="min-h-9 min-w-0 flex-1 rounded-lg border border-border-strong bg-white px-2.5 py-1.5 text-xs font-medium text-ink-primary sm:max-w-xs sm:flex-initial sm:text-sm"
+			class="h-[32px] min-w-0 flex-1 rounded-md border border-border-strong bg-surface-card px-2.5 text-xs font-medium text-ink-primary outline-none transition hover:border-ink-muted/60 focus:border-accent-vivid focus:ring-3 focus:ring-accent-vivid/18 dark:bg-surface-recessed sm:max-w-xs sm:flex-initial"
 		>
 			{#each templates as tpl (tpl.id)}
 				<option value={tpl.id}>
@@ -260,23 +261,32 @@
 				type="button"
 				onclick={openEditModal}
 				title="Rename template or select matching properties"
-				class="inline-flex min-h-8 max-w-52 shrink-0 items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-800 transition hover:bg-indigo-100"
+				class="cf-pressable inline-flex h-[30px] max-w-52 shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-tone-editor-border bg-tone-editor-soft px-2.5 text-xs font-medium text-tone-editor-ink hover:opacity-90"
 			>
 				<span class="truncate">{activeSummaryLabel}</span>
-				<Pencil class="h-3 w-3 shrink-0 text-indigo-600" />
+				<Pencil class="h-3 w-3 shrink-0" />
 			</button>
 		{/if}
 
-		<Button
-			size="sm"
-			variant="primary"
-			class="ml-auto shrink-0 lg:hidden"
-			disabled={saving || !editor.dirty}
-			onclick={onSaveTemplate}
-		>
-			<Save class="h-3.5 w-3.5" />
-			{saving ? 'Saving...' : editor.dirty ? 'Save' : 'Saved'}
-		</Button>
+		{#if !saving && !editor.dirty}
+			<span
+				class="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full border border-tone-data-border bg-tone-data-soft px-2.5 py-1 text-xs font-medium text-tone-data-ink lg:hidden"
+			>
+				<Check class="cf-seal-stamp h-3.5 w-3.5" />
+				Saved
+			</span>
+		{:else}
+			<Button
+				size="sm"
+				variant="contrast"
+				class="ml-auto shrink-0 lg:hidden"
+				disabled={saving}
+				onclick={onSaveTemplate}
+			>
+				<Save class="h-3.5 w-3.5" />
+				{saving ? 'Saving...' : 'Save'}
+			</Button>
+		{/if}
 	</div>
 
 	<!-- Editor Controls -->
@@ -300,7 +310,7 @@
 			<Redo2 class="h-3.5 w-3.5" />
 		</Button>
 
-		<div class="mx-0.5 h-4 w-px shrink-0 bg-border-default"></div>
+		<div class="mx-0.5 h-[18px] w-px shrink-0 bg-border-default"></div>
 
 		<Button
 			size="sm"
@@ -310,7 +320,7 @@
 		>
 			<ZoomOut class="h-3.5 w-3.5" />
 		</Button>
-		<span class="min-w-10 shrink-0 text-center text-xs font-medium text-ink-secondary">
+		<span class="min-w-10 shrink-0 text-center font-mono text-xs font-medium text-ink-secondary tabular-nums">
 			{Math.round(editor.zoom * 100)}%
 		</span>
 		<Button
@@ -331,10 +341,12 @@
 			Fit
 		</Button>
 
+		<div class="mx-0.5 h-[18px] w-px shrink-0 bg-border-default"></div>
+
 		<Button
 			size="sm"
 			class="shrink-0"
-			variant={editor.previewMode === 'placeholders' ? 'primary' : 'secondary'}
+			variant={editor.previewMode === 'placeholders' ? 'contrast' : 'secondary'}
 			onclick={() =>
 				(editor.previewMode = editor.previewMode === 'sample' ? 'placeholders' : 'sample')}
 		>
@@ -344,6 +356,7 @@
 
 		<Button
 			size="sm"
+			variant="secondary"
 			class="shrink-0"
 			disabled={goingToGenerate || saving}
 			onclick={handleGenerateClick}
@@ -352,16 +365,25 @@
 			<ArrowRight class="h-3.5 w-3.5" />
 		</Button>
 
-		<Button
-			size="sm"
-			variant="primary"
-			class="hidden shrink-0 lg:inline-flex"
-			disabled={saving || !editor.dirty}
-			onclick={onSaveTemplate}
-		>
-			<Save class="h-3.5 w-3.5" />
-			{saving ? 'Saving...' : editor.dirty ? 'Save' : 'Saved'}
-		</Button>
+		{#if !saving && !editor.dirty}
+			<span
+				class="hidden shrink-0 items-center gap-1.5 rounded-full border border-tone-data-border bg-tone-data-soft px-2.5 py-1 text-xs font-medium text-tone-data-ink lg:inline-flex"
+			>
+				<Check class="cf-seal-stamp h-3.5 w-3.5" />
+				Saved
+			</span>
+		{:else}
+			<Button
+				size="sm"
+				variant="contrast"
+				class="hidden shrink-0 lg:inline-flex"
+				disabled={saving}
+				onclick={onSaveTemplate}
+			>
+				<Save class="h-3.5 w-3.5" />
+				{saving ? 'Saving...' : 'Save'}
+			</Button>
+		{/if}
 	</div>
 </div>
 
@@ -373,7 +395,7 @@
 			filled value".
 		</p>
 
-		<div class="divide-y divide-border-default rounded-xl border border-border-default bg-surface-page">
+		<div class="divide-y divide-border-subtle rounded-xl border border-border-default bg-surface-page">
 			{#each properties as prop (prop.key)}
 				{@const isChecked = Boolean(checkedProps[prop.key])}
 				{@const chosen = selectedValues[prop.key] ?? []}
@@ -387,10 +409,12 @@
 							type="checkbox"
 							checked={isChecked}
 							onchange={(e) => (checkedProps[prop.key] = e.currentTarget.checked)}
-							class="h-4 w-4 shrink-0 rounded border-border-strong accent-accent"
+							class="h-4 w-4 shrink-0 rounded-[4px] border-border-strong accent-accent"
 						/>
 						<span class="font-medium">{prop.label}</span>
-						<code class="rounded bg-indigo-50 px-1.5 py-0.5 text-[11px] text-indigo-700">
+						<code
+							class="rounded border border-tone-editor-border bg-tone-editor-soft px-1.5 py-0.5 font-mono text-[11px] text-tone-editor-ink"
+						>
 							{`{{${prop.key}}}`}
 						</code>
 					</label>
@@ -401,14 +425,14 @@
 								<div class="flex flex-wrap gap-1">
 									{#each chosen as val (val)}
 										<span
-											class="inline-flex items-center gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-800"
+											class="inline-flex items-center gap-1 rounded-md border border-tone-editor-border bg-tone-editor-soft px-2 py-0.5 text-xs font-medium text-tone-editor-ink"
 										>
 											{val}
 											<button
 												type="button"
 												aria-label="Remove {val}"
 												onclick={() => removeFilterValue(prop.key, val)}
-												class="rounded text-indigo-500 hover:bg-indigo-100 hover:text-indigo-900"
+												class="cursor-pointer rounded hover:opacity-75"
 											>
 												<X class="h-3 w-3" />
 											</button>
@@ -426,7 +450,7 @@
 										if (val) addFilterValue(prop.key, val);
 										e.currentTarget.value = '';
 									}}
-									class="min-h-8 w-full rounded-lg border border-border-strong bg-white px-2.5 py-1 text-xs text-ink-primary outline-none transition focus:border-accent"
+									class="h-[32px] w-full rounded-md border border-border-strong bg-surface-card px-2.5 text-xs text-ink-primary outline-none transition focus:border-accent-vivid dark:bg-surface-recessed"
 								>
 									<option value="">
 										{chosen.length > 0 ? '+ Add another value...' : 'Any filled value'}
@@ -443,7 +467,7 @@
 					{:else}
 						<div
 							aria-disabled="true"
-							class="flex min-h-8 w-full flex-1 cursor-not-allowed items-center rounded-lg bg-surface-subtle/70 px-2.5 py-1 text-xs text-ink-muted select-none"
+							class="flex min-h-8 w-full flex-1 cursor-not-allowed items-center rounded-md bg-surface-subtle/70 px-2.5 py-1 text-xs text-ink-muted select-none"
 						>
 							Not selected
 						</div>
@@ -462,7 +486,7 @@
 >
 	<form class="space-y-4" onsubmit={submitNewTemplate}>
 		<div>
-			<label for="new-tpl-name" class="block text-sm font-medium text-ink-primary">
+			<label for="new-tpl-name" class="block text-xs font-medium text-ink-secondary">
 				Template Name
 			</label>
 			<input
@@ -471,13 +495,13 @@
 				required
 				bind:value={modalName}
 				placeholder="e.g. Organiser Certificate"
-				class="mt-1 block min-h-10 w-full rounded-lg border border-border-strong px-3 py-2 text-sm"
+				class="mt-1.5 block h-[38px] w-full rounded-lg border border-border-strong bg-surface-card px-3 text-sm text-ink-primary placeholder:text-ink-muted outline-none transition focus:border-accent-vivid focus:ring-3 focus:ring-accent-vivid/18 dark:bg-surface-recessed"
 			/>
 		</div>
 
 		{@render propertyChecklist()}
 
-		<div class="flex justify-end gap-2 pt-2">
+		<div class="mt-6 flex justify-end gap-2.5 border-t border-border-subtle pt-4">
 			<Button onclick={() => (showNewModal = false)}>Cancel</Button>
 			<Button type="submit" variant="primary">Add Template</Button>
 		</div>
@@ -492,7 +516,7 @@
 >
 	<form class="space-y-4" onsubmit={submitEditTemplate}>
 		<div>
-			<label for="edit-tpl-name" class="block text-sm font-medium text-ink-primary">
+			<label for="edit-tpl-name" class="block text-xs font-medium text-ink-secondary">
 				Template Name
 			</label>
 			<input
@@ -500,16 +524,16 @@
 				type="text"
 				required
 				bind:value={modalName}
-				class="mt-1 block min-h-10 w-full rounded-lg border border-border-strong px-3 py-2 text-sm"
+				class="mt-1.5 block h-[38px] w-full rounded-lg border border-border-strong bg-surface-card px-3 text-sm text-ink-primary outline-none transition focus:border-accent-vivid focus:ring-3 focus:ring-accent-vivid/18 dark:bg-surface-recessed"
 			/>
 		</div>
 
 		{@render propertyChecklist()}
 
 		{#if confirmingDelete}
-			<div class="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-900">
+			<div class="rounded-xl border border-tone-danger-border bg-tone-danger-soft p-3.5 text-xs text-tone-danger-ink">
 				<p class="font-semibold">Delete "{activeTemplate?.name}"?</p>
-				<p class="mt-1 text-red-700">
+				<p class="mt-1 opacity-90">
 					Warning: this removes the template permanently. Any generated certificates using it switch
 					to the default template.
 				</p>
@@ -526,7 +550,7 @@
 				</div>
 			</div>
 		{:else}
-			<div class="flex flex-wrap items-center justify-between gap-2 pt-2">
+			<div class="mt-6 flex flex-wrap items-center justify-between gap-2 border-t border-border-subtle pt-4">
 				{#if templates.length > 1}
 					<Button
 						type="button"
@@ -543,7 +567,7 @@
 
 				<div class="flex items-center gap-2">
 					<Button onclick={() => (showEditModal = false)}>Cancel</Button>
-					<Button type="submit" variant="primary">Save</Button>
+					<Button type="submit" variant="contrast">Save</Button>
 				</div>
 			</div>
 		{/if}

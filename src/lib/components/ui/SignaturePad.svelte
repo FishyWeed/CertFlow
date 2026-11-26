@@ -158,11 +158,11 @@
 	<!-- Rectangular drawing pad with visual baseline guide (not exported into PNG) -->
 	<div class="preserve-light relative overflow-hidden rounded-lg border border-border-strong bg-white">
 		<div
-			class="pointer-events-none absolute inset-x-4 bottom-5 border-b border-dashed border-slate-200"
+			class="pointer-events-none absolute inset-x-4 bottom-5 border-b border-dashed border-[#d4d4dc]"
 		></div>
 		{#if !hasStrokes}
 			<span
-				class="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-slate-400 select-none"
+				class="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-ink-muted select-none"
 			>
 				Draw signature here
 			</span>
@@ -186,7 +186,7 @@
 			type="button"
 			disabled={!hasStrokes || saving}
 			onclick={clearPad}
-			class="inline-flex min-h-8 flex-1 items-center justify-center gap-1 rounded-lg border border-border-default bg-white px-2.5 py-1.5 text-xs font-medium text-ink-secondary hover:bg-surface-subtle disabled:opacity-50"
+			class="cf-pressable inline-flex min-h-[30px] flex-1 cursor-pointer items-center justify-center gap-1 rounded-md border border-border-strong bg-surface-card px-2.5 py-1 text-xs font-medium text-ink-secondary shadow-xs hover:bg-surface-subtle hover:text-ink-primary disabled:cursor-not-allowed disabled:opacity-45"
 		>
 			<Eraser class="h-3.5 w-3.5" />
 			Clear
@@ -195,7 +195,7 @@
 			type="button"
 			disabled={!hasStrokes || saving}
 			onclick={handleApplyDrawing}
-			class="inline-flex min-h-8 flex-1 items-center justify-center gap-1 rounded-lg bg-accent px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-accent-hover disabled:opacity-50"
+			class="cf-pressable inline-flex min-h-[30px] flex-1 cursor-pointer items-center justify-center gap-1 rounded-md bg-contrast px-2.5 py-1 text-xs font-semibold text-ink-inverted shadow-xs hover:bg-contrast-hover disabled:cursor-not-allowed disabled:opacity-45"
 		>
 			<Check class="h-3.5 w-3.5" />
 			{saving ? 'Saving...' : 'Use Drawing'}

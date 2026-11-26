@@ -48,6 +48,7 @@ export interface PortableUpdateCheckResult {
 	assetName: string | null;
 	assetUrl: string | null;
 	assetSizeBytes: number;
+	stagedVersion: string | null;
 }
 
 export type PortableUpdateStage =
@@ -55,6 +56,7 @@ export type PortableUpdateStage =
 	| 'checking'
 	| 'downloading'
 	| 'extracting'
+	| 'downloaded'
 	| 'applying'
 	| 'restarting'
 	| 'error';
@@ -62,11 +64,18 @@ export type PortableUpdateStage =
 export interface PortableUpdateProgress {
 	stage: PortableUpdateStage;
 	version: string;
+	stagedVersion: string | null;
 	downloadedBytes: number;
 	totalBytes: number;
 	percent: number | null;
 	message: string;
 	error: string | null;
+}
+
+export interface StagedPortableUpdate {
+	version: string;
+	bundleDir: string;
+	downloadedAt: string;
 }
 
 const DEFAULT_REPO = 'FishyWeed/CertFlow';
@@ -75,6 +84,7 @@ let updateInProgress = false;
 let updateProgress: PortableUpdateProgress = {
 	stage: 'idle',
 	version: '',
+	stagedVersion: null,
 	downloadedBytes: 0,
 	totalBytes: 0,
 	percent: null,
@@ -82,8 +92,42 @@ let updateProgress: PortableUpdateProgress = {
 	error: null
 };
 
+export function getStagedPortableUpdate(
+	info: PortableRuntimeInfo = getPortableRuntimeInfo()
+): StagedPortableUpdate | null {
+	if (!info.isPortable || !info.rootDir) return null;
+	const manifestPath = join(info.rootDir, '.update-staging', 'staged-update.json');
+	if (!existsSync(manifestPath)) return null;
+	try {
+		const parsed = JSON.parse(readFileSync(manifestPath, 'utf8')) as Partial<StagedPortableUpdate>;
+		if (
+			typeof parsed.version !== 'string' ||
+			!parsed.version.trim() ||
+			typeof parsed.bundleDir !== 'string' ||
+			!parsed.bundleDir.trim()
+		) {
+			return null;
+		}
+		const resolvedBundle = resolve(parsed.bundleDir);
+		const stagingRoot = resolve(join(info.rootDir, '.update-staging'));
+		if (!resolvedBundle.startsWith(stagingRoot)) return null;
+		if (!existsSync(join(resolvedBundle, 'app', 'scripts', 'start.mjs'))) return null;
+		return {
+			version: parsed.version.trim(),
+			bundleDir: resolvedBundle,
+			downloadedAt: typeof parsed.downloadedAt === 'string' ? parsed.downloadedAt : ''
+		};
+	} catch {
+		return null;
+	}
+}
+
 export function getPortableUpdateProgress(): PortableUpdateProgress {
-	return { ...updateProgress };
+	const staged = getStagedPortableUpdate();
+	return {
+		...updateProgress,
+		stagedVersion: staged?.version ?? updateProgress.stagedVersion
+	};
 }
 
 function setProgress(patch: Partial<PortableUpdateProgress>) {
@@ -207,16 +251,31 @@ export function findMatchingReleaseAsset(
 	return null;
 }
 
+function detectHostTarget(): PortableTarget | '' {
+	if (process.platform === 'win32' && process.arch === 'x64') return 'win-x64';
+	if (process.platform === 'darwin' && process.arch === 'arm64') return 'darwin-arm64';
+	if (process.platform === 'darwin' && process.arch === 'x64') return 'darwin-x64';
+	if (process.platform === 'linux' && process.arch === 'x64') return 'linux-x64';
+	return '';
+}
+
 /**
- * Queries GitHub Releases for the latest CertFlow portable release and compares it with this bundle.
+ * Queries GitHub Releases for the latest CertFlow portable release and compares it with this runtime.
  */
-export async function checkForPortableUpdate(): Promise<PortableUpdateCheckResult> {
+export async function checkForPortableUpdate(options?: {
+	allowNonPortable?: boolean;
+}): Promise<PortableUpdateCheckResult> {
 	const info = getPortableRuntimeInfo();
-	if (!info.isPortable || !info.target) {
+	const allowNonPortable = options?.allowNonPortable === true && !isManagedCloud();
+	if ((!info.isPortable || !info.target) && !allowNonPortable) {
 		throw new Error('Portable updates are only available in CertFlow Portable Edition.');
 	}
 
-	const apiUrl = `https://api.github.com/repos/${info.repo}/releases/latest`;
+	const repo = info.repo || DEFAULT_REPO;
+	const target = info.target || detectHostTarget();
+	const currentVersion = info.currentVersion || process.env.CERTFLOW_VERSION?.trim() || 'v0.0.0-dev';
+
+	const apiUrl = `https://api.github.com/repos/${repo}/releases/latest`;
 	const controller = new AbortController();
 	const timeout = setTimeout(() => controller.abort(), 12_000);
 
@@ -225,7 +284,7 @@ export async function checkForPortableUpdate(): Promise<PortableUpdateCheckResul
 		const res = await fetch(apiUrl, {
 			headers: {
 				Accept: 'application/vnd.github+json',
-				'User-Agent': `CertFlow-Portable/${info.currentVersion}`
+				'User-Agent': `CertFlow-Portable/${currentVersion}`
 			},
 			signal: controller.signal
 		});
@@ -242,19 +301,21 @@ export async function checkForPortableUpdate(): Promise<PortableUpdateCheckResul
 		throw new Error('GitHub release response did not include a version tag.');
 	}
 
-	const asset = findMatchingReleaseAsset(release.assets, info.target, info.repo);
-	const updateAvailable = compareSemver(latestVersion, info.currentVersion) > 0;
+	const asset = target ? findMatchingReleaseAsset(release.assets, target, repo) : null;
+	const updateAvailable = info.isPortable ? compareSemver(latestVersion, currentVersion) > 0 : true;
+	const staged = getStagedPortableUpdate(info);
 
 	return {
-		currentVersion: info.currentVersion,
+		currentVersion,
 		latestVersion,
 		updateAvailable,
-		releaseUrl: release.html_url || `https://github.com/${info.repo}/releases/tag/${latestVersion}`,
+		releaseUrl: release.html_url || `https://github.com/${repo}/releases/tag/${latestVersion}`,
 		releaseNotes: (release.body ?? '').trim().slice(0, 1200),
 		publishedAt: release.published_at ?? null,
 		assetName: asset?.name ?? null,
 		assetUrl: asset?.browser_download_url ?? null,
-		assetSizeBytes: asset?.size ?? 0
+		assetSizeBytes: asset?.size ?? 0,
+		stagedVersion: staged?.version ?? null
 	};
 }
 
@@ -611,10 +672,88 @@ async function streamDownloadToFile(
 	return statSync(destPath).size;
 }
 
-async function runPortableUpdatePipeline(info: PortableRuntimeInfo): Promise<void> {
+function launchStagedInstallHandoff(info: PortableRuntimeInfo, staged: StagedPortableUpdate): void {
+	const stagingDir = join(info.rootDir, '.update-staging');
+	setProgress({
+		stage: 'applying',
+		version: staged.version,
+		stagedVersion: staged.version,
+		percent: null,
+		message: `Preparing ${staged.version} handoff...`,
+		error: null
+	});
+
+	const port = process.env.PORT || '3000';
+
+	if (process.platform === 'win32') {
+		const scriptPath = join(stagingDir, 'apply-update.ps1');
+		writeWindowsUpdateScript({
+			scriptPath,
+			rootDir: info.rootDir,
+			bundleDir: staged.bundleDir,
+			stagingDir,
+			pid: process.pid,
+			port
+		});
+		const child = spawn(
+			'powershell.exe',
+			['-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', scriptPath],
+			{
+				cwd: info.rootDir,
+				detached: true,
+				stdio: 'ignore',
+				windowsHide: true
+			}
+		);
+		child.unref();
+	} else {
+		const scriptPath = join(stagingDir, 'apply-update.sh');
+		writeUnixUpdateScript({
+			scriptPath,
+			rootDir: info.rootDir,
+			bundleDir: staged.bundleDir,
+			stagingDir,
+			pid: process.pid,
+			port,
+			target: info.target as PortableTarget
+		});
+		const child = spawn('bash', [scriptPath], {
+			cwd: info.rootDir,
+			detached: true,
+			stdio: 'ignore'
+		});
+		child.unref();
+	}
+
+	setProgress({
+		stage: 'restarting',
+		version: staged.version,
+		stagedVersion: staged.version,
+		percent: 100,
+		message: `Installing ${staged.version} and restarting CertFlow... This page will reload automatically.`,
+		error: null
+	});
+
+	// Give the browser poll a moment to receive `restarting`, close PGlite with a hard 4s cap,
+	// then exit with UPDATE_RESTART_EXIT_CODE so launchers close cleanly without pausing.
+	setTimeout(() => {
+		void Promise.race([
+			resetDatabaseConnection().catch(() => {}),
+			new Promise<void>((resolveCap) => setTimeout(resolveCap, 4000))
+		]).finally(() => {
+			process.exit(UPDATE_RESTART_EXIT_CODE);
+		});
+	}, 900).unref();
+}
+
+async function runPortableDownloadPipeline(
+	info: PortableRuntimeInfo,
+	autoInstall: boolean
+): Promise<void> {
 	const stagingDir = join(info.rootDir, '.update-staging');
 	const zipPath = join(stagingDir, 'update.zip');
 	const extractDir = join(stagingDir, 'extracted');
+	const manifestPath = join(stagingDir, 'staged-update.json');
 
 	try {
 		setProgress({
@@ -648,6 +787,7 @@ async function runPortableUpdatePipeline(info: PortableRuntimeInfo): Promise<voi
 		setProgress({
 			stage: 'downloading',
 			version: check.latestVersion,
+			stagedVersion: null,
 			downloadedBytes: 0,
 			totalBytes: check.assetSizeBytes,
 			percent: 0,
@@ -691,75 +831,34 @@ async function runPortableUpdatePipeline(info: PortableRuntimeInfo): Promise<voi
 			throw new Error('Extracted archive is missing expected CertFlow application files.');
 		}
 
-		setProgress({
-			stage: 'applying',
-			message: `Preparing ${check.latestVersion} handoff...`
-		});
+		const staged: StagedPortableUpdate = {
+			version: check.latestVersion,
+			bundleDir,
+			downloadedAt: new Date().toISOString()
+		};
+		writeFileSync(manifestPath, JSON.stringify(staged, null, 2), 'utf8');
 
-		const port = process.env.PORT || '3000';
-
-		if (process.platform === 'win32') {
-			const scriptPath = join(stagingDir, 'apply-update.ps1');
-			writeWindowsUpdateScript({
-				scriptPath,
-				rootDir: info.rootDir,
-				bundleDir,
-				stagingDir,
-				pid: process.pid,
-				port
-			});
-			const child = spawn(
-				'powershell.exe',
-				['-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', scriptPath],
-				{
-					cwd: info.rootDir,
-					detached: true,
-					stdio: 'ignore',
-					windowsHide: true
-				}
-			);
-			child.unref();
-		} else {
-			const scriptPath = join(stagingDir, 'apply-update.sh');
-			writeUnixUpdateScript({
-				scriptPath,
-				rootDir: info.rootDir,
-				bundleDir,
-				stagingDir,
-				pid: process.pid,
-				port,
-				target: info.target as PortableTarget
-			});
-			const child = spawn('bash', [scriptPath], {
-				cwd: info.rootDir,
-				detached: true,
-				stdio: 'ignore'
-			});
-			child.unref();
+		if (autoInstall) {
+			launchStagedInstallHandoff(info, staged);
+			return;
 		}
 
+		updateInProgress = false;
 		setProgress({
-			stage: 'restarting',
+			stage: 'downloaded',
+			version: staged.version,
+			stagedVersion: staged.version,
 			percent: 100,
-			message: `Installing ${check.latestVersion} and restarting CertFlow... This page will reload automatically.`
+			message: `Downloaded ${staged.version}. Click Install to apply and restart CertFlow.`,
+			error: null
 		});
-
-		// Give the browser poll a moment to receive `restarting`, close PGlite with a hard 4s cap,
-		// then exit with UPDATE_RESTART_EXIT_CODE so Start-CertFlow.bat closes cleanly without pausing.
-		setTimeout(() => {
-			void Promise.race([
-				resetDatabaseConnection().catch(() => {}),
-				new Promise<void>((resolveCap) => setTimeout(resolveCap, 4000))
-			]).finally(() => {
-				process.exit(UPDATE_RESTART_EXIT_CODE);
-			});
-		}, 900).unref();
 	} catch (err) {
-		const message = err instanceof Error ? err.message : 'Could not install update.';
+		const message = err instanceof Error ? err.message : 'Could not download update.';
 		updateInProgress = false;
 		rmSync(stagingDir, { recursive: true, force: true });
 		setProgress({
 			stage: 'error',
+			stagedVersion: null,
 			percent: null,
 			message,
 			error: message
@@ -768,10 +867,9 @@ async function runPortableUpdatePipeline(info: PortableRuntimeInfo): Promise<voi
 }
 
 /**
- * Starts the non-blocking portable update job in the background and returns immediately so
- * the UI can poll live download, extraction and restart progress.
+ * Starts a non-blocking update download (and optional automatic install) in the background.
  */
-export function startPortableUpdate(): PortableUpdateProgress {
+export function startPortableDownload(options?: { autoInstall?: boolean }): PortableUpdateProgress {
 	const info = getPortableRuntimeInfo();
 	if (!info.isPortable || !info.target) {
 		throw new Error('Portable updates are only available in CertFlow Portable Edition.');
@@ -781,6 +879,7 @@ export function startPortableUpdate(): PortableUpdateProgress {
 		return getPortableUpdateProgress();
 	}
 
+	const autoInstall = options?.autoInstall === true;
 	updateInProgress = true;
 	setProgress({
 		stage: 'checking',
@@ -792,6 +891,48 @@ export function startPortableUpdate(): PortableUpdateProgress {
 		error: null
 	});
 
-	void runPortableUpdatePipeline(info);
+	void runPortableDownloadPipeline(info, autoInstall);
 	return getPortableUpdateProgress();
+}
+
+/**
+ * Installs a previously downloaded and staged update and restarts CertFlow.
+ */
+export function startPortableInstall(): PortableUpdateProgress {
+	const info = getPortableRuntimeInfo();
+	if (!info.isPortable || !info.target) {
+		throw new Error('Portable updates are only available in CertFlow Portable Edition.');
+	}
+
+	if (updateInProgress) {
+		return getPortableUpdateProgress();
+	}
+
+	const staged = getStagedPortableUpdate(info);
+	if (!staged) {
+		throw new Error('No downloaded update is ready to install. Download an update first.');
+	}
+
+	updateInProgress = true;
+	try {
+		launchStagedInstallHandoff(info, staged);
+		return getPortableUpdateProgress();
+	} catch (err) {
+		const message = err instanceof Error ? err.message : 'Could not start update install.';
+		updateInProgress = false;
+		setProgress({
+			stage: 'error',
+			percent: null,
+			message,
+			error: message
+		});
+		throw err;
+	}
+}
+
+/**
+ * Starts the non-blocking portable update job (download + automatic install).
+ */
+export function startPortableUpdate(): PortableUpdateProgress {
+	return startPortableDownload({ autoInstall: true });
 }

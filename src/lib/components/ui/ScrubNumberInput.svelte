@@ -114,9 +114,17 @@
 		for={id}
 		title="Hold and drag left or right to adjust (Shift for 10x)"
 		onpointerdown={(e) => beginScrub(e, true)}
-		class="inline-block cursor-ew-resize text-xs font-medium text-ink-secondary select-none hover:text-accent"
+		class="group inline-flex cursor-ew-resize items-center gap-1 text-xs font-medium text-ink-secondary select-none transition-colors hover:text-accent-ink"
 	>
-		{label}
+		<span>{label}</span>
+		<span
+			aria-hidden="true"
+			class="text-[10px] tracking-tighter transition-opacity {isScrubbing
+				? 'text-accent-vivid opacity-100'
+				: 'opacity-40 group-hover:opacity-90'}"
+		>
+			‹›
+		</span>
 	</label>
 	<input
 		bind:this={inputEl}
@@ -129,8 +137,8 @@
 		onpointerdown={(e) => beginScrub(e, false)}
 		onchange={handleCommitInput}
 		title="Click to type, or hold and drag left or right to adjust"
-		class="mt-1 block w-full rounded-lg border px-2.5 py-1.5 text-xs outline-none transition {isScrubbing
-			? 'cursor-ew-resize border-accent bg-accent-soft/40 ring-2 ring-accent/20'
-			: 'border-border-strong bg-white hover:border-slate-400 focus:border-accent'}"
+		class="mt-1 block h-[30px] w-full rounded-md border px-2.5 font-mono text-xs text-ink-primary tabular-nums outline-none transition {isScrubbing
+			? 'cf-scrub-active cursor-ew-resize'
+			: 'border-border-strong bg-surface-card hover:border-ink-muted/60 focus:border-accent-vivid focus:ring-3 focus:ring-accent-vivid/18 dark:bg-surface-recessed'}"
 	/>
 </div>

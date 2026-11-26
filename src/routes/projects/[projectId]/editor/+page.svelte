@@ -243,7 +243,9 @@
 	<EditorToolbar {editor} {sampleData} />
 
 	{#if statusMessage}
-		<div class="shrink-0 border-b border-indigo-200 bg-indigo-50 px-4 py-1.5 text-xs text-indigo-800">
+		<div
+			class="shrink-0 border-b border-tone-editor-border bg-tone-editor-soft px-4 py-1.5 text-xs font-medium text-tone-editor-ink"
+		>
 			{statusMessage}
 		</div>
 	{/if}
@@ -326,14 +328,14 @@
 			</div>
 		{:else}
 			<div class="border-t border-border-default bg-surface-card">
-				<div class="grid grid-cols-3 gap-1 border-b border-border-default p-2">
+				<div class="grid grid-cols-3 gap-1.5 border-b border-border-default p-2">
 					<button
 						type="button"
 						onclick={() => (mobilePanel = mobilePanel === 'toolbox' ? 'none' : 'toolbox')}
-						class="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-semibold {mobilePanel ===
+						class="cf-pressable inline-flex min-h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-semibold {mobilePanel ===
 						'toolbox'
-							? 'border-accent bg-accent-soft text-accent'
-							: 'border-border-default bg-white text-ink-primary'}"
+							? 'border-tone-editor-border bg-tone-editor-soft text-tone-editor-ink'
+							: 'border-border-default bg-surface-card text-ink-primary hover:bg-surface-subtle'}"
 					>
 						<Layers class="h-3.5 w-3.5" />
 						Elements
@@ -341,10 +343,10 @@
 					<button
 						type="button"
 						onclick={() => (mobilePanel = mobilePanel === 'inspector' ? 'none' : 'inspector')}
-						class="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-semibold {mobilePanel ===
+						class="cf-pressable inline-flex min-h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-semibold {mobilePanel ===
 						'inspector'
-							? 'border-accent bg-accent-soft text-accent'
-							: 'border-border-default bg-white text-ink-primary'}"
+							? 'border-tone-editor-border bg-tone-editor-soft text-tone-editor-ink'
+							: 'border-border-default bg-surface-card text-ink-primary hover:bg-surface-subtle'}"
 					>
 						<Sliders class="h-3.5 w-3.5" />
 						{editor.selectedIds.length > 1
@@ -356,7 +358,7 @@
 					<button
 						type="button"
 						onclick={() => (mobilePanel = mobilePanel === 'none' ? 'inspector' : 'none')}
-						class="inline-flex min-h-9 items-center justify-center gap-1 rounded-lg border border-border-default bg-white px-2 py-1.5 text-xs font-medium text-ink-secondary"
+						class="cf-pressable inline-flex min-h-9 cursor-pointer items-center justify-center gap-1 rounded-lg border border-border-default bg-surface-card px-2 py-1.5 text-xs font-medium text-ink-secondary hover:bg-surface-subtle"
 					>
 						{#if mobilePanel === 'none'}
 							<ChevronUp class="h-3.5 w-3.5" />

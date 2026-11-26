@@ -433,15 +433,15 @@
 </script>
 
 <aside
-	class="flex h-full min-h-0 w-full min-w-0 flex-col gap-4 overflow-y-auto bg-surface-card p-4"
+	class="flex h-full min-h-0 w-full min-w-0 flex-col gap-4 overflow-y-auto bg-surface-card p-3.5"
 >
 	{#if editor.selectedElements.length > 1}
-		<div class="flex items-center justify-between border-b border-border-default pb-3">
+		<div class="flex items-center justify-between border-b border-border-subtle pb-3">
 			<div class="min-w-0">
-				<p class="text-[11px] font-semibold tracking-wide text-indigo-600 uppercase">
+				<p class="text-[11px] font-semibold tracking-[0.07em] text-tone-editor-ink uppercase">
 					{editor.isSingleGroupSelected ? 'Group' : 'Multi-Selection'}
 				</p>
-				<h2 class="mt-0.5 text-sm font-semibold text-ink-primary">
+				<h2 class="font-display mt-0.5 text-sm font-semibold text-ink-primary tabular-nums">
 					{editor.selectedElements.length} elements selected
 				</h2>
 			</div>
@@ -451,7 +451,7 @@
 					title="Duplicate selected"
 					aria-label="Duplicate selected"
 					onclick={() => editor.duplicateElements(editor.selectedIds)}
-					class="rounded-md p-1.5 text-ink-muted hover:bg-surface-subtle hover:text-ink-primary"
+					class="cf-pressable cursor-pointer rounded-md p-1.5 text-ink-muted hover:bg-surface-subtle hover:text-ink-primary"
 				>
 					<Copy class="h-4 w-4" />
 				</button>
@@ -460,7 +460,7 @@
 					title="Delete selected"
 					aria-label="Delete selected"
 					onclick={() => editor.deleteElements(editor.selectedIds)}
-					class="rounded-md p-1.5 text-red-500 hover:bg-red-50"
+					class="cf-pressable cursor-pointer rounded-md p-1.5 text-tone-danger-ink hover:bg-tone-danger-soft"
 				>
 					<Trash2 class="h-4 w-4" />
 				</button>
@@ -474,7 +474,7 @@
 				disabled={!editor.canGroup}
 				onclick={() => editor.groupSelected()}
 				title="Group selected elements (Ctrl+G)"
-				class="inline-flex min-h-8 items-center justify-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 text-xs font-semibold text-indigo-800 transition hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-45"
+				class="cf-pressable inline-flex h-[30px] cursor-pointer items-center justify-center gap-1.5 rounded-md border border-tone-editor-border bg-tone-editor-soft px-2.5 text-xs font-semibold text-tone-editor-ink hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
 			>
 				<Group class="h-3.5 w-3.5" />
 				Group
@@ -484,7 +484,7 @@
 				disabled={!editor.canUngroup}
 				onclick={() => editor.ungroupSelected()}
 				title="Ungroup selected elements (Ctrl+Shift+G)"
-				class="inline-flex min-h-8 items-center justify-center gap-1.5 rounded-lg border border-border-default bg-white px-2.5 py-1.5 text-xs font-semibold text-ink-secondary transition hover:bg-surface-subtle hover:text-ink-primary disabled:cursor-not-allowed disabled:opacity-45"
+				class="cf-pressable inline-flex h-[30px] cursor-pointer items-center justify-center gap-1.5 rounded-md border border-border-strong bg-surface-card px-2.5 text-xs font-semibold text-ink-secondary shadow-xs hover:bg-surface-subtle hover:text-ink-primary disabled:cursor-not-allowed disabled:opacity-45"
 			>
 				<Ungroup class="h-3.5 w-3.5" />
 				Ungroup
@@ -496,73 +496,47 @@
 			drag across empty canvas. Double-click an item inside a group to edit it alone.
 		</p>
 
-		<section class="space-y-2 border-t border-border-default pt-3">
-			<h3 class="text-xs font-semibold tracking-wide text-ink-secondary uppercase">
+		<section class="space-y-2 border-t border-border-subtle pt-3">
+			<h3 class="text-[11px] font-semibold tracking-[0.07em] text-ink-muted uppercase">
 				Align Selection
 			</h3>
 			<div class="grid grid-cols-3 gap-1.5">
-				<button
-					type="button"
-					onclick={() => editor.alignSelectedElements('left')}
-					class="rounded-lg border border-border-default px-2 py-1.5 text-xs font-medium text-ink-secondary hover:bg-surface-subtle"
-				>
-					Left
-				</button>
-				<button
-					type="button"
-					onclick={() => editor.alignSelectedElements('center-x')}
-					class="rounded-lg border border-border-default px-2 py-1.5 text-xs font-medium text-ink-secondary hover:bg-surface-subtle"
-				>
-					Centre
-				</button>
-				<button
-					type="button"
-					onclick={() => editor.alignSelectedElements('right')}
-					class="rounded-lg border border-border-default px-2 py-1.5 text-xs font-medium text-ink-secondary hover:bg-surface-subtle"
-				>
-					Right
-				</button>
-				<button
-					type="button"
-					onclick={() => editor.alignSelectedElements('top')}
-					class="rounded-lg border border-border-default px-2 py-1.5 text-xs font-medium text-ink-secondary hover:bg-surface-subtle"
-				>
-					Top
-				</button>
-				<button
-					type="button"
-					onclick={() => editor.alignSelectedElements('center-y')}
-					class="rounded-lg border border-border-default px-2 py-1.5 text-xs font-medium text-ink-secondary hover:bg-surface-subtle"
-				>
-					Middle
-				</button>
-				<button
-					type="button"
-					onclick={() => editor.alignSelectedElements('bottom')}
-					class="rounded-lg border border-border-default px-2 py-1.5 text-xs font-medium text-ink-secondary hover:bg-surface-subtle"
-				>
-					Bottom
-				</button>
+				{#each [
+					{ id: 'left' as const, label: 'Left' },
+					{ id: 'center-x' as const, label: 'Centre' },
+					{ id: 'right' as const, label: 'Right' },
+					{ id: 'top' as const, label: 'Top' },
+					{ id: 'center-y' as const, label: 'Middle' },
+					{ id: 'bottom' as const, label: 'Bottom' }
+				] as act (act.id)}
+					<button
+						type="button"
+						onclick={() => editor.alignSelectedElements(act.id)}
+						class="cf-pressable cursor-pointer rounded-md border border-border-default bg-surface-card px-2 py-1.5 text-xs font-medium text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary"
+					>
+						{act.label}
+					</button>
+				{/each}
 			</div>
 		</section>
 
 		{#if editor.selectedElements.length >= 3}
-			<section class="space-y-2 border-t border-border-default pt-3">
-				<h3 class="text-xs font-semibold tracking-wide text-ink-secondary uppercase">
+			<section class="space-y-2 border-t border-border-subtle pt-3">
+				<h3 class="text-[11px] font-semibold tracking-[0.07em] text-ink-muted uppercase">
 					Distribute Equally
 				</h3>
 				<div class="grid grid-cols-2 gap-1.5">
 					<button
 						type="button"
 						onclick={() => editor.alignSelectedElements('distribute-h')}
-						class="rounded-lg border border-border-default px-2 py-1.5 text-xs font-medium text-ink-secondary hover:bg-surface-subtle"
+						class="cf-pressable cursor-pointer rounded-md border border-border-default bg-surface-card px-2 py-1.5 text-xs font-medium text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary"
 					>
 						Space Horizontally
 					</button>
 					<button
 						type="button"
 						onclick={() => editor.alignSelectedElements('distribute-v')}
-						class="rounded-lg border border-border-default px-2 py-1.5 text-xs font-medium text-ink-secondary hover:bg-surface-subtle"
+						class="cf-pressable cursor-pointer rounded-md border border-border-default bg-surface-card px-2 py-1.5 text-xs font-medium text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary"
 					>
 						Space Vertically
 					</button>
@@ -570,37 +544,37 @@
 			</section>
 		{/if}
 
-		<section class="space-y-2 border-t border-border-default pt-3">
-			<h3 class="text-xs font-semibold tracking-wide text-ink-secondary uppercase">
+		<section class="space-y-2 border-t border-border-subtle pt-3">
+			<h3 class="text-[11px] font-semibold tracking-[0.07em] text-ink-muted uppercase">
 				Centre Group on Canvas
 			</h3>
 			<div class="grid grid-cols-2 gap-1.5">
 				<button
 					type="button"
 					onclick={() => editor.alignSelectedElements('canvas-center-x')}
-					class="rounded-lg border border-border-default px-2 py-1.5 text-xs font-medium text-ink-secondary hover:bg-surface-subtle"
+					class="cf-pressable cursor-pointer rounded-md border border-border-default bg-surface-card px-2 py-1.5 text-xs font-medium text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary"
 				>
 					Centre Horizontally
 				</button>
 				<button
 					type="button"
 					onclick={() => editor.alignSelectedElements('canvas-center-y')}
-					class="rounded-lg border border-border-default px-2 py-1.5 text-xs font-medium text-ink-secondary hover:bg-surface-subtle"
+					class="cf-pressable cursor-pointer rounded-md border border-border-default bg-surface-card px-2 py-1.5 text-xs font-medium text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary"
 				>
 					Centre Vertically
 				</button>
 			</div>
 		</section>
 
-		<section class="space-y-2 border-t border-border-default pt-3">
+		<section class="space-y-2 border-t border-border-subtle pt-3">
 			<div class="flex items-center justify-between">
-				<h3 class="text-xs font-semibold tracking-wide text-ink-secondary uppercase">
+				<h3 class="text-[11px] font-semibold tracking-[0.07em] text-ink-muted uppercase">
 					Selected Items
 				</h3>
 				<button
 					type="button"
 					onclick={() => editor.clearSelection()}
-					class="text-[11px] font-medium text-accent hover:underline"
+					class="cursor-pointer text-[11px] font-medium text-accent-ink hover:underline"
 				>
 					Clear
 				</button>
@@ -608,13 +582,13 @@
 			<div class="flex flex-wrap gap-1">
 				{#each editor.selectedElements as item (item.id)}
 					<span
-						class="inline-flex items-center gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-800"
+						class="inline-flex items-center gap-1 rounded-md border border-tone-editor-border bg-tone-editor-soft px-2 py-0.5 text-xs font-medium text-tone-editor-ink"
 					>
 						<button
 							type="button"
 							title="Edit {item.name} alone"
 							onclick={() => editor.selectElement(item.id, { ignoreGroup: true })}
-							class="hover:underline"
+							class="cursor-pointer hover:underline"
 						>
 							{item.name}
 						</button>
@@ -622,7 +596,7 @@
 							type="button"
 							aria-label="Remove {item.name} from selection"
 							onclick={() => editor.toggleSelect(item.id)}
-							class="rounded text-indigo-500 hover:bg-indigo-100 hover:text-indigo-900"
+							class="cursor-pointer rounded hover:opacity-75"
 						>
 							<X class="h-3 w-3" />
 						</button>
@@ -633,7 +607,7 @@
 	{:else if !selected}
 		<section class="space-y-4">
 			<div>
-				<h2 class="text-xs font-semibold tracking-wide text-ink-secondary uppercase">
+				<h2 class="text-[11px] font-semibold tracking-[0.07em] text-ink-muted uppercase">
 					Canvas Settings
 				</h2>
 				<p class="mt-1 text-xs text-ink-muted">
@@ -652,7 +626,7 @@
 						const preset = CANVAS_PRESETS.find((p) => p.id === e.currentTarget.value);
 						if (preset) editor.setCanvasSize(preset.width, preset.height);
 					}}
-					class="mt-1 block w-full rounded-lg border border-border-strong bg-white px-2.5 py-2 text-xs"
+					class="mt-1 block h-[32px] w-full rounded-md border border-border-strong bg-surface-card px-2.5 text-xs text-ink-primary outline-none focus:border-accent-vivid dark:bg-surface-recessed"
 				>
 					{#each CANVAS_PRESETS as preset (preset.id)}
 						<option value={preset.id}>
@@ -673,7 +647,7 @@
 						title="Swap width and height"
 						aria-label="Swap width and height"
 						onclick={() => applyCustomCanvasSize(editor.height, editor.width)}
-						class="inline-flex items-center gap-1 rounded-md border border-border-default bg-white px-2 py-0.5 text-[11px] font-medium text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary"
+						class="cf-pressable inline-flex cursor-pointer items-center gap-1 rounded-md border border-border-default bg-surface-card px-2 py-0.5 text-[11px] font-medium text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary"
 					>
 						<ArrowLeftRight class="h-3 w-3" />
 						Swap
@@ -707,8 +681,8 @@
 			</div>
 		</section>
 
-		<section class="space-y-4 border-t border-border-default pt-4">
-			<h2 class="text-xs font-semibold tracking-wide text-ink-secondary uppercase">
+		<section class="space-y-4 border-t border-border-subtle pt-4">
+			<h2 class="text-[11px] font-semibold tracking-[0.07em] text-ink-muted uppercase">
 				Certificate Settings
 			</h2>
 
@@ -722,14 +696,14 @@
 						type="color"
 						value={editor.canvasState.background.color}
 						oninput={(e) => editor.setBackground({ color: e.currentTarget.value })}
-						class="h-8 w-10 cursor-pointer rounded border border-border-strong"
+						class="h-[30px] w-10 cursor-pointer rounded-md border border-border-strong bg-transparent"
 					/>
 					<input
 						type="text"
 						aria-label="Background colour hex"
 						value={editor.canvasState.background.color}
 						onchange={(e) => editor.setBackground({ color: e.currentTarget.value })}
-						class="min-h-8 w-full rounded-lg border border-border-strong px-2.5 py-1.5 text-xs font-mono"
+						class="h-[30px] w-full rounded-md border border-border-strong bg-surface-card px-2.5 font-mono text-xs text-ink-primary uppercase outline-none focus:border-accent-vivid dark:bg-surface-recessed"
 					/>
 				</div>
 			</div>
@@ -746,14 +720,14 @@
 					type="button"
 					disabled={uploadingBg}
 					onclick={() => bgInputEl?.click()}
-					class="flex min-h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-border-default px-2.5 py-1.5 text-xs font-medium text-ink-primary hover:bg-surface-subtle disabled:opacity-50"
+					class="cf-pressable flex h-8 w-full cursor-pointer items-center justify-center gap-1.5 rounded-md border border-border-strong bg-surface-card px-2.5 text-xs font-medium text-ink-primary shadow-xs hover:bg-surface-subtle disabled:opacity-45"
 				>
 					<ImagePlus class="h-3.5 w-3.5" />
 					{uploadingBg ? 'Uploading...' : 'Upload Background'}
 				</button>
 
 				{#if bgUploadError}
-					<p class="text-[11px] text-red-600">{bgUploadError}</p>
+					<p class="text-[11px] text-tone-danger-ink">{bgUploadError}</p>
 				{/if}
 
 				{#if editor.canvasState.background.imageUrl}
@@ -761,7 +735,7 @@
 						type="button"
 						disabled={uploadingBg}
 						onclick={openRecropBackground}
-						class="flex min-h-8 w-full items-center justify-center gap-1.5 rounded-lg border border-border-default bg-white px-3 py-1.5 text-xs font-medium text-ink-primary hover:bg-surface-subtle disabled:opacity-50"
+						class="cf-pressable flex h-8 w-full cursor-pointer items-center justify-center gap-1.5 rounded-md border border-border-default bg-surface-card px-3 text-xs font-medium text-ink-primary hover:bg-surface-subtle disabled:opacity-45"
 					>
 						<Crop class="h-3.5 w-3.5" />
 						Crop & Resize Background
@@ -776,7 +750,7 @@
 								originalAssetId: undefined,
 								editState: undefined
 							})}
-						class="w-full rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100"
+						class="cf-pressable w-full cursor-pointer rounded-md border border-tone-danger-border bg-tone-danger-soft px-3 py-1.5 text-xs font-medium text-tone-danger-ink hover:opacity-90"
 					>
 						Remove Background Image
 					</button>
@@ -784,9 +758,9 @@
 			</div>
 		</section>
 
-		<section class="space-y-3 border-t border-border-default pt-4">
+		<section class="space-y-3 border-t border-border-subtle pt-4">
 			<div class="flex items-center justify-between gap-2">
-				<h2 class="text-xs font-semibold tracking-wide text-ink-secondary uppercase">
+				<h2 class="text-[11px] font-semibold tracking-[0.07em] text-ink-muted uppercase">
 					Starter Templates
 				</h2>
 				{#if lastAppliedStarterId && editor.canUndo}
@@ -796,7 +770,7 @@
 							editor.undo();
 							lastAppliedStarterId = null;
 						}}
-						class="text-[11px] font-medium text-accent hover:underline"
+						class="cursor-pointer text-[11px] font-medium text-accent-ink hover:underline"
 					>
 						Undo
 					</button>
@@ -804,7 +778,7 @@
 			</div>
 
 			<p class="text-[11px] leading-relaxed text-ink-muted">
-				Select a layout to replace the canvas. Press Ctrl+Z to undo.
+				Select a layout to replace the canvas. Press <kbd class="rounded-[4px] border border-border-default bg-surface-subtle px-1 py-0.5 font-mono text-[10px]">Ctrl+Z</kbd> to undo.
 			</p>
 
 			{#if editor.canvasState.background.imageUrl}
@@ -812,7 +786,7 @@
 					<input
 						type="checkbox"
 						bind:checked={keepBackgroundImage}
-						class="h-3.5 w-3.5 rounded border-border-strong text-accent focus:ring-accent"
+						class="h-3.5 w-3.5 rounded-[4px] border-border-strong accent-accent"
 					/>
 					<span>Keep current background image</span>
 				</label>
@@ -824,16 +798,16 @@
 						type="button"
 						onclick={() => handleApplyStarterTemplate(preset)}
 						title="Apply {preset.name} ({preset.width}×{preset.height})"
-						class="group flex flex-col overflow-hidden rounded-lg border bg-white text-left transition hover:border-indigo-400 hover:shadow-xs {lastAppliedStarterId ===
+						class="cf-card-lift group flex cursor-pointer flex-col overflow-hidden rounded-lg border bg-surface-card text-left {lastAppliedStarterId ===
 						preset.id
-							? 'border-indigo-500 ring-1 ring-indigo-200'
+							? 'border-2 border-tone-editor'
 							: 'border-border-default'}"
 					>
-						<div class="flex h-20 w-full items-center justify-center bg-surface-subtle/80 p-1.5">
+						<div class="editor-sandbox-grid flex h-20 w-full items-center justify-center p-1.5">
 							<svg
 								viewBox="0 0 {preset.width} {preset.height}"
 								aria-hidden="true"
-								class="max-h-full max-w-full rounded-[2px] shadow-xs ring-1 ring-black/10"
+								class="preserve-light max-h-full max-w-full rounded-[2px]"
 							>
 								<rect
 									x="0"
@@ -891,8 +865,8 @@
 								{/each}
 							</svg>
 						</div>
-						<div class="border-t border-border-default px-2 py-1.5">
-							<p class="truncate text-[11px] font-semibold text-ink-primary group-hover:text-indigo-700">
+						<div class="border-t border-border-subtle px-2 py-1.5">
+							<p class="truncate text-[11px] font-semibold text-ink-primary group-hover:text-tone-editor-ink">
 								{preset.name}
 							</p>
 							<p class="truncate text-[10px] text-ink-muted">
@@ -904,9 +878,9 @@
 			</div>
 		</section>
 	{:else}
-		<div class="flex items-center justify-between border-b border-border-default pb-3">
+		<div class="flex items-center justify-between border-b border-border-subtle pb-3">
 			<div class="min-w-0">
-				<p class="text-[11px] font-semibold tracking-wide text-indigo-600 uppercase">
+				<p class="text-[11px] font-semibold tracking-[0.07em] text-tone-editor-ink uppercase">
 					{selected.type}
 				</p>
 				<input
@@ -914,7 +888,7 @@
 					aria-label="Element name"
 					value={selected.name}
 					onchange={(e) => editor.updateElement(selected.id, { name: e.currentTarget.value })}
-					class="mt-0.5 w-full truncate rounded border border-transparent px-1 py-0.5 text-sm font-semibold text-ink-primary hover:border-border-default focus:border-indigo-500 focus:outline-none"
+					class="mt-0.5 w-full truncate rounded border border-transparent bg-transparent px-1 py-0.5 text-sm font-semibold text-ink-primary hover:border-border-default focus:border-accent-vivid focus:outline-none"
 				/>
 			</div>
 			<div class="flex shrink-0 items-center gap-1">
@@ -922,7 +896,7 @@
 					type="button"
 					title="Duplicate"
 					onclick={() => editor.duplicateElement(selected.id)}
-					class="rounded-md p-1.5 text-ink-muted hover:bg-surface-subtle hover:text-ink-primary"
+					class="cf-pressable cursor-pointer rounded-md p-1.5 text-ink-muted hover:bg-surface-subtle hover:text-ink-primary"
 				>
 					<Copy class="h-4 w-4" />
 				</button>
@@ -930,7 +904,7 @@
 					type="button"
 					title="Delete"
 					onclick={() => editor.deleteElement(selected.id)}
-					class="rounded-md p-1.5 text-red-500 hover:bg-red-50"
+					class="cf-pressable cursor-pointer rounded-md p-1.5 text-tone-danger-ink hover:bg-tone-danger-soft"
 				>
 					<Trash2 class="h-4 w-4" />
 				</button>
@@ -939,23 +913,25 @@
 
 		{#if selected.groupId}
 			{@const gid = selected.groupId}
-			<div class="flex items-center justify-between gap-2 rounded-lg border border-indigo-200 bg-indigo-50/70 px-2.5 py-2 text-xs">
-				<span class="inline-flex items-center gap-1.5 font-medium text-indigo-900">
-					<Group class="h-3.5 w-3.5 text-indigo-600" />
+			<div
+				class="flex items-center justify-between gap-2 rounded-lg border border-tone-editor-border bg-tone-editor-soft px-2.5 py-2 text-xs"
+			>
+				<span class="inline-flex items-center gap-1.5 font-medium text-tone-editor-ink">
+					<Group class="h-3.5 w-3.5" />
 					Part of a group
 				</span>
 				<div class="flex items-center gap-1.5">
 					<button
 						type="button"
 						onclick={() => editor.selectGroupById(gid)}
-						class="rounded bg-white px-2 py-0.5 text-[11px] font-semibold text-indigo-700 shadow-2xs hover:bg-indigo-100"
+						class="cursor-pointer rounded bg-surface-card px-2 py-0.5 text-[11px] font-semibold text-tone-editor-ink shadow-xs hover:bg-surface-subtle"
 					>
 						Select Group
 					</button>
 					<button
 						type="button"
 						onclick={() => editor.ungroupSelected()}
-						class="rounded bg-white px-2 py-0.5 text-[11px] font-medium text-ink-secondary shadow-2xs hover:bg-surface-subtle"
+						class="cursor-pointer rounded bg-surface-card px-2 py-0.5 text-[11px] font-medium text-ink-secondary shadow-xs hover:bg-surface-subtle"
 					>
 						Ungroup
 					</button>
@@ -963,7 +939,7 @@
 			</div>
 		{/if}
 
-		<!-- Text Content (supports double-click canvas editing, WYSIWYG formatting, {{property}} tokens and conditional rules) -->
+		<!-- Text Content -->
 		{#if selected.type === 'text'}
 			{@const textRules = selected.rules ?? []}
 			{@const elementBaseStyle = {
@@ -994,7 +970,7 @@
 				</div>
 
 				{#if /\{\{\s*[a-zA-Z0-9_]+\s*\}\}/.test(selected.text)}
-					<div class="rounded-xl border border-indigo-100 bg-indigo-50/40 p-3">
+					<div class="rounded-xl border border-tone-editor-border bg-tone-editor-soft/50 p-3">
 						<label for="el-default-value" class="block text-xs font-medium text-ink-secondary">
 							Default Value (when empty)
 						</label>
@@ -1005,7 +981,7 @@
 							oninput={(e) =>
 								editor.updateElement(selected.id, { fallbackText: e.currentTarget.value })}
 							placeholder="e.g. Certificate of Participation"
-							class="mt-1 block w-full rounded-lg border border-border-strong bg-white px-2.5 py-1.5 text-xs outline-none focus:border-accent"
+							class="mt-1 block h-[30px] w-full rounded-md border border-border-strong bg-surface-card px-2.5 text-xs text-ink-primary outline-none focus:border-accent-vivid dark:bg-surface-recessed"
 						/>
 						<p class="mt-1 text-[11px] text-ink-muted">
 							Used when a recipient has an empty value for this placeholder.
@@ -1013,16 +989,16 @@
 					</div>
 				{/if}
 
-				<!-- Conditional Binding Rules (available on every text element) -->
-				<div class="space-y-2.5 rounded-xl border border-amber-200/80 bg-amber-50/40 p-3">
+				<!-- Conditional Binding Rules -->
+				<div class="space-y-2.5 rounded-xl border border-tone-certs-border bg-tone-certs-soft/55 p-3">
 					<div class="flex items-center justify-between gap-2">
-						<span class="text-[11px] font-semibold tracking-wide text-amber-900 uppercase">
+						<span class="text-[11px] font-semibold tracking-[0.07em] text-tone-certs-ink uppercase">
 							Conditional Rules {textRules.length > 0 ? `(${textRules.length})` : ''}
 						</span>
 						<button
 							type="button"
 							onclick={addTextRule}
-							class="inline-flex items-center gap-1 rounded-md border border-amber-300 bg-white px-2 py-1 text-[11px] font-semibold text-amber-900 hover:bg-amber-100/60"
+							class="cf-pressable inline-flex cursor-pointer items-center gap-1 rounded-md border border-tone-certs-border bg-surface-card px-2 py-1 text-[11px] font-semibold text-tone-certs-ink shadow-xs hover:bg-surface-subtle"
 						>
 							<Plus class="h-3 w-3" />
 							Add Rule
@@ -1037,9 +1013,9 @@
 					{:else}
 						<div class="space-y-2">
 							{#each textRules as rule, ruleIdx (rule.id)}
-								<div class="space-y-2 rounded-lg border border-border-default bg-white p-2.5 shadow-2xs">
+								<div class="space-y-2 rounded-lg border border-border-default bg-surface-card p-2.5 shadow-xs">
 									<div class="flex items-center justify-between">
-										<span class="text-[10px] font-semibold tracking-wide text-indigo-700 uppercase">
+										<span class="text-[10px] font-semibold tracking-[0.07em] text-tone-editor-ink uppercase">
 											Rule {ruleIdx + 1} · When
 										</span>
 										<button
@@ -1047,7 +1023,7 @@
 											title="Delete rule"
 											aria-label="Delete rule {ruleIdx + 1}"
 											onclick={() => deleteTextRule(rule.id)}
-											class="rounded p-1 text-red-500 hover:bg-red-50"
+											class="cursor-pointer rounded p-1 text-tone-danger-ink hover:bg-tone-danger-soft"
 										>
 											<Trash2 class="h-3 w-3" />
 										</button>
@@ -1082,7 +1058,7 @@
 																value: ''
 															});
 														}}
-														class="min-w-0 flex-1 rounded border border-border-strong bg-white px-1.5 py-1 text-[11px]"
+														class="min-w-0 flex-1 rounded border border-border-strong bg-surface-card px-1.5 py-1 text-[11px] text-ink-primary outline-none focus:border-accent-vivid dark:bg-surface-recessed"
 													>
 														{#each criteria as prop (prop.key)}
 															<option value={prop.key}>{prop.label}</option>
@@ -1096,7 +1072,7 @@
 															updateRuleCondition(rule.id, condIdx, {
 																operator: e.currentTarget.value as TitleRuleOperator
 															})}
-														class="rounded border border-border-strong bg-white px-1.5 py-1 text-[11px]"
+														class="rounded border border-border-strong bg-surface-card px-1.5 py-1 text-[11px] text-ink-primary outline-none focus:border-accent-vivid dark:bg-surface-recessed"
 													>
 														<option value="equals">is</option>
 														<option value="not_empty">has value</option>
@@ -1108,7 +1084,7 @@
 															type="button"
 															aria-label="Remove condition"
 															onclick={() => removeRuleCondition(rule.id, condIdx)}
-															class="rounded p-0.5 text-ink-muted hover:bg-red-50 hover:text-red-600"
+															class="cursor-pointer rounded p-0.5 text-ink-muted hover:bg-tone-danger-soft hover:text-tone-danger-ink"
 														>
 															<X class="h-3 w-3" />
 														</button>
@@ -1131,7 +1107,7 @@
 																customConditionMode[condFieldKey] = false;
 																updateRuleCondition(rule.id, condIdx, { value: chosen });
 															}}
-															class="block w-full rounded border border-border-strong bg-white px-2 py-1 text-[11px] outline-none focus:border-accent"
+															class="block w-full rounded border border-border-strong bg-surface-card px-2 py-1 text-[11px] text-ink-primary outline-none focus:border-accent-vivid dark:bg-surface-recessed"
 														>
 															<option value="">Select existing value...</option>
 															{#each options as opt (opt)}
@@ -1151,7 +1127,7 @@
 																	value: e.currentTarget.value
 																})}
 															placeholder="Type custom value..."
-															class="block w-full rounded border border-border-strong bg-white px-2 py-1 text-[11px] outline-none focus:border-accent"
+															class="block w-full rounded border border-border-strong bg-surface-card px-2 py-1 text-[11px] text-ink-primary outline-none focus:border-accent-vivid dark:bg-surface-recessed"
 														/>
 													{/if}
 												{/if}
@@ -1162,15 +1138,15 @@
 									<button
 										type="button"
 										onclick={() => addConditionToRule(rule.id)}
-										class="text-[11px] font-medium text-indigo-700 hover:underline"
+										class="cursor-pointer text-[11px] font-medium text-tone-editor-ink hover:underline"
 									>
 										+ And Condition
 									</button>
 
-									<div class="space-y-1.5 border-t border-border-default pt-2">
+									<div class="space-y-1.5 border-t border-border-subtle pt-2">
 										<label
 											for="rule-out-{rule.id}"
-											class="block text-[10px] font-semibold tracking-wide text-ink-secondary uppercase"
+											class="block text-[10px] font-semibold tracking-[0.07em] text-ink-muted uppercase"
 										>
 											Show Text
 										</label>
@@ -1192,9 +1168,9 @@
 							{/each}
 						</div>
 
-						<div class="rounded-lg border border-amber-200 bg-white px-2.5 py-1.5 text-[11px]">
+						<div class="rounded-lg border border-tone-certs-border bg-surface-card px-2.5 py-1.5 text-[11px]">
 							<span class="text-ink-muted">Current preview output:</span>
-							<span class="mt-0.5 block whitespace-pre-wrap font-semibold text-ink-primary">
+							<span class="mt-0.5 block font-semibold whitespace-pre-wrap text-ink-primary">
 								{stripRichTextMarkup(resolveElementText(selected, sampleData, 'sample'))}
 							</span>
 						</div>
@@ -1205,8 +1181,8 @@
 
 		<!-- Image Crop, Resize & Replace -->
 		{#if selected.type === 'image'}
-			<section class="space-y-2 border-t border-border-default pt-3">
-				<h3 class="text-xs font-semibold tracking-wide text-ink-secondary uppercase">Image</h3>
+			<section class="space-y-2 border-t border-border-subtle pt-3">
+				<h3 class="text-[11px] font-semibold tracking-[0.07em] text-ink-muted uppercase">Image</h3>
 				<input
 					bind:this={imgReplaceInputEl}
 					type="file"
@@ -1218,7 +1194,7 @@
 					type="button"
 					disabled={uploadingBg}
 					onclick={openRecropSelectedImage}
-					class="flex min-h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-border-default bg-white px-3 py-1.5 text-xs font-medium text-ink-primary hover:bg-surface-subtle disabled:opacity-50"
+					class="cf-pressable flex h-8 w-full cursor-pointer items-center justify-center gap-1.5 rounded-md border border-border-strong bg-surface-card px-3 text-xs font-medium text-ink-primary shadow-xs hover:bg-surface-subtle disabled:opacity-45"
 				>
 					<Crop class="h-3.5 w-3.5" />
 					{uploadingBg ? 'Uploading...' : 'Crop & Resize Image'}
@@ -1227,40 +1203,44 @@
 					type="button"
 					disabled={uploadingBg}
 					onclick={() => imgReplaceInputEl?.click()}
-					class="flex min-h-8 w-full items-center justify-center gap-1.5 rounded-lg border border-border-default bg-white px-3 py-1.5 text-xs font-medium text-ink-secondary hover:bg-surface-subtle disabled:opacity-50"
+					class="cf-pressable flex h-8 w-full cursor-pointer items-center justify-center gap-1.5 rounded-md border border-border-default bg-surface-card px-3 text-xs font-medium text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary disabled:opacity-45"
 				>
 					<Upload class="h-3.5 w-3.5" />
 					Replace Image
 				</button>
 				{#if bgUploadError}
-					<p class="text-[11px] text-red-600">{bgUploadError}</p>
+					<p class="text-[11px] text-tone-danger-ink">{bgUploadError}</p>
 				{/if}
 			</section>
 		{/if}
 
-		<!-- Signature Editor (Draw on the spot OR Upload an image) -->
+		<!-- Signature Editor -->
 		{#if selected.type === 'signature'}
-			<section class="space-y-3 border-t border-border-default pt-3">
+			<section class="space-y-3 border-t border-border-subtle pt-3">
 				<div class="flex items-center justify-between">
-					<h3 class="text-xs font-semibold tracking-wide text-ink-secondary uppercase">
+					<h3 class="text-[11px] font-semibold tracking-[0.07em] text-ink-muted uppercase">
 						Signature
 					</h3>
 					{#if selected.src}
-						<span class="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+						<span
+							class="rounded-full border border-tone-data-border bg-tone-data-soft px-2 py-0.5 text-[10px] font-medium text-tone-data-ink"
+						>
 							Ready
 						</span>
 					{/if}
 				</div>
 
-				<!-- Draw / Upload mode tabs -->
-				<div class="grid grid-cols-2 gap-1 rounded-lg bg-surface-subtle p-1">
+				<!-- Draw / Upload mode segmented pill -->
+				<div
+					class="grid grid-cols-2 rounded-[10px] border border-border-default bg-surface-subtle p-[3px] dark:bg-surface-recessed"
+				>
 					<button
 						type="button"
 						onclick={() => (signatureTab = 'draw')}
-						class="inline-flex min-h-7 items-center justify-center gap-1 rounded-md text-xs font-medium transition {signatureTab ===
+						class="cf-glide-thumb inline-flex min-h-7 cursor-pointer items-center justify-center gap-1 rounded-[7px] text-xs transition {signatureTab ===
 						'draw'
-							? 'bg-white text-ink-primary shadow-xs'
-							: 'text-ink-secondary hover:text-ink-primary'}"
+							? 'border border-border-default/80 bg-surface-card font-semibold text-ink-primary shadow-xs dark:bg-surface-elevated'
+							: 'border border-transparent font-medium text-ink-secondary hover:text-ink-primary'}"
 					>
 						<PenTool class="h-3.5 w-3.5" />
 						Draw
@@ -1268,10 +1248,10 @@
 					<button
 						type="button"
 						onclick={() => (signatureTab = 'upload')}
-						class="inline-flex min-h-7 items-center justify-center gap-1 rounded-md text-xs font-medium transition {signatureTab ===
+						class="cf-glide-thumb inline-flex min-h-7 cursor-pointer items-center justify-center gap-1 rounded-[7px] text-xs transition {signatureTab ===
 						'upload'
-							? 'bg-white text-ink-primary shadow-xs'
-							: 'text-ink-secondary hover:text-ink-primary'}"
+							? 'border border-border-default/80 bg-surface-card font-semibold text-ink-primary shadow-xs dark:bg-surface-elevated'
+							: 'border border-transparent font-medium text-ink-secondary hover:text-ink-primary'}"
 					>
 						<Upload class="h-3.5 w-3.5" />
 						Upload
@@ -1293,7 +1273,7 @@
 							type="button"
 							disabled={uploadingBg}
 							onclick={() => sigFileInputEl?.click()}
-							class="flex min-h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-border-default bg-white px-3 py-1.5 text-xs font-medium text-ink-primary hover:bg-surface-subtle disabled:opacity-50"
+							class="cf-pressable flex h-8 w-full cursor-pointer items-center justify-center gap-1.5 rounded-md border border-border-strong bg-surface-card px-3 text-xs font-medium text-ink-primary shadow-xs hover:bg-surface-subtle disabled:opacity-45"
 						>
 							<Upload class="h-3.5 w-3.5" />
 							{uploadingBg ? 'Uploading...' : 'Upload Signature Image'}
@@ -1304,7 +1284,7 @@
 								type="button"
 								disabled={uploadingBg}
 								onclick={openRecropSelectedImage}
-								class="flex min-h-8 w-full items-center justify-center gap-1.5 rounded-lg border border-border-default bg-white px-3 py-1.5 text-xs font-medium text-ink-secondary hover:bg-surface-subtle disabled:opacity-50"
+								class="cf-pressable flex h-8 w-full cursor-pointer items-center justify-center gap-1.5 rounded-md border border-border-default bg-surface-card px-3 text-xs font-medium text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary disabled:opacity-45"
 							>
 								<Crop class="h-3.5 w-3.5" />
 								Crop & Resize Signature
@@ -1324,14 +1304,14 @@
 								originalAssetId: undefined,
 								editState: undefined
 							})}
-						class="w-full rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100"
+						class="cf-pressable w-full cursor-pointer rounded-md border border-tone-danger-border bg-tone-danger-soft px-3 py-1.5 text-xs font-medium text-tone-danger-ink hover:opacity-90"
 					>
 						Clear Signature
 					</button>
 				{/if}
 
 				{#if bgUploadError}
-					<p class="text-[11px] text-red-600">{bgUploadError}</p>
+					<p class="text-[11px] text-tone-danger-ink">{bgUploadError}</p>
 				{/if}
 			</section>
 		{/if}
@@ -1339,8 +1319,8 @@
 		<!-- Shape / Line Styling -->
 		{#if selected.type === 'shape'}
 			{@const isLine = selected.shapeKind === 'line'}
-			<section class="space-y-3 border-t border-border-default pt-3">
-				<h3 class="text-xs font-semibold tracking-wide text-ink-secondary uppercase">
+			<section class="space-y-3 border-t border-border-subtle pt-3">
+				<h3 class="text-[11px] font-semibold tracking-[0.07em] text-ink-muted uppercase">
 					{isLine ? 'Line Style' : 'Shape Style'}
 				</h3>
 				<div class="grid grid-cols-2 gap-2">
@@ -1353,7 +1333,7 @@
 							type="color"
 							value={selected.stroke}
 							oninput={(e) => editor.updateElement(selected.id, { stroke: e.currentTarget.value })}
-							class="mt-1 h-8 w-full cursor-pointer rounded border border-border-strong"
+							class="mt-1 h-[30px] w-full cursor-pointer rounded-md border border-border-strong bg-transparent"
 						/>
 					</div>
 					<ScrubNumberInput
@@ -1373,24 +1353,24 @@
 		{/if}
 
 		<!-- Canvas Alignment & Box Geometry -->
-		<section class="space-y-3 border-t border-border-default pt-3">
-			<h3 class="text-xs font-semibold tracking-wide text-ink-secondary uppercase">
+		<section class="space-y-3 border-t border-border-subtle pt-3">
+			<h3 class="text-[11px] font-semibold tracking-[0.07em] text-ink-muted uppercase">
 				{selected.type === 'shape' && selected.shapeKind === 'line'
 					? 'Position & Length'
-					: 'Position & Resize Box'}
+					: 'Transform'}
 			</h3>
 			<div class="grid grid-cols-2 gap-1.5">
 				<button
 					type="button"
 					onclick={() => editor.alignElementOnCanvas(selected.id, 'center-x')}
-					class="rounded-lg border border-border-default px-2 py-1.5 text-xs font-medium text-ink-secondary hover:bg-surface-subtle"
+					class="cf-pressable cursor-pointer rounded-md border border-border-default bg-surface-card px-2 py-1.5 text-xs font-medium text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary"
 				>
 					Centre Horizontally
 				</button>
 				<button
 					type="button"
 					onclick={() => editor.alignElementOnCanvas(selected.id, 'center-y')}
-					class="rounded-lg border border-border-default px-2 py-1.5 text-xs font-medium text-ink-secondary hover:bg-surface-subtle"
+					class="cf-pressable cursor-pointer rounded-md border border-border-default bg-surface-card px-2 py-1.5 text-xs font-medium text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary"
 				>
 					Centre Vertically
 				</button>

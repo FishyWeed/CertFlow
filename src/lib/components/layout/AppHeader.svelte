@@ -1,36 +1,53 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { Award } from '@lucide/svelte';
-	import ThemeToggle from '#lib/components/ui/ThemeToggle.svelte';
+	import CertFlowLogo from '#lib/components/ui/CertFlowLogo.svelte';
 
 	interface Props {
 		brandHref?: string;
 		brandName?: string;
 		sticky?: boolean;
+		maxWidthClass?: string;
+		center?: Snippet;
 		actions?: Snippet;
 	}
 
-	let { brandHref = '/', brandName = 'CertFlow', sticky = true, actions }: Props = $props();
+	let {
+		brandHref = '/',
+		brandName = 'CertFlow',
+		sticky = true,
+		maxWidthClass = 'max-w-[1600px]',
+		center,
+		actions
+	}: Props = $props();
 </script>
 
 <header
-	class="w-full border-b border-border-default bg-surface-card {sticky ? 'sticky top-0 z-40' : ''}"
+	class="h-14 w-full border-b border-border-default bg-surface-card/88 backdrop-blur-md {sticky
+		? 'sticky top-0 z-40'
+		: ''}"
 >
-	<div class="mx-auto flex max-w-[1600px] items-center justify-between gap-2 px-3 py-3 sm:gap-4 sm:px-6">
+	<div
+		class="mx-auto flex h-full {maxWidthClass} items-center justify-between gap-2 px-3 sm:gap-4 sm:px-6 {center
+			? 'md:grid md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]'
+			: ''}"
+	>
 		<a
 			href={brandHref}
-			class="flex min-w-0 items-center gap-2 font-semibold tracking-tight text-ink-primary"
+			class="flex min-w-0 shrink-0 items-center gap-2.5 justify-self-start text-ink-primary transition-opacity hover:opacity-90"
 		>
-			<span
-				class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-accent text-white shadow-xs sm:h-9 sm:w-9"
-			>
-				<Award class="h-4 w-4 sm:h-5 sm:w-5" />
+			<CertFlowLogo variant="studio" size={28} decorative />
+			<span class="font-display truncate text-[17px] font-semibold tracking-[-0.03em] text-ink-primary">
+				{brandName}
 			</span>
-			<span class="truncate text-base sm:text-lg">{brandName}</span>
 		</a>
 
-		<div class="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
-			<ThemeToggle />
+		{#if center}
+			<div class="hidden min-w-0 items-center justify-center justify-self-center md:flex">
+				{@render center()}
+			</div>
+		{/if}
+
+		<div class="flex shrink-0 items-center gap-1.5 justify-self-end sm:gap-2.5">
 			{#if actions}
 				{@render actions()}
 			{/if}
