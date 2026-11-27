@@ -1,5 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import { desc, eq } from 'drizzle-orm';
+import { getQuotaSettingsSnapshot, isUserAdmin } from '#lib/server/app-settings.ts';
 import { getUserAccountUsage } from '#lib/server/asset-cleanup.ts';
 import { db } from '#lib/server/db/index.ts';
 import { senderProfiles } from '#lib/server/db/schema.ts';
@@ -11,7 +12,7 @@ import type { PageServerLoad } from './$types';
 export const load: PageServerLoad = async ({ locals }) => {
 	if (!locals.user) throw redirect(302, '/login');
 
-	const [rows, usage] = await Promise.all([
+	const [rows, usage, isAdmin] = await Promise.all([
 		db
 			.select({
 				id: senderProfiles.id,
@@ -28,7 +29,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 			.from(senderProfiles)
 			.where(eq(senderProfiles.userId, locals.user.id))
 			.orderBy(desc(senderProfiles.createdAt)),
-		getUserAccountUsage(locals.user.id)
+		getUserAccountUsage(locals.user.id),
+		isUserAdmin(locals.user)
 	]);
 
 	const profiles = rows.map(({ smtpPassEncrypted, ...rest }) => ({
@@ -39,9 +41,12 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const portableInfo = getPortableRuntimeInfo();
 	const stagedUpdate = getStagedPortableUpdate(portableInfo);
 	const canShowUpdates = portableInfo.isPortable || isLocalAppRuntime();
+	const adminQuotas = isAdmin ? await getQuotaSettingsSnapshot() : null;
 
 	return {
 		user: locals.user,
+		isAdmin,
+		adminQuotas,
 		profiles,
 		usage,
 		mailCapabilities: getMailCapabilities(),

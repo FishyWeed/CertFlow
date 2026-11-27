@@ -2,11 +2,10 @@ import { randomUUID } from 'node:crypto';
 import { error, json } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { MAX_RECIPIENTS_PER_PROJECT } from '#lib/config/limits.ts';
+import { getEffectiveQuotaLimits } from '#lib/server/app-settings.ts';
 import { db } from '#lib/server/db/index.ts';
 import { projects, recipients } from '#lib/server/db/schema.ts';
 import { requireOwnedProject } from '#lib/server/projects.ts';
-import { isLocalAppRuntime } from '#lib/server/runtime-config.ts';
 import { applyColumnMapping, derivePropertiesFromHeaders } from '#lib/features/import/parser.ts';
 import type { RequestHandler } from './$types';
 
@@ -28,10 +27,11 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	}
 
 	const { fileName, headers, rows } = parsed.data;
-	if (!isLocalAppRuntime() && rows.length > MAX_RECIPIENTS_PER_PROJECT) {
+	const { maxRecipientsPerProject } = await getEffectiveQuotaLimits();
+	if (maxRecipientsPerProject !== null && rows.length > maxRecipientsPerProject) {
 		throw error(
 			400,
-			`A project can hold up to ${MAX_RECIPIENTS_PER_PROJECT.toLocaleString()} recipients on hosted deployments.`
+			`A project can hold up to ${maxRecipientsPerProject.toLocaleString()} recipients on this deployment.`
 		);
 	}
 	const { properties: derivedProperties, mapping: derivedMapping } =

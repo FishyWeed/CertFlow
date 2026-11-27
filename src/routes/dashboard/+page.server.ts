@@ -5,10 +5,9 @@ import { z } from 'zod';
 import { DEFAULT_CANVAS_PRESET } from '#lib/config/canvas.ts';
 import { DEFAULT_CRITERIA } from '#lib/config/criteria.ts';
 import { createDefaultEmailSettings } from '#lib/config/email.ts';
-import { MAX_PROJECTS_PER_USER } from '#lib/config/limits.ts';
+import { getEffectiveQuotaLimits } from '#lib/server/app-settings.ts';
 import { db } from '#lib/server/db/index.ts';
 import { certificates, projects, recipients, templates } from '#lib/server/db/schema.ts';
-import { isLocalAppRuntime } from '#lib/server/runtime-config.ts';
 import { createStarterTemplateState } from '#lib/templates/starter.ts';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -71,11 +70,13 @@ export const load: PageServerLoad = async ({ locals }) => {
 		certificateCount: certificateCounts.get(p.id) ?? 0
 	}));
 
+	const limits = await getEffectiveQuotaLimits();
+
 	return {
 		user: locals.user,
 		projects: userProjects,
 		limits: {
-			maxProjects: isLocalAppRuntime() ? null : MAX_PROJECTS_PER_USER
+			maxProjects: limits.maxProjectsPerUser
 		}
 	};
 };
@@ -86,7 +87,7 @@ export const actions: Actions = {
 			throw redirect(302, '/login');
 		}
 
-		const maxProjects = isLocalAppRuntime() ? null : MAX_PROJECTS_PER_USER;
+		const { maxProjectsPerUser: maxProjects } = await getEffectiveQuotaLimits();
 		if (maxProjects !== null) {
 			const [existingCountRow] = await db
 				.select({ total: count() })

@@ -16,7 +16,9 @@
 		Pencil,
 		Plus,
 		RefreshCw,
+		RotateCcw,
 		Save,
+		Shield,
 		Trash2,
 		User,
 		X
@@ -30,7 +32,7 @@
 
 	let { data }: PageProps = $props();
 
-	type SettingsSection = 'profile' | 'security' | 'storage' | 'updates' | 'sender';
+	type SettingsSection = 'profile' | 'security' | 'storage' | 'updates' | 'sender' | 'admin';
 
 	function resolveInitialSection(): SettingsSection {
 		const tab = page.url.searchParams.get('tab');
@@ -39,7 +41,8 @@
 			tab === 'security' ||
 			tab === 'storage' ||
 			tab === 'sender' ||
-			(tab === 'updates' && data.portableInfo?.canShowUpdates)
+			(tab === 'updates' && data.portableInfo?.canShowUpdates) ||
+			(tab === 'admin' && data.isAdmin)
 		) {
 			return tab;
 		}
@@ -77,6 +80,158 @@
 	let cleaningStorage = $state(false);
 	let cleanupStatus = $state('');
 	let cleanupStatusTone = $state<'success' | 'error'>('success');
+
+	// Admin quota limits state (visible only to administrators)
+	const MB = 1024 * 1024;
+	let projectsUnlimited = $state(true);
+	let projectsLimitInput = $state(10);
+	let storageUnlimited = $state(true);
+	let storageLimitMbInput = $state(30);
+	let uploadUnlimited = $state(true);
+	let uploadLimitMbInput = $state(10);
+	let recipientsUnlimited = $state(true);
+	let recipientsLimitInput = $state(5000);
+	let savingQuotas = $state(false);
+	let resettingQuotas = $state(false);
+	let quotaStatus = $state('');
+	let quotaStatusTone = $state<'success' | 'error'>('success');
+	let quotaInitialised = $state(false);
+
+	function applyQuotaSnapshotToForm(
+		limits: {
+			maxProjectsPerUser: number | null;
+			maxStorageBytesPerUser: number | null;
+			maxUploadBytes: number | null;
+			maxRecipientsPerProject: number | null;
+		}
+	) {
+		projectsUnlimited = limits.maxProjectsPerUser === null;
+		projectsLimitInput = limits.maxProjectsPerUser ?? 10;
+		storageUnlimited = limits.maxStorageBytesPerUser === null;
+		storageLimitMbInput =
+			limits.maxStorageBytesPerUser !== null
+				? Math.max(1, Math.round(limits.maxStorageBytesPerUser / MB))
+				: 30;
+		uploadUnlimited = limits.maxUploadBytes === null;
+		uploadLimitMbInput =
+			limits.maxUploadBytes !== null ? Math.max(1, Math.round(limits.maxUploadBytes / MB)) : 10;
+		recipientsUnlimited = limits.maxRecipientsPerProject === null;
+		recipientsLimitInput = limits.maxRecipientsPerProject ?? 5000;
+	}
+
+	$effect(() => {
+		if (!quotaInitialised && data.adminQuotas) {
+			applyQuotaSnapshotToForm(data.adminQuotas.limits);
+			quotaInitialised = true;
+		}
+	});
+
+	function handleSetAllUnlimited() {
+		projectsUnlimited = true;
+		storageUnlimited = true;
+		uploadUnlimited = true;
+		recipientsUnlimited = true;
+		quotaStatus = '';
+	}
+
+	async function handleSaveAdminQuotas(event: SubmitEvent) {
+		event.preventDefault();
+		quotaStatus = '';
+		const maxProjectsPerUser = projectsUnlimited ? null : Math.trunc(Number(projectsLimitInput));
+		const maxStorageMb = storageUnlimited ? null : Math.trunc(Number(storageLimitMbInput));
+		const maxUploadMb = uploadUnlimited ? null : Math.trunc(Number(uploadLimitMbInput));
+		const maxRecipientsPerProject = recipientsUnlimited
+			? null
+			: Math.trunc(Number(recipientsLimitInput));
+
+		if (maxProjectsPerUser !== null && (!Number.isFinite(maxProjectsPerUser) || maxProjectsPerUser < 1)) {
+			quotaStatusTone = 'error';
+			quotaStatus = 'Enter at least 1 project per account or tick No limit.';
+			return;
+		}
+		if (maxStorageMb !== null && (!Number.isFinite(maxStorageMb) || maxStorageMb < 1)) {
+			quotaStatusTone = 'error';
+			quotaStatus = 'Enter at least 1 MB of image storage or tick No limit.';
+			return;
+		}
+		if (maxUploadMb !== null && (!Number.isFinite(maxUploadMb) || maxUploadMb < 1)) {
+			quotaStatusTone = 'error';
+			quotaStatus = 'Enter at least 1 MB for single image upload size or tick No limit.';
+			return;
+		}
+		if (
+			maxRecipientsPerProject !== null &&
+			(!Number.isFinite(maxRecipientsPerProject) || maxRecipientsPerProject < 1)
+		) {
+			quotaStatusTone = 'error';
+			quotaStatus = 'Enter at least 1 recipient per project or tick No limit.';
+			return;
+		}
+
+		savingQuotas = true;
+		try {
+			const res = await fetch('/api/admin/limits', {
+				method: 'PUT',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({
+					maxProjectsPerUser,
+					maxStorageBytesPerUser: maxStorageMb !== null ? maxStorageMb * MB : null,
+					maxUploadBytes: maxUploadMb !== null ? maxUploadMb * MB : null,
+					maxRecipientsPerProject
+				})
+			});
+			if (!res.ok) {
+				const err = await res.json().catch(() => ({}));
+				throw new Error(err.message ?? 'Could not save quota limits.');
+			}
+			const updated = (await res.json()) as {
+				limits: {
+					maxProjectsPerUser: number | null;
+					maxStorageBytesPerUser: number | null;
+					maxUploadBytes: number | null;
+					maxRecipientsPerProject: number | null;
+				};
+			};
+			applyQuotaSnapshotToForm(updated.limits);
+			await invalidateAll();
+			quotaStatusTone = 'success';
+			quotaStatus = 'Account limits updated for this deployment.';
+		} catch (err) {
+			quotaStatusTone = 'error';
+			quotaStatus = err instanceof Error ? err.message : 'Could not save quota limits.';
+		} finally {
+			savingQuotas = false;
+		}
+	}
+
+	async function handleResetAdminQuotas() {
+		resettingQuotas = true;
+		quotaStatus = '';
+		try {
+			const res = await fetch('/api/admin/limits', { method: 'DELETE' });
+			if (!res.ok) {
+				const err = await res.json().catch(() => ({}));
+				throw new Error(err.message ?? 'Could not reset quota limits.');
+			}
+			const updated = (await res.json()) as {
+				limits: {
+					maxProjectsPerUser: number | null;
+					maxStorageBytesPerUser: number | null;
+					maxUploadBytes: number | null;
+					maxRecipientsPerProject: number | null;
+				};
+			};
+			applyQuotaSnapshotToForm(updated.limits);
+			await invalidateAll();
+			quotaStatusTone = 'success';
+			quotaStatus = 'Quota limits reset to deployment defaults.';
+		} catch (err) {
+			quotaStatusTone = 'error';
+			quotaStatus = err instanceof Error ? err.message : 'Could not reset quota limits.';
+		} finally {
+			resettingQuotas = false;
+		}
+	}
 
 	// Portable app self-updater state
 	interface PortableUpdateCheck {
@@ -683,6 +838,30 @@
 							{data.profiles.length}
 						</span>
 					</button>
+					{#if data.isAdmin && data.adminQuotas}
+						<div class="my-1 hidden border-t border-border-subtle md:block"></div>
+						<button
+							type="button"
+							aria-current={activeSection === 'admin' ? 'page' : undefined}
+							onclick={() => navigateSection('admin')}
+							class="cf-pressable flex shrink-0 cursor-pointer items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-[13px] transition md:w-full {activeSection ===
+							'admin'
+								? 'border border-border-default bg-surface-card font-semibold text-ink-primary shadow-xs'
+								: 'border border-transparent font-medium text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary'}"
+						>
+							<span class="inline-flex items-center gap-2">
+								<Shield class="h-4 w-4 shrink-0" />
+								Admin Limits
+							</span>
+							{#if data.adminQuotas.isCustomised}
+								<span
+									class="rounded-full border border-accent-border bg-accent-soft px-1.5 py-0.5 text-[10px] font-semibold text-accent-ink"
+								>
+									Custom
+								</span>
+							{/if}
+						</button>
+					{/if}
 				</nav>
 
 				<div class="mt-3 shrink-0 border-t border-border-subtle pt-3 md:mt-auto md:pt-4">
@@ -869,7 +1048,7 @@
 									Account Usage &amp; Storage
 								</h2>
 								{#if data.usage.maxProjects === null && data.usage.maxStorageBytes === null}
-									<Badge tone="emerald" dot>Unlimited — Local Runtime</Badge>
+									<Badge tone="emerald" dot>Unlimited</Badge>
 								{/if}
 							</div>
 							<Button
@@ -926,7 +1105,7 @@
 									</p>
 								{:else}
 									<p class="mt-2 text-[11px] text-ink-muted">
-										No project limit applies on local installations.
+										No project limit is set for accounts on this deployment.
 									</p>
 								{/if}
 							</div>
@@ -961,8 +1140,7 @@
 									</p>
 								{:else}
 									<p class="mt-2 text-[11px] text-ink-muted">
-										No storage limit applies on local installations. Generated certificates render in
-										your browser.
+										No image storage limit is set. Generated certificates render in your browser.
 									</p>
 								{/if}
 							</div>
@@ -1148,6 +1326,215 @@
 								{/if}
 							</div>
 						</div>
+					</section>
+				{:else if activeSection === 'admin' && data.isAdmin && data.adminQuotas}
+					<!-- Admin Account Limits & Quotas -->
+					<section
+						id="settings-admin"
+						class="scroll-mt-20 rounded-2xl border border-border-default bg-surface-card p-5 shadow-xs sm:p-6"
+					>
+						<div class="flex flex-wrap items-center justify-between gap-3">
+							<div class="flex flex-wrap items-center gap-2">
+								<Shield class="h-4 w-4 text-accent-vivid" />
+								<h2 class="font-display text-[15px] font-semibold text-ink-primary">
+									Admin Account Limits
+								</h2>
+								<Badge tone={data.adminQuotas.isCustomised ? 'indigo' : 'neutral'} dot>
+									{data.adminQuotas.isCustomised ? 'Custom Limits' : 'Runtime Default'}
+								</Badge>
+							</div>
+							<div class="flex flex-wrap items-center gap-2">
+								<Button
+									type="button"
+									size="sm"
+									variant="secondary"
+									disabled={savingQuotas || resettingQuotas}
+									onclick={handleSetAllUnlimited}
+								>
+									Set All No Limit
+								</Button>
+								<Button
+									type="button"
+									size="sm"
+									variant="ghost"
+									disabled={savingQuotas || resettingQuotas || !data.adminQuotas.isCustomised}
+									onclick={handleResetAdminQuotas}
+								>
+									<RotateCcw class="h-3.5 w-3.5" />
+									{resettingQuotas ? 'Resetting...' : 'Reset to Defaults'}
+								</Button>
+							</div>
+						</div>
+						<p class="mt-1 text-xs text-ink-secondary">
+							Choose per-account project, image storage, single upload and recipient limits for this
+							deployment. Tick <strong>No limit</strong> on any item to remove its cap.
+						</p>
+
+						{#if quotaStatus}
+							<div
+								class="mt-3 rounded-xl border px-3.5 py-2.5 text-xs font-medium {quotaStatusTone === 'error'
+									? 'border-tone-danger-border bg-tone-danger-soft text-tone-danger-ink'
+									: 'border-tone-data-border bg-tone-data-soft text-tone-data-ink'}"
+							>
+								{quotaStatus}
+							</div>
+						{/if}
+
+						<form class="mt-4 space-y-4" onsubmit={handleSaveAdminQuotas}>
+							<div class="grid gap-4 sm:grid-cols-2">
+								<!-- Max Projects per Account -->
+								<div class="rounded-xl border border-border-default bg-surface-page p-4">
+									<div class="flex items-center justify-between gap-2">
+										<label
+											for="admin-limit-projects"
+											class="text-xs font-semibold text-ink-primary"
+										>
+											Projects per Account
+										</label>
+										<label class="inline-flex cursor-pointer items-center gap-1.5 text-xs text-ink-secondary">
+											<input
+												type="checkbox"
+												bind:checked={projectsUnlimited}
+												class="h-3.5 w-3.5 rounded-[4px] border-border-strong accent-accent"
+											/>
+											No limit
+										</label>
+									</div>
+									<input
+										id="admin-limit-projects"
+										type="number"
+										min={1}
+										max={100000}
+										step={1}
+										disabled={projectsUnlimited}
+										bind:value={projectsLimitInput}
+										class="{inputClass} font-mono tabular-nums disabled:cursor-not-allowed disabled:opacity-50"
+									/>
+									<p class="mt-1.5 text-[11px] text-ink-muted">
+										{projectsUnlimited
+											? 'Accounts can create unlimited projects.'
+											: `Accounts can keep up to ${projectsLimitInput} active projects.`}
+									</p>
+								</div>
+
+								<!-- Max Image Storage per Account (MB) -->
+								<div class="rounded-xl border border-border-default bg-surface-page p-4">
+									<div class="flex items-center justify-between gap-2">
+										<label
+											for="admin-limit-storage"
+											class="text-xs font-semibold text-ink-primary"
+										>
+											Image Storage per Account (MB)
+										</label>
+										<label class="inline-flex cursor-pointer items-center gap-1.5 text-xs text-ink-secondary">
+											<input
+												type="checkbox"
+												bind:checked={storageUnlimited}
+												class="h-3.5 w-3.5 rounded-[4px] border-border-strong accent-accent"
+											/>
+											No limit
+										</label>
+									</div>
+									<input
+										id="admin-limit-storage"
+										type="number"
+										min={1}
+										max={102400}
+										step={1}
+										disabled={storageUnlimited}
+										bind:value={storageLimitMbInput}
+										class="{inputClass} font-mono tabular-nums disabled:cursor-not-allowed disabled:opacity-50"
+									/>
+									<p class="mt-1.5 text-[11px] text-ink-muted">
+										{storageUnlimited
+											? 'No total image storage cap per account.'
+											: `Caps total uploaded backgrounds, logos and signatures at ${storageLimitMbInput} MB.`}
+									</p>
+								</div>
+
+								<!-- Max Single Upload Size (MB) -->
+								<div class="rounded-xl border border-border-default bg-surface-page p-4">
+									<div class="flex items-center justify-between gap-2">
+										<label
+											for="admin-limit-upload"
+											class="text-xs font-semibold text-ink-primary"
+										>
+											Single Image Upload Limit (MB)
+										</label>
+										<label class="inline-flex cursor-pointer items-center gap-1.5 text-xs text-ink-secondary">
+											<input
+												type="checkbox"
+												bind:checked={uploadUnlimited}
+												class="h-3.5 w-3.5 rounded-[4px] border-border-strong accent-accent"
+											/>
+											No limit
+										</label>
+									</div>
+									<input
+										id="admin-limit-upload"
+										type="number"
+										min={1}
+										max={1024}
+										step={1}
+										disabled={uploadUnlimited}
+										bind:value={uploadLimitMbInput}
+										class="{inputClass} font-mono tabular-nums disabled:cursor-not-allowed disabled:opacity-50"
+									/>
+									<p class="mt-1.5 text-[11px] text-ink-muted">
+										{uploadUnlimited
+											? 'No size cap per individual uploaded image.'
+											: `Each uploaded image can be up to ${uploadLimitMbInput} MB.`}
+									</p>
+								</div>
+
+								<!-- Max Recipients per Project -->
+								<div class="rounded-xl border border-border-default bg-surface-page p-4">
+									<div class="flex items-center justify-between gap-2">
+										<label
+											for="admin-limit-recipients"
+											class="text-xs font-semibold text-ink-primary"
+										>
+											Recipients per Project
+										</label>
+										<label class="inline-flex cursor-pointer items-center gap-1.5 text-xs text-ink-secondary">
+											<input
+												type="checkbox"
+												bind:checked={recipientsUnlimited}
+												class="h-3.5 w-3.5 rounded-[4px] border-border-strong accent-accent"
+											/>
+											No limit
+										</label>
+									</div>
+									<input
+										id="admin-limit-recipients"
+										type="number"
+										min={1}
+										max={1000000}
+										step={1}
+										disabled={recipientsUnlimited}
+										bind:value={recipientsLimitInput}
+										class="{inputClass} font-mono tabular-nums disabled:cursor-not-allowed disabled:opacity-50"
+									/>
+									<p class="mt-1.5 text-[11px] text-ink-muted">
+										{recipientsUnlimited
+											? 'Projects can import unlimited spreadsheet rows.'
+											: `Each project can hold up to ${Number(recipientsLimitInput || 0).toLocaleString()} recipients.`}
+									</p>
+								</div>
+							</div>
+
+							<div class="flex flex-wrap items-center justify-between gap-3 border-t border-border-subtle pt-4">
+								<p class="text-[11px] text-ink-muted">
+									Changes apply immediately across all accounts on this server. Administrators are
+									identified by <code class="font-mono">ADMIN_EMAILS</code> or the first registered
+									owner account.
+								</p>
+								<Button type="submit" variant="primary" disabled={savingQuotas || resettingQuotas}>
+									<Save class="h-4 w-4" />
+									{savingQuotas ? 'Saving...' : 'Save Limits'}
+								</Button>
+							</div>
+						</form>
 					</section>
 				{:else}
 					<!-- Email Sender Profiles Tab -->

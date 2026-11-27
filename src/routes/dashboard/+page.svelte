@@ -61,7 +61,7 @@
 						{/if}
 					</Badge>
 					{#if data.limits.maxProjects === null}
-						<Badge tone="emerald" dot>Local Unlimited</Badge>
+						<Badge tone="emerald" dot>Unlimited</Badge>
 					{/if}
 				</div>
 				<p class="mt-1 text-sm text-ink-secondary">

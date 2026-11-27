@@ -1,9 +1,8 @@
 import { count, eq, inArray, sql } from 'drizzle-orm';
-import { MAX_PROJECTS_PER_USER, MAX_STORAGE_BYTES_PER_USER } from '#lib/config/limits.ts';
 import type { TemplateCanvasState } from '#lib/types/certflow.ts';
+import { getEffectiveQuotaLimits } from './app-settings.ts';
 import { db } from './db/index.ts';
 import { assets, projects, templates } from './db/schema.ts';
-import { isLocalAppRuntime } from './runtime-config.ts';
 import { getStorage } from './storage.ts';
 
 const ASSET_FILE_PREFIX = '/api/assets/file/';
@@ -64,7 +63,7 @@ export function collectReferencedAssets(canvasStates: TemplateCanvasState[]): {
  * Returns live project count and asset storage usage for an account.
  */
 export async function getUserAccountUsage(userId: string): Promise<AccountUsageSummary> {
-	const [[projectRow], [assetRow]] = await Promise.all([
+	const [[projectRow], [assetRow], limits] = await Promise.all([
 		db
 			.select({ total: count() })
 			.from(projects)
@@ -75,16 +74,18 @@ export async function getUserAccountUsage(userId: string): Promise<AccountUsageS
 				totalBytes: sql<number>`coalesce(sum(${assets.sizeBytes}), 0)`
 			})
 			.from(assets)
-			.where(eq(assets.userId, userId))
+			.where(eq(assets.userId, userId)),
+		getEffectiveQuotaLimits()
 	]);
 
-	const unlimited = isLocalAppRuntime();
+	const unlimited =
+		limits.maxProjectsPerUser === null && limits.maxStorageBytesPerUser === null;
 
 	return {
 		projectCount: Number(projectRow?.total ?? 0),
-		maxProjects: unlimited ? null : MAX_PROJECTS_PER_USER,
+		maxProjects: limits.maxProjectsPerUser,
 		storageUsedBytes: Number(assetRow?.totalBytes ?? 0),
-		maxStorageBytes: unlimited ? null : MAX_STORAGE_BYTES_PER_USER,
+		maxStorageBytes: limits.maxStorageBytesPerUser,
 		assetCount: Number(assetRow?.assetCount ?? 0),
 		isUnlimited: unlimited
 	};

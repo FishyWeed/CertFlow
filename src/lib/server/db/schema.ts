@@ -335,3 +335,13 @@ export const emailLogs = pgTable(
 		index('email_logs_certificate_id_idx').on(table.certificateId)
 	]
 );
+
+/**
+ * Instance-wide key-value settings configured by administrators (for example, account quota limits).
+ */
+export const appSettings = pgTable('app_settings', {
+	key: text('key').primaryKey(),
+	value: jsonb('value').$type<Record<string, unknown>>().notNull(),
+	updatedBy: text('updated_by').references(() => user.id, { onDelete: 'set null' }),
+	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+});
